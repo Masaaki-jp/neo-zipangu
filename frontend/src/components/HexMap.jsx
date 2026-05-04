@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 
 const HEX_SIZE = 60; 
-
 const SECTORS = {
   POWER: { name: 'POWER', color: '#ffcc00' }, DATA: { name: 'DATA', color: '#00ffcc' },
   SILICON: { name: 'SILICON', color: '#aaaaaa' }, HARD: { name: 'HARD', color: '#ff0055' },
@@ -9,7 +8,7 @@ const SECTORS = {
   DARK: { name: 'DARK', color: '#444444' }
 };
 
-const HexMap = ({ activeNumber, onInventoryUpdate }) => {
+const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
   const canvasRef = useRef(null);
   const [boardData, setBoardData] = useState([]);
   const [buildings, setBuildings] = useState({});
@@ -31,8 +30,7 @@ const HexMap = ({ activeNumber, onInventoryUpdate }) => {
 
   useEffect(() => {
     if (loading || boardData.length === 0) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
     const centerX = canvas.width / 2; const centerY = canvas.height / 2;
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -100,24 +98,45 @@ const HexMap = ({ activeNumber, onInventoryUpdate }) => {
       }
     });
 
+    // 拠点の描画（ボットを含む）
     tempVertices.forEach((v) => {
       if (buildings[v.id]) {
-        const type = buildings[v.id].type;
+        const b = buildings[v.id];
         let size = 8; let color = '#00ffcc';
-        if (type === "LOCAL_HUB") { size = 10; color = '#444444'; }
-        if (type === "DATA_CENTER") { size = 16; color = '#00ffcc'; }
-        if (type === "MEGA_HQ") { size = 26; color = '#ffcc00'; }
+        if (b.type === "LOCAL_HUB") { size = 10; color = '#444444'; }
+        if (b.type === "DATA_CENTER") { size = 16; color = '#00ffcc'; }
+        if (b.type === "MEGA_HQ") { size = 26; color = '#ffcc00'; }
 
-        ctx.fillStyle = color; ctx.shadowBlur = type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = color;
+        // 拠点本体の描画
+        ctx.fillStyle = color; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = color;
         ctx.fillRect(v.x - size/2, v.y - size/2, size, size); ctx.shadowBlur = 0;
         ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
+
+        // === ボット（軍事力）の描画 ===
+        if (b.bot_level && b.bot_level > 0) {
+          const botX = v.x + size/2 + 2; // 拠点の右上に配置
+          const botY = v.y - size/2 - 2;
+          ctx.beginPath();
+          ctx.arc(botX, botY, 7, 0, Math.PI * 2);
+          ctx.fillStyle = '#ff0055'; // ボットは攻撃的な赤ネオン
+          ctx.shadowBlur = 10; ctx.shadowColor = '#ff0055';
+          ctx.fill(); ctx.shadowBlur = 0;
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+          
+          ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px monospace';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(b.bot_level.toString(), botX, botY); // ランクを数字で表示
+        }
       } else {
-        ctx.beginPath(); ctx.arc(v.x, v.y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
+        // インフラ建築モードの時だけ、建設可能な空き地ドットを表示する
+        if (actionMode === 'BUILD') {
+          ctx.beginPath(); ctx.arc(v.x, v.y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
+        }
       }
     });
 
-  }, [boardData, loading, activeNumber, buildings, roads]);
+  }, [boardData, loading, activeNumber, buildings, roads, actionMode]);
 
   const handleCanvasClick = async (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -127,24 +146,45 @@ const HexMap = ({ activeNumber, onInventoryUpdate }) => {
     const clickedEdge = !clickedVertex ? edgesCoords.find(e => Math.hypot(e.midX - clickX, e.midY - clickY) < 15) : null;
 
     if (clickedVertex) {
-      try {
-        const res = await fetch('/api/build', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" })
-        });
-        if (res.ok) {
-          const result = await res.json();
-          setBuildings(result.buildings); 
-          if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
-        } else {
-          const errData = await res.json();
-          if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ SYSTEM ERROR ] 拠点が近すぎます。");
-          else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！");
-          else if (errData.detail === "MAX_LEVEL_REACHED") alert("[ SYSTEM MSG ] すでに最高グレードです。");
-        }
-      } catch (err) { console.error(err); }
+      if (actionMode === 'BUILD') {
+        // --- 建築・アップグレード ---
+        try {
+          const res = await fetch('/api/build', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" })
+          });
+          if (res.ok) {
+            const result = await res.json(); setBuildings(result.buildings); 
+            if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+          } else {
+            const errData = await res.json();
+            if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ SYSTEM ERROR ] 拠点が近すぎます。");
+            else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！");
+            else if (errData.detail === "MAX_LEVEL_REACHED") alert("[ SYSTEM MSG ] すでに最高グレードです。");
+          }
+        } catch (err) { console.error(err); }
 
-    } else if (clickedEdge) {
+      } else if (actionMode === 'MILITARY') {
+        // --- 軍事：ボット配備・強化 ---
+        try {
+          const res = await fetch('/api/deploy_bot', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" })
+          });
+          if (res.ok) {
+            const result = await res.json(); setBuildings(result.buildings);
+            if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+          } else {
+            const errData = await res.json();
+            if (errData.detail === "NO_HUB_HERE") alert("[ ERROR ] まずここに拠点を建設してください。");
+            else if (errData.detail === "MAX_BOT_LEVEL_REACHED") alert("[ ERROR ] これ以上ボットを強化できません（最大ランク4）。");
+            else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源不足です（配備コスト：POWER 10.0, DATA 10.0）。");
+          }
+        } catch (err) { console.error(err); }
+      }
+
+    } else if (clickedEdge && actionMode === 'BUILD') {
+      // --- 道の建設（建築モード時のみ） ---
       if (roads[clickedEdge.id]) return; 
       try {
         const res = await fetch('/api/build_road', {
@@ -152,8 +192,7 @@ const HexMap = ({ activeNumber, onInventoryUpdate }) => {
           body: JSON.stringify({ edge_id: clickedEdge.id, player: "Player1" })
         });
         if (res.ok) {
-          const result = await res.json();
-          setRoads(result.roads);
+          const result = await res.json(); setRoads(result.roads);
           if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
           if (result.explored) {
             setBoardData(result.board);
@@ -162,7 +201,7 @@ const HexMap = ({ activeNumber, onInventoryUpdate }) => {
           }
         } else {
           const errData = await res.json();
-          if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！（道: POLYMERx1, SILICONx1）");
+          if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！（道: POLYMER 10.0, SILICON 10.0）");
         }
       } catch (err) { console.error(err); }
     }

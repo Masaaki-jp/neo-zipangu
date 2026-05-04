@@ -4,29 +4,27 @@ from pydantic import BaseModel
 import random
 import math
 
-app = FastAPI(title="Neo Zipang Core API", version="0.11.0-alpha")
+app = FastAPI(title="Neo Zipang Core API", version="0.12.0-alpha")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 current_board = []
+# buildingsに "bot_level": 0 (0~4) を持たせる
 buildings = {} 
 roads = {}     
 
-# 資産は 0.0 (float) スタート
 inventory = {
     "Player1": {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0}
 }
 
-HEX_SIZE = 60 
-CENTER_X = 400 
-CENTER_Y = 300 
+HEX_SIZE = 60; CENTER_X = 400; CENTER_Y = 300 
 BUILDING_YIELDS = {"LOCAL_HUB": 0.0, "DATA_CENTER": 10.0, "MEGA_HQ": 30.0}
 
-# === 建設コストを 10単位ベース にスケールアップ ===
 COSTS = {
     "ROAD": {"POLYMER": 10.0, "SILICON": 10.0},
     "LOCAL_HUB": {"POLYMER": 10.0, "SILICON": 10.0, "DATA": 10.0, "POWER": 10.0},
     "DATA_CENTER": {"HARD": 30.0, "SILICON": 20.0},
-    "MEGA_HQ": {"HARD": 30.0, "POWER": 20.0, "NUCLEAR": 10.0}
+    "MEGA_HQ": {"HARD": 30.0, "POWER": 20.0, "NUCLEAR": 10.0},
+    "BOT": {"POWER": 10.0, "DATA": 10.0} # ボット配備/UPGのコスト
 }
 
 class BuildRequest(BaseModel): vertex_id: str; player: str = "Player1"
@@ -51,9 +49,8 @@ def get_or_generate_board():
         random.shuffle(sectors)
         numbers = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
         random.shuffle(numbers)
-        MAP_RADIUS = 2
-        for q in range(-MAP_RADIUS, MAP_RADIUS + 1):
-            for r in range(max(-MAP_RADIUS, -q - MAP_RADIUS), min(MAP_RADIUS, -q + MAP_RADIUS) + 1):
+        for q in range(-2, 3):
+            for r in range(max(-2, -q - 2), min(2, -q + 2) + 1):
                 sector_type = sectors.pop()
                 current_board.append({"q": q, "r": r, "s": -q - r, "sector": sector_type, "number": None if sector_type == "DARK" else numbers.pop()})
     return {"board": current_board, "buildings": buildings, "roads": roads}
@@ -85,11 +82,31 @@ def build_hub(req: BuildRequest):
         if math.hypot(new_x - ex_x, new_y - ex_y) < (HEX_SIZE + 5):
             raise HTTPException(status_code=400, detail="TOO_CLOSE_TO_ANOTHER_HUB")
 
-    if not is_free_phase:
-        if not pay_cost(req.player, "LOCAL_HUB"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+    if not is_free_phase and not pay_cost(req.player, "LOCAL_HUB"): 
+        raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
 
     new_type = "DATA_CENTER" if is_free_phase else "LOCAL_HUB"
-    buildings[req.vertex_id] = {"player": req.player, "type": new_type}
+    buildings[req.vertex_id] = {"player": req.player, "type": new_type, "bot_level": 0}
+    return {"status": "success", "buildings": buildings, "inventory": inventory}
+
+# === 新規追加: ボット配備・強化API ===
+@app.post("/api/deploy_bot")
+def deploy_bot(req: BuildRequest):
+    global buildings, inventory
+    if req.vertex_id not in buildings:
+        raise HTTPException(status_code=400, detail="NO_HUB_HERE")
+    
+    b = buildings[req.vertex_id]
+    if b["player"] != req.player:
+        raise HTTPException(status_code=400, detail="NOT_YOUR_HUB")
+    
+    if b.get("bot_level", 0) >= 4:
+        raise HTTPException(status_code=400, detail="MAX_BOT_LEVEL_REACHED")
+        
+    if not pay_cost(req.player, "BOT"):
+        raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+        
+    b["bot_level"] = b.get("bot_level", 0) + 1
     return {"status": "success", "buildings": buildings, "inventory": inventory}
 
 @app.post("/api/build_road")
@@ -99,27 +116,18 @@ def build_road(req: RoadRequest):
     is_free_phase = len(my_roads) < 2
 
     if req.edge_id in roads: raise HTTPException(status_code=400, detail="ROAD_ALREADY_EXISTS")
-    if not is_free_phase:
-        if not pay_cost(req.player, "ROAD"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+    if not is_free_phase and not pay_cost(req.player, "ROAD"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
 
     roads[req.edge_id] = {"player": req.player}
-    
-    pts = req.edge_id.split('_')
-    x1, y1 = map(float, pts[0].split(','))
-    x2, y2 = map(float, pts[1].split(','))
-    mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2 
-
+    pts = req.edge_id.split('_'); mid_x, mid_y = (float(pts[0].split(',')[0]) + float(pts[1].split(',')[0])) / 2, (float(pts[0].split(',')[1]) + float(pts[1].split(',')[1])) / 2 
     explored, new_sector = False, None
     for hex_data in current_board:
         if hex_data["sector"] == "DARK":
-            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
-            cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2); cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
             if 45 < math.hypot(cx - mid_x, cy - mid_y) < 55: 
                 new_sector = random.choice(["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"])
-                hex_data["sector"] = new_sector
-                hex_data["number"] = random.choice([2, 3, 4, 5, 6, 8, 9, 10, 11, 12])
+                hex_data["sector"] = new_sector; hex_data["number"] = random.choice([2, 3, 4, 5, 6, 8, 9, 10, 11, 12])
                 explored = True; break
-
     return {"status": "success", "roads": roads, "board": current_board, "explored": explored, "new_sector": new_sector, "inventory": inventory}
 
 @app.get("/api/inventory")
@@ -127,22 +135,17 @@ def get_inventory(): return {"inventory": inventory}
 
 @app.post("/api/hack_resources")
 def hack_resources():
-    # チートボタンも100.0単位で増やすようにスケールアップ
     for res in inventory["Player1"]: inventory["Player1"][res] += 100.0
     return {"status": "hacked", "inventory": inventory}
 
 @app.get("/api/dice")
 def roll_dice():
     global current_board, buildings, inventory
-    dice1, dice2 = random.randint(1, 6), random.randint(1, 6)
-    total = dice1 + dice2
-    yields = []
+    dice1, dice2 = random.randint(1, 6), random.randint(1, 6); total = dice1 + dice2; yields = []
     for hex_data in current_board:
         if hex_data["number"] == total:
-            sector_type = hex_data["sector"]
-            sector_amounts, sector_counts = {}, {}
-            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
-            cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
+            sector_type = hex_data["sector"]; sector_amounts, sector_counts = {}, {}
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2); cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
             for b_id, b_info in buildings.items():
                 bx, by = map(int, b_id.split(','))
                 if 50 < math.hypot(cx - bx, cy - by) < 70:
@@ -153,7 +156,6 @@ def roll_dice():
             for p, amt in sector_amounts.items():
                 if amt > 0:
                     yields.append(sector_type)
-                    # 領土ボーナス：拠点が2つ以上なら +50% (float計算により 15.0 などの端数が出る)
                     if sector_counts[p] >= 2: amt = amt * 1.5
                     inventory[p][sector_type] += amt
     return {"dice1": dice1, "dice2": dice2, "total": total, "yields": yields, "inventory": inventory}

@@ -5,12 +5,10 @@ function App() {
   const [dice, setDice] = useState(null);
   const [isRolling, setIsRolling] = useState(false);
   const [inventory, setInventory] = useState(null);
+  const [actionMode, setActionMode] = useState('BUILD'); // 'BUILD' or 'MILITARY'
 
   useEffect(() => {
-    fetch('/api/inventory')
-      .then(res => res.json())
-      .then(data => setInventory(data.inventory.Player1))
-      .catch(err => console.error(err));
+    fetch('/api/inventory').then(res => res.json()).then(data => setInventory(data.inventory.Player1)).catch(err => console.error(err));
   }, []);
 
   const handleRollDice = async () => {
@@ -19,11 +17,7 @@ function App() {
     try {
       const response = await fetch('/api/dice');
       const data = await response.json();
-      setTimeout(() => {
-        setDice(data);
-        setInventory(data.inventory.Player1); 
-        setIsRolling(false);
-      }, 500);
+      setTimeout(() => { setDice(data); setInventory(data.inventory.Player1); setIsRolling(false); }, 500);
     } catch (error) { console.error(error); setIsRolling(false); }
   };
 
@@ -46,7 +40,6 @@ function App() {
           {Object.entries(inventory).map(([resource, count]) => (
             <div key={resource} style={{ padding: '5px 15px', border: `1px solid ${count > 0 ? '#00ffcc' : '#333'}`, borderRadius: '3px', color: count > 0 ? '#ffffff' : '#666', boxShadow: count > 0 ? '0 0 10px rgba(0,255,204,0.3)' : 'none', transition: 'all 0.3s' }}>
               <span style={{ fontSize: '0.8rem', marginRight: '8px', color: count > 0 ? '#00ffcc' : '#555' }}>{resource}</span>
-              {/* 常に小数第一位まで表示するフォーマットに変更 */}
               <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{Number(count).toFixed(1)}</span>
             </div>
           ))}
@@ -54,8 +47,18 @@ function App() {
       )}
 
       <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem' }}>
+        
+        {/* --- 操作モード切替UI --- */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', padding: '5px', backgroundColor: '#111', borderRadius: '5px', border: '1px solid #333' }}>
+          <button onClick={() => setActionMode('BUILD')} style={{ backgroundColor: actionMode === 'BUILD' ? '#00ffcc' : 'transparent', color: actionMode === 'BUILD' ? '#000' : '#00ffcc', border: 'none', padding: '8px 20px', fontWeight: 'bold', fontFamily: 'inherit', cursor: 'pointer', borderRadius: '3px' }}>
+            [ MODE: INFRA (建築) ]
+          </button>
+          <button onClick={() => setActionMode('MILITARY')} style={{ backgroundColor: actionMode === 'MILITARY' ? '#ff0055' : 'transparent', color: actionMode === 'MILITARY' ? '#000' : '#ff0055', border: 'none', padding: '8px 20px', fontWeight: 'bold', fontFamily: 'inherit', cursor: 'pointer', borderRadius: '3px' }}>
+            [ MODE: MILITARY (軍事) ]
+          </button>
+        </div>
+
         <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '130px' }}>
-          
           <div style={{ display: 'flex', gap: '20px' }}>
             <button onClick={handleRollDice} disabled={isRolling} style={{ backgroundColor: 'transparent', color: isRolling ? '#555555' : '#00ffcc', border: `2px solid ${isRolling ? '#555555' : '#00ffcc'}`, padding: '10px 30px', fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'inherit', cursor: isRolling ? 'not-allowed' : 'pointer', boxShadow: isRolling ? 'none' : '0 0 15px rgba(0,255,204,0.3)', borderRadius: '4px' }}>
               {isRolling ? '[ EXECUTING... ]' : '[ EXECUTE: ROLL DICE ]'}
@@ -64,7 +67,6 @@ function App() {
               [ DEPLOY: HACK RESOURCES ]
             </button>
           </div>
-
           <div style={{ marginTop: '15px', textAlign: 'center', minHeight: '60px' }}>
             {dice && (
               <>
@@ -75,8 +77,8 @@ function App() {
           </div>
         </div>
 
-        {/* HexMap は変更なし */}
-        <HexMap activeNumber={dice ? dice.total : null} onInventoryUpdate={setInventory} />
+        {/* modeをHexMapへ渡す */}
+        <HexMap activeNumber={dice ? dice.total : null} actionMode={actionMode} onInventoryUpdate={setInventory} />
       </main>
       <footer style={{ padding: '0.5rem', borderTop: '1px dotted #00ffcc', textAlign: 'center', fontSize: '0.8rem', opacity: 0.7 }}>&gt; SYSTEM SECURE. SURVIVAL DX.</footer>
     </div>
