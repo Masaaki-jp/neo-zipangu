@@ -4,11 +4,10 @@ from pydantic import BaseModel
 import random
 import math
 
-app = FastAPI(title="Neo Zipang Core API", version="0.12.0-alpha")
+app = FastAPI(title="Neo Zipang Core API", version="0.14.0-alpha")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 current_board = []
-# buildingsに "bot_level": 0 (0~4) を持たせる
 buildings = {} 
 roads = {}     
 
@@ -18,13 +17,12 @@ inventory = {
 
 HEX_SIZE = 60; CENTER_X = 400; CENTER_Y = 300 
 BUILDING_YIELDS = {"LOCAL_HUB": 0.0, "DATA_CENTER": 10.0, "MEGA_HQ": 30.0}
-
 COSTS = {
     "ROAD": {"POLYMER": 10.0, "SILICON": 10.0},
     "LOCAL_HUB": {"POLYMER": 10.0, "SILICON": 10.0, "DATA": 10.0, "POWER": 10.0},
     "DATA_CENTER": {"HARD": 30.0, "SILICON": 20.0},
     "MEGA_HQ": {"HARD": 30.0, "POWER": 20.0, "NUCLEAR": 10.0},
-    "BOT": {"POWER": 10.0, "DATA": 10.0} # ボット配備/UPGのコスト
+    "BOT": {"POWER": 10.0, "DATA": 10.0} 
 }
 
 class BuildRequest(BaseModel): vertex_id: str; player: str = "Player1"
@@ -57,7 +55,7 @@ def get_or_generate_board():
 
 @app.post("/api/build")
 def build_hub(req: BuildRequest):
-    global buildings, inventory
+    global buildings, inventory, roads
     my_bldgs = [b for b in buildings.values() if b["player"] == req.player]
     is_free_phase = len(my_bldgs) < 2 
 
@@ -82,44 +80,68 @@ def build_hub(req: BuildRequest):
         if math.hypot(new_x - ex_x, new_y - ex_y) < (HEX_SIZE + 5):
             raise HTTPException(status_code=400, detail="TOO_CLOSE_TO_ANOTHER_HUB")
 
-    if not is_free_phase and not pay_cost(req.player, "LOCAL_HUB"): 
-        raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+    # === 新規追加：拠点の接続ルール ===
+    if not is_free_phase:
+        is_connected = False
+        for r_id, r_info in roads.items():
+            if r_info["player"] == req.player:
+                v1, v2 = r_id.split('_')
+                if req.vertex_id == v1 or req.vertex_id == v2:
+                    is_connected = True
+                    break
+        if not is_connected:
+            raise HTTPException(status_code=400, detail="NOT_CONNECTED_TO_ROAD")
+        
+        if not pay_cost(req.player, "LOCAL_HUB"): 
+            raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
 
     new_type = "DATA_CENTER" if is_free_phase else "LOCAL_HUB"
     buildings[req.vertex_id] = {"player": req.player, "type": new_type, "bot_level": 0}
     return {"status": "success", "buildings": buildings, "inventory": inventory}
 
-# === 新規追加: ボット配備・強化API ===
 @app.post("/api/deploy_bot")
 def deploy_bot(req: BuildRequest):
     global buildings, inventory
-    if req.vertex_id not in buildings:
-        raise HTTPException(status_code=400, detail="NO_HUB_HERE")
-    
+    if req.vertex_id not in buildings: raise HTTPException(status_code=400, detail="NO_HUB_HERE")
     b = buildings[req.vertex_id]
-    if b["player"] != req.player:
-        raise HTTPException(status_code=400, detail="NOT_YOUR_HUB")
-    
-    if b.get("bot_level", 0) >= 4:
-        raise HTTPException(status_code=400, detail="MAX_BOT_LEVEL_REACHED")
-        
-    if not pay_cost(req.player, "BOT"):
-        raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
-        
+    if b["player"] != req.player: raise HTTPException(status_code=400, detail="NOT_YOUR_HUB")
+    if b.get("bot_level", 0) >= 4: raise HTTPException(status_code=400, detail="MAX_BOT_LEVEL_REACHED")
+    if not pay_cost(req.player, "BOT"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
     b["bot_level"] = b.get("bot_level", 0) + 1
     return {"status": "success", "buildings": buildings, "inventory": inventory}
 
 @app.post("/api/build_road")
 def build_road(req: RoadRequest):
-    global roads, current_board, inventory
+    global roads, current_board, inventory, buildings
     my_roads = [r for r in roads.values() if r["player"] == req.player]
     is_free_phase = len(my_roads) < 2
 
     if req.edge_id in roads: raise HTTPException(status_code=400, detail="ROAD_ALREADY_EXISTS")
-    if not is_free_phase and not pay_cost(req.player, "ROAD"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+    
+    # === 新規追加：道の接続ルール（修正済） ===
+    v1, v2 = req.edge_id.split('_')
+    is_connected = False
+    
+    # 拠点と繋がっているか（修正：&& を and に変更）
+    if (v1 in buildings and buildings[v1]["player"] == req.player) or (v2 in buildings and buildings[v2]["player"] == req.player):
+        is_connected = True
+    else:
+        # 他の道と繋がっているか
+        for r_id, r_info in roads.items():
+            if r_info["player"] == req.player:
+                ex_v1, ex_v2 = r_id.split('_')
+                if v1 == ex_v1 or v1 == ex_v2 or v2 == ex_v1 or v2 == ex_v2:
+                    is_connected = True
+                    break
+                    
+    if not is_free_phase and not is_connected:
+        raise HTTPException(status_code=400, detail="NOT_CONNECTED")
+
+    if not is_free_phase and not pay_cost(req.player, "ROAD"): 
+        raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
 
     roads[req.edge_id] = {"player": req.player}
-    pts = req.edge_id.split('_'); mid_x, mid_y = (float(pts[0].split(',')[0]) + float(pts[1].split(',')[0])) / 2, (float(pts[0].split(',')[1]) + float(pts[1].split(',')[1])) / 2 
+    mid_x, mid_y = (float(v1.split(',')[0]) + float(v2.split(',')[0])) / 2, (float(v1.split(',')[1]) + float(v2.split(',')[1])) / 2 
     explored, new_sector = False, None
     for hex_data in current_board:
         if hex_data["sector"] == "DARK":

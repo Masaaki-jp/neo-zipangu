@@ -98,7 +98,6 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
       }
     });
 
-    // 拠点の描画（ボットを含む）
     tempVertices.forEach((v) => {
       if (buildings[v.id]) {
         const b = buildings[v.id];
@@ -107,28 +106,20 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
         if (b.type === "DATA_CENTER") { size = 16; color = '#00ffcc'; }
         if (b.type === "MEGA_HQ") { size = 26; color = '#ffcc00'; }
 
-        // 拠点本体の描画
         ctx.fillStyle = color; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = color;
         ctx.fillRect(v.x - size/2, v.y - size/2, size, size); ctx.shadowBlur = 0;
         ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
 
-        // === ボット（軍事力）の描画 ===
         if (b.bot_level && b.bot_level > 0) {
-          const botX = v.x + size/2 + 2; // 拠点の右上に配置
-          const botY = v.y - size/2 - 2;
-          ctx.beginPath();
-          ctx.arc(botX, botY, 7, 0, Math.PI * 2);
-          ctx.fillStyle = '#ff0055'; // ボットは攻撃的な赤ネオン
-          ctx.shadowBlur = 10; ctx.shadowColor = '#ff0055';
+          const botX = v.x + size/2 + 2; const botY = v.y - size/2 - 2;
+          ctx.beginPath(); ctx.arc(botX, botY, 7, 0, Math.PI * 2);
+          ctx.fillStyle = '#ff0055'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff0055';
           ctx.fill(); ctx.shadowBlur = 0;
           ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
-          
           ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px monospace';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(b.bot_level.toString(), botX, botY); // ランクを数字で表示
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(b.bot_level.toString(), botX, botY); 
         }
       } else {
-        // インフラ建築モードの時だけ、建設可能な空き地ドットを表示する
         if (actionMode === 'BUILD') {
           ctx.beginPath(); ctx.arc(v.x, v.y, 4, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
@@ -147,7 +138,6 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
 
     if (clickedVertex) {
       if (actionMode === 'BUILD') {
-        // --- 建築・アップグレード ---
         try {
           const res = await fetch('/api/build', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -161,11 +151,12 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
             if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ SYSTEM ERROR ] 拠点が近すぎます。");
             else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！");
             else if (errData.detail === "MAX_LEVEL_REACHED") alert("[ SYSTEM MSG ] すでに最高グレードです。");
+            else if (errData.detail === "NOT_CONNECTED_TO_ROAD") alert("[ SYSTEM ERROR ] 自分のネットワーク(道)が繋がっていません！");
+            else if (errData.detail === "ALREADY_BUILT") return;
           }
         } catch (err) { console.error(err); }
 
       } else if (actionMode === 'MILITARY') {
-        // --- 軍事：ボット配備・強化 ---
         try {
           const res = await fetch('/api/deploy_bot', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -177,14 +168,13 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
           } else {
             const errData = await res.json();
             if (errData.detail === "NO_HUB_HERE") alert("[ ERROR ] まずここに拠点を建設してください。");
-            else if (errData.detail === "MAX_BOT_LEVEL_REACHED") alert("[ ERROR ] これ以上ボットを強化できません（最大ランク4）。");
+            else if (errData.detail === "MAX_BOT_LEVEL_REACHED") alert("[ ERROR ] これ以上ボットを強化できません。");
             else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源不足です（配備コスト：POWER 10.0, DATA 10.0）。");
           }
         } catch (err) { console.error(err); }
       }
 
     } else if (clickedEdge && actionMode === 'BUILD') {
-      // --- 道の建設（建築モード時のみ） ---
       if (roads[clickedEdge.id]) return; 
       try {
         const res = await fetch('/api/build_road', {
@@ -202,6 +192,7 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
         } else {
           const errData = await res.json();
           if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！（道: POLYMER 10.0, SILICON 10.0）");
+          else if (errData.detail === "NOT_CONNECTED") alert("[ SYSTEM ERROR ] 自分の拠点、または自分の道に接続してください！");
         }
       } catch (err) { console.error(err); }
     }
