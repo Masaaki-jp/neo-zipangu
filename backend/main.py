@@ -4,13 +4,13 @@ from pydantic import BaseModel
 import random
 import math
 
-app = FastAPI(title="Neo Zipang Core API", version="0.15.0-alpha")
+app = FastAPI(title="Neo Zipang Core API", version="0.16.0-alpha")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 current_board = []
 buildings = {} 
 roads = {}     
-bots = {} # 新規: ボットを独立して管理 { "x,y": {"player": "Player1", "level": 1} }
+bots = {} 
 
 inventory = {
     "Player1": {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0}
@@ -24,12 +24,18 @@ COSTS = {
     "DATA_CENTER": {"HARD": 30.0, "SILICON": 20.0},
     "MEGA_HQ": {"HARD": 30.0, "POWER": 20.0, "NUCLEAR": 10.0},
     "BOT": {"POWER": 10.0, "DATA": 10.0},
-    "MOVE_BOT": {"POWER": 10.0} # 進軍コスト
+    "MOVE_BOT": {"POWER": 10.0}
 }
 
 class BuildRequest(BaseModel): vertex_id: str; player: str = "Player1"
 class RoadRequest(BaseModel): edge_id: str; player: str = "Player1"
 class MoveRequest(BaseModel): from_vertex: str; to_vertex: str; player: str = "Player1"
+
+# === 新規追加：トレード用のリクエストモデル ===
+class TradeRequest(BaseModel):
+    offer_res: str
+    receive_res: str
+    player: str = "Player1"
 
 def pay_cost(player: str, cost_type: str):
     cost = COSTS[cost_type]
@@ -55,12 +61,24 @@ def get_or_generate_board():
                 sector_type = sectors.pop()
                 current_board.append({"q": q, "r": r, "s": -q - r, "sector": sector_type, "number": None if sector_type == "DARK" else numbers.pop()})
         
-        # === テスト敵（NPC）の初期配置 ===
         center_vertex = f"{int(CENTER_X)},{int(CENTER_Y - HEX_SIZE)}"
         buildings[center_vertex] = {"player": "NPC_CORP", "type": "DATA_CENTER"}
-        bots[center_vertex] = {"player": "NPC_CORP", "level": 2} # 槍兵相当の防衛部隊
-        
+        bots[center_vertex] = {"player": "NPC_CORP", "level": 2}
     return {"board": current_board, "buildings": buildings, "roads": roads, "bots": bots}
+
+# === 新規追加：トレードAPI（4:1貿易） ===
+@app.post("/api/trade")
+def trade_resources(req: TradeRequest):
+    global inventory
+    if req.offer_res not in inventory[req.player] or req.receive_res not in inventory[req.player]:
+        raise HTTPException(status_code=400, detail="INVALID_RESOURCE")
+    
+    if inventory[req.player][req.offer_res] < 40.0:
+        raise HTTPException(status_code=400, detail="INSUFFICIENT_FUNDS")
+        
+    inventory[req.player][req.offer_res] -= 40.0
+    inventory[req.player][req.receive_res] += 10.0
+    return {"status": "success", "inventory": inventory}
 
 @app.post("/api/build")
 def build_hub(req: BuildRequest):
@@ -104,43 +122,28 @@ def build_hub(req: BuildRequest):
 def deploy_bot(req: BuildRequest):
     global bots, buildings, inventory
     if req.vertex_id in bots and bots[req.vertex_id]["player"] == req.player:
-        # すでにいればアップグレード
         if bots[req.vertex_id]["level"] >= 4: raise HTTPException(status_code=400, detail="MAX_BOT_LEVEL_REACHED")
         if not pay_cost(req.player, "BOT"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
         bots[req.vertex_id]["level"] += 1
     else:
-        # いなければ配備（自分の拠点がある場所のみ）
-        if req.vertex_id not in buildings or buildings[req.vertex_id]["player"] != req.player:
-            raise HTTPException(status_code=400, detail="MUST_DEPLOY_ON_YOUR_HUB")
+        if req.vertex_id not in buildings or buildings[req.vertex_id]["player"] != req.player: raise HTTPException(status_code=400, detail="MUST_DEPLOY_ON_YOUR_HUB")
         if not pay_cost(req.player, "BOT"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
         bots[req.vertex_id] = {"player": req.player, "level": 1}
-        
     return {"status": "success", "bots": bots, "inventory": inventory}
 
 @app.post("/api/move_bot")
 def move_bot(req: MoveRequest):
     global bots, buildings, inventory
-    if req.from_vertex not in bots or bots[req.from_vertex]["player"] != req.player:
-        raise HTTPException(status_code=400, detail="NO_BOT_HERE")
-    
-    # 隣接距離のチェック（約60px）
-    fx, fy = map(int, req.from_vertex.split(','))
-    tx, ty = map(int, req.to_vertex.split(','))
-    if not (50 < math.hypot(tx - fx, ty - fy) < 70):
-        raise HTTPException(status_code=400, detail="TOO_FAR")
-
+    if req.from_vertex not in bots or bots[req.from_vertex]["player"] != req.player: raise HTTPException(status_code=400, detail="NO_BOT_HERE")
+    fx, fy = map(int, req.from_vertex.split(',')); tx, ty = map(int, req.to_vertex.split(','))
+    if not (50 < math.hypot(tx - fx, ty - fy) < 70): raise HTTPException(status_code=400, detail="TOO_FAR")
     if not pay_cost(req.player, "MOVE_BOT"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
         
-    bot = bots[req.from_vertex]
-    atk_level = bot["level"]
-    target_bldg = buildings.get(req.to_vertex)
-    target_bot = bots.get(req.to_vertex)
-    
+    bot = bots[req.from_vertex]; atk_level = bot["level"]; target_bldg = buildings.get(req.to_vertex); target_bot = bots.get(req.to_vertex)
     is_enemy = (target_bldg and target_bldg["player"] != req.player) or (target_bot and target_bot["player"] != req.player)
     combat_log = None
     
     if is_enemy:
-        # === サイコロ戦闘ロジック ===
         def_dice_count = 0
         if target_bldg:
             if target_bldg["type"] == "LOCAL_HUB": def_dice_count += 1
@@ -154,18 +157,15 @@ def move_bot(req: MoveRequest):
         
         if atk_sum > def_sum:
             combat_log = f"VICTORY! Atk:{atk_sum} vs Def:{def_sum} | 敵拠点を制圧しました！"
-            if target_bldg: target_bldg["player"] = req.player # 拠点奪取
-            if target_bot: del bots[req.to_vertex] # 敵兵破壊
-            bots[req.to_vertex] = bot
-            del bots[req.from_vertex]
+            if target_bldg: target_bldg["player"] = req.player 
+            if target_bot: del bots[req.to_vertex] 
+            bots[req.to_vertex] = bot; del bots[req.from_vertex]
         else:
             combat_log = f"DEFEAT... Atk:{atk_sum} vs Def:{def_sum} | 我が軍のボットは破壊されました。"
             del bots[req.from_vertex]
     else:
-        # 敵がいない場合は平和に移動
         if req.to_vertex in bots: raise HTTPException(status_code=400, detail="ALLY_BOT_ALREADY_HERE")
-        bots[req.to_vertex] = bot
-        del bots[req.from_vertex]
+        bots[req.to_vertex] = bot; del bots[req.from_vertex]
         
     return {"status": "success", "bots": bots, "buildings": buildings, "inventory": inventory, "combat_log": combat_log}
 
@@ -201,10 +201,12 @@ def build_road(req: RoadRequest):
 
 @app.get("/api/inventory")
 def get_inventory(): return {"inventory": inventory}
+
 @app.post("/api/hack_resources")
 def hack_resources():
     for res in inventory["Player1"]: inventory["Player1"][res] += 100.0
     return {"status": "hacked", "inventory": inventory}
+
 @app.get("/api/dice")
 def roll_dice():
     global current_board, buildings, inventory
