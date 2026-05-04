@@ -1,77 +1,159 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import random
+import math
 
-app = FastAPI(title="Neo Zipang Core API", version="0.2.0-alpha")
+app = FastAPI(title="Neo Zipang Core API", version="0.11.0-alpha")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# CORS設定: フロントエンドからのアクセスを全許可（サバイバル仕様）
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+current_board = []
+buildings = {} 
+roads = {}     
+
+# 資産は 0.0 (float) スタート
+inventory = {
+    "Player1": {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0}
+}
+
+HEX_SIZE = 60 
+CENTER_X = 400 
+CENTER_Y = 300 
+BUILDING_YIELDS = {"LOCAL_HUB": 0.0, "DATA_CENTER": 10.0, "MEGA_HQ": 30.0}
+
+# === 建設コストを 10単位ベース にスケールアップ ===
+COSTS = {
+    "ROAD": {"POLYMER": 10.0, "SILICON": 10.0},
+    "LOCAL_HUB": {"POLYMER": 10.0, "SILICON": 10.0, "DATA": 10.0, "POWER": 10.0},
+    "DATA_CENTER": {"HARD": 30.0, "SILICON": 20.0},
+    "MEGA_HQ": {"HARD": 30.0, "POWER": 20.0, "NUCLEAR": 10.0}
+}
+
+class BuildRequest(BaseModel): vertex_id: str; player: str = "Player1"
+class RoadRequest(BaseModel): edge_id: str; player: str = "Player1"
+
+def pay_cost(player: str, cost_type: str):
+    cost = COSTS[cost_type]
+    for res, amount in cost.items():
+        if inventory[player][res] < amount: return False
+    for res, amount in cost.items():
+        inventory[player][res] -= amount
+    return True
 
 @app.get("/health")
-def health_check():
-    return {"status": "operational", "system": "Neo Zipang Core"}
+def health_check(): return {"status": "operational"}
+
+@app.get("/api/board")
+def get_or_generate_board():
+    global current_board, buildings, roads
+    if len(current_board) == 0:
+        sectors = ["POWER"]*4 + ["DATA"]*3 + ["SILICON"]*4 + ["HARD"]*3 + ["POLYMER"]*4 + ["DARK"]*1
+        random.shuffle(sectors)
+        numbers = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
+        random.shuffle(numbers)
+        MAP_RADIUS = 2
+        for q in range(-MAP_RADIUS, MAP_RADIUS + 1):
+            for r in range(max(-MAP_RADIUS, -q - MAP_RADIUS), min(MAP_RADIUS, -q + MAP_RADIUS) + 1):
+                sector_type = sectors.pop()
+                current_board.append({"q": q, "r": r, "s": -q - r, "sector": sector_type, "number": None if sector_type == "DARK" else numbers.pop()})
+    return {"board": current_board, "buildings": buildings, "roads": roads}
+
+@app.post("/api/build")
+def build_hub(req: BuildRequest):
+    global buildings, inventory
+    my_bldgs = [b for b in buildings.values() if b["player"] == req.player]
+    is_free_phase = len(my_bldgs) < 2 
+
+    if req.vertex_id in buildings:
+        b = buildings[req.vertex_id]
+        if b["player"] == req.player:
+            if b["type"] == "LOCAL_HUB":
+                if not pay_cost(req.player, "DATA_CENTER"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+                b["type"] = "DATA_CENTER"
+            elif b["type"] == "DATA_CENTER":
+                if not pay_cost(req.player, "MEGA_HQ"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+                b["type"] = "MEGA_HQ"
+            else: raise HTTPException(status_code=400, detail="MAX_LEVEL_REACHED")
+            return {"status": "upgraded", "buildings": buildings, "inventory": inventory}
+        raise HTTPException(status_code=400, detail="ALREADY_BUILT")
+        
+    try: new_x, new_y = map(int, req.vertex_id.split(','))
+    except ValueError: raise HTTPException(status_code=400, detail="INVALID")
+
+    for ex_id in buildings.keys():
+        ex_x, ex_y = map(int, ex_id.split(','))
+        if math.hypot(new_x - ex_x, new_y - ex_y) < (HEX_SIZE + 5):
+            raise HTTPException(status_code=400, detail="TOO_CLOSE_TO_ANOTHER_HUB")
+
+    if not is_free_phase:
+        if not pay_cost(req.player, "LOCAL_HUB"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+
+    new_type = "DATA_CENTER" if is_free_phase else "LOCAL_HUB"
+    buildings[req.vertex_id] = {"player": req.player, "type": new_type}
+    return {"status": "success", "buildings": buildings, "inventory": inventory}
+
+@app.post("/api/build_road")
+def build_road(req: RoadRequest):
+    global roads, current_board, inventory
+    my_roads = [r for r in roads.values() if r["player"] == req.player]
+    is_free_phase = len(my_roads) < 2
+
+    if req.edge_id in roads: raise HTTPException(status_code=400, detail="ROAD_ALREADY_EXISTS")
+    if not is_free_phase:
+        if not pay_cost(req.player, "ROAD"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+
+    roads[req.edge_id] = {"player": req.player}
+    
+    pts = req.edge_id.split('_')
+    x1, y1 = map(float, pts[0].split(','))
+    x2, y2 = map(float, pts[1].split(','))
+    mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2 
+
+    explored, new_sector = False, None
+    for hex_data in current_board:
+        if hex_data["sector"] == "DARK":
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
+            cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
+            if 45 < math.hypot(cx - mid_x, cy - mid_y) < 55: 
+                new_sector = random.choice(["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"])
+                hex_data["sector"] = new_sector
+                hex_data["number"] = random.choice([2, 3, 4, 5, 6, 8, 9, 10, 11, 12])
+                explored = True; break
+
+    return {"status": "success", "roads": roads, "board": current_board, "explored": explored, "new_sector": new_sector, "inventory": inventory}
+
+@app.get("/api/inventory")
+def get_inventory(): return {"inventory": inventory}
+
+@app.post("/api/hack_resources")
+def hack_resources():
+    # チートボタンも100.0単位で増やすようにスケールアップ
+    for res in inventory["Player1"]: inventory["Player1"][res] += 100.0
+    return {"status": "hacked", "inventory": inventory}
 
 @app.get("/api/dice")
 def roll_dice():
-    """ 完全ランダムな2つのサイコロを振る権威的API """
-    dice1 = random.randint(1, 6)
-    dice2 = random.randint(1, 6)
-    return {"dice1": dice1, "dice2": dice2, "total": dice1 + dice2}
-
-@app.get("/api/board")
-def generate_board():
-    """ 
-    不正改ざん不可能なマップ生成API 
-    キューブ座標(q, r, s)に対してランダムなセクターと数字を割り当てる
-    """
-    # 1. セクター(資源)のプールを作成
-    sectors = (
-        ["POWER"] * 4 +  # 発電所 (4)
-        ["DATA"] * 4 +   # オフィス街 (4)
-        ["FACT"] * 4 +   # 工場 (4)
-        ["HARD"] * 3 +   # 採掘場 (3)
-        ["AI"] * 3 +     # レアメタル (3)
-        ["DARK"] * 1     # ダークウェブ (1 - 盗賊/ハッカー)
-    )
-    random.shuffle(sectors)
-
-    # 2. 数字トークンのプールを作成 (2〜12, 7抜きで計18個)
-    numbers = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
-    random.shuffle(numbers)
-
-    # 3. 半径2のキューブ座標グリッドを生成 (19タイル)
-    MAP_RADIUS = 2
-    grid = []
-    for q in range(-MAP_RADIUS, MAP_RADIUS + 1):
-        r1 = max(-MAP_RADIUS, -q - MAP_RADIUS)
-        r2 = min(MAP_RADIUS, -q + MAP_RADIUS)
-        for r in range(r1, r2 + 1):
-            s = -q - r
-            grid.append({"q": q, "r": r, "s": s})
-
-    # 4. グリッドにセクターと数字を割り当て
-    board_data = []
-    for hex_coord in grid:
-        sector_type = sectors.pop()
-        
-        # ダークウェブの場合は数字を持たない
-        if sector_type == "DARK":
-            number = None
-        else:
-            number = numbers.pop()
-            
-        board_data.append({
-            "q": hex_coord["q"],
-            "r": hex_coord["r"],
-            "s": hex_coord["s"],
-            "sector": sector_type,
-            "number": number
-        })
-
-    return {"board": board_data}
+    global current_board, buildings, inventory
+    dice1, dice2 = random.randint(1, 6), random.randint(1, 6)
+    total = dice1 + dice2
+    yields = []
+    for hex_data in current_board:
+        if hex_data["number"] == total:
+            sector_type = hex_data["sector"]
+            sector_amounts, sector_counts = {}, {}
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
+            cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
+            for b_id, b_info in buildings.items():
+                bx, by = map(int, b_id.split(','))
+                if 50 < math.hypot(cx - bx, cy - by) < 70:
+                    p = b_info["player"]
+                    amt = BUILDING_YIELDS.get(b_info["type"], 0.0)
+                    sector_amounts[p] = sector_amounts.get(p, 0.0) + amt
+                    sector_counts[p] = sector_counts.get(p, 0) + 1
+            for p, amt in sector_amounts.items():
+                if amt > 0:
+                    yields.append(sector_type)
+                    # 領土ボーナス：拠点が2つ以上なら +50% (float計算により 15.0 などの端数が出る)
+                    if sector_counts[p] >= 2: amt = amt * 1.5
+                    inventory[p][sector_type] += amt
+    return {"dice1": dice1, "dice2": dice2, "total": total, "yields": yields, "inventory": inventory}
