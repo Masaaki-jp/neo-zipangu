@@ -13,20 +13,25 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
   const [boardData, setBoardData] = useState([]);
   const [buildings, setBuildings] = useState({});
   const [roads, setRoads] = useState({});
+  const [bots, setBots] = useState({});
   const [verticesCoords, setVerticesCoords] = useState([]);
   const [edgesCoords, setEdgesCoords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBot, setSelectedBot] = useState(null);
 
   const fetchBoard = async () => {
     try {
       const response = await fetch('/api/board');
       const data = await response.json();
-      setBoardData(data.board); setBuildings(data.buildings || {}); setRoads(data.roads || {});
+      setBoardData(data.board); setBuildings(data.buildings || {}); 
+      setRoads(data.roads || {}); setBots(data.bots || {});
       setLoading(false);
     } catch (error) { console.error("API Error:", error); setLoading(false); }
   };
 
   useEffect(() => { fetchBoard(); }, []);
+
+  useEffect(() => { setSelectedBot(null); }, [actionMode]);
 
   useEffect(() => {
     if (loading || boardData.length === 0) return;
@@ -56,7 +61,6 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
           if (!tempEdges.has(edgeId)) tempEdges.set(edgeId, { id: edgeId, v1: prevPoint, v2: currentPoint, midX, midY });
         }
         prevPoint = currentPoint;
-
         if (i === 5) {
           const edgeId = [currentPoint.id, firstPoint.id].sort().join('_');
           const midX = (currentPoint.x + firstPoint.x) / 2; const midY = (currentPoint.y + firstPoint.y) / 2;
@@ -93,7 +97,8 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
     tempEdges.forEach((e) => {
       if (roads[e.id]) {
         ctx.beginPath(); ctx.moveTo(e.v1.x, e.v1.y); ctx.lineTo(e.v2.x, e.v2.y);
-        ctx.lineWidth = 6; ctx.strokeStyle = '#00ffcc'; ctx.shadowBlur = 15; ctx.shadowColor = '#00ffcc';
+        ctx.lineWidth = 6; ctx.strokeStyle = roads[e.id].player === "NPC_CORP" ? '#ff0055' : '#00ffcc'; 
+        ctx.shadowBlur = 15; ctx.shadowColor = roads[e.id].player === "NPC_CORP" ? '#ff0055' : '#00ffcc';
         ctx.stroke(); ctx.shadowBlur = 0;
       }
     });
@@ -101,112 +106,122 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
     tempVertices.forEach((v) => {
       if (buildings[v.id]) {
         const b = buildings[v.id];
-        let size = 8; let color = '#00ffcc';
-        if (b.type === "LOCAL_HUB") { size = 10; color = '#444444'; }
-        if (b.type === "DATA_CENTER") { size = 16; color = '#00ffcc'; }
+        let size = 8; let color = b.player === "NPC_CORP" ? '#ff0055' : '#00ffcc';
+        if (b.type === "LOCAL_HUB") { size = 10; color = b.player === "NPC_CORP" ? '#aa0033' : '#444444'; }
+        if (b.type === "DATA_CENTER") { size = 16; }
         if (b.type === "MEGA_HQ") { size = 26; color = '#ffcc00'; }
 
         ctx.fillStyle = color; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = color;
         ctx.fillRect(v.x - size/2, v.y - size/2, size, size); ctx.shadowBlur = 0;
         ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
-
-        if (b.bot_level && b.bot_level > 0) {
-          const botX = v.x + size/2 + 2; const botY = v.y - size/2 - 2;
-          ctx.beginPath(); ctx.arc(botX, botY, 7, 0, Math.PI * 2);
-          ctx.fillStyle = '#ff0055'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff0055';
-          ctx.fill(); ctx.shadowBlur = 0;
-          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
-          ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px monospace';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(b.bot_level.toString(), botX, botY); 
-        }
       } else {
         if (actionMode === 'BUILD') {
           ctx.beginPath(); ctx.arc(v.x, v.y, 4, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
         }
       }
+
+      if (bots[v.id]) {
+        const bot = bots[v.id];
+        const isSelected = selectedBot === v.id;
+        const botColor = isSelected ? '#ffffff' : (bot.player === "NPC_CORP" ? '#aa00ff' : '#ff0055');
+        
+        ctx.beginPath(); ctx.arc(v.x + 12, v.y - 12, 7, 0, Math.PI * 2);
+        ctx.fillStyle = botColor; ctx.shadowBlur = isSelected ? 20 : 10; ctx.shadowColor = botColor;
+        ctx.fill(); ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = isSelected ? 2 : 1; ctx.stroke();
+        ctx.fillStyle = isSelected ? '#000000' : '#ffffff'; ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(bot.level.toString(), v.x + 12, v.y - 12); 
+      }
     });
 
-  }, [boardData, loading, activeNumber, buildings, roads, actionMode]);
+  }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot]);
 
   const handleCanvasClick = async (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
+    const clickX = e.clientX - rect.left; 
+    const clickY = e.clientY - rect.top; // ← ここがエラーの原因でした（修正済）
 
     const clickedVertex = verticesCoords.find(v => Math.hypot(v.x - clickX, v.y - clickY) < 15);
-    const clickedEdge = !clickedVertex ? edgesCoords.find(e => Math.hypot(e.midX - clickX, e.midY - clickY) < 15) : null;
+    const clickedEdge = !clickedVertex ? edgesCoords.find(edge => Math.hypot(edge.midX - clickX, edge.midY - clickY) < 15) : null;
 
     if (clickedVertex) {
       if (actionMode === 'BUILD') {
         try {
-          const res = await fetch('/api/build', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" })
-          });
+          const res = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
           if (res.ok) {
             const result = await res.json(); setBuildings(result.buildings); 
             if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
           } else {
             const errData = await res.json();
-            if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ SYSTEM ERROR ] 拠点が近すぎます。");
-            else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！");
-            else if (errData.detail === "MAX_LEVEL_REACHED") alert("[ SYSTEM MSG ] すでに最高グレードです。");
-            else if (errData.detail === "NOT_CONNECTED_TO_ROAD") alert("[ SYSTEM ERROR ] 自分のネットワーク(道)が繋がっていません！");
-            else if (errData.detail === "ALREADY_BUILT") return;
+            if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ ERROR ] 近すぎます。");
+            else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています。");
+            else if (errData.detail === "NOT_CONNECTED_TO_ROAD") alert("[ ERROR ] 自分の道に繋がっていません。");
           }
         } catch (err) { console.error(err); }
 
       } else if (actionMode === 'MILITARY') {
-        try {
-          const res = await fetch('/api/deploy_bot', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" })
-          });
-          if (res.ok) {
-            const result = await res.json(); setBuildings(result.buildings);
-            if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+        if (selectedBot) {
+          if (selectedBot === clickedVertex.id) {
+            try {
+              const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
+              if (res.ok) {
+                const result = await res.json(); setBots(result.bots); if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+                setSelectedBot(null);
+              } else {
+                const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`); setSelectedBot(null);
+              }
+            } catch (err) { console.error(err); }
           } else {
-            const errData = await res.json();
-            if (errData.detail === "NO_HUB_HERE") alert("[ ERROR ] まずここに拠点を建設してください。");
-            else if (errData.detail === "MAX_BOT_LEVEL_REACHED") alert("[ ERROR ] これ以上ボットを強化できません。");
-            else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源不足です（配備コスト：POWER 10.0, DATA 10.0）。");
+            try {
+              const res = await fetch('/api/move_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from_vertex: selectedBot, to_vertex: clickedVertex.id, player: "Player1" }) });
+              if (res.ok) {
+                const result = await res.json(); 
+                setBots(result.bots); setBuildings(result.buildings); if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+                if (result.combat_log) alert(`[ ⚔️ COMBAT REPORT ⚔️ ]\n\n${result.combat_log}`);
+                setSelectedBot(null);
+              } else {
+                const errData = await res.json(); 
+                if (errData.detail === "TOO_FAR") alert("[ ERROR ] 移動距離が遠すぎます（隣の角のみ移動可能）。");
+                else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 進軍には POWER 10.0 が必要です。");
+                else alert(`[ ERROR ] ${errData.detail}`);
+                setSelectedBot(null);
+              }
+            } catch (err) { console.error(err); }
           }
-        } catch (err) { console.error(err); }
+        } else {
+          if (bots[clickedVertex.id] && bots[clickedVertex.id].player === "Player1") {
+            setSelectedBot(clickedVertex.id);
+          } else {
+            try {
+              const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
+              if (res.ok) {
+                const result = await res.json(); setBots(result.bots); if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+              } else {
+                const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`);
+              }
+            } catch (err) { console.error(err); }
+          }
+        }
       }
 
     } else if (clickedEdge && actionMode === 'BUILD') {
-      if (roads[clickedEdge.id]) return; 
       try {
-        const res = await fetch('/api/build_road', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ edge_id: clickedEdge.id, player: "Player1" })
-        });
+        const res = await fetch('/api/build_road', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ edge_id: clickedEdge.id, player: "Player1" }) });
         if (res.ok) {
-          const result = await res.json(); setRoads(result.roads);
-          if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
-          if (result.explored) {
-            setBoardData(result.board);
-            if (result.new_sector === "NUCLEAR") alert(`[ ⚠️ WARNING ⚠️ ]\n極秘データ『NUCLEAR (核)』を掘り当てました！`);
-            else alert(`[ SYSTEM MSG ]\n新たなセクター『${result.new_sector}』が開拓されました。`);
-          }
-        } else {
-          const errData = await res.json();
-          if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！（道: POLYMER 10.0, SILICON 10.0）");
-          else if (errData.detail === "NOT_CONNECTED") alert("[ SYSTEM ERROR ] 自分の拠点、または自分の道に接続してください！");
+          const result = await res.json(); setRoads(result.roads); if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+          if (result.explored) setBoardData(result.board);
         }
       } catch (err) { console.error(err); }
+    } else {
+      setSelectedBot(null);
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {loading ? (
-        <div style={{ color: '#00ffcc', margin: '100px 0' }}>&gt; CONTACTING SERVER...</div>
-      ) : (
-        <canvas ref={canvasRef} width={800} height={600} onClick={handleCanvasClick} style={{ border: '1px solid #33ffcc', cursor: 'crosshair', backgroundColor: '#000', borderRadius: '8px' }} />
-      )}
+      {loading ? <div style={{ color: '#00ffcc', margin: '100px 0' }}>&gt; CONTACTING SERVER...</div> : <canvas ref={canvasRef} width={800} height={600} onClick={handleCanvasClick} style={{ border: '1px solid #33ffcc', cursor: 'crosshair', backgroundColor: '#000', borderRadius: '8px' }} />}
     </div>
   );
 };
-
 export default HexMap;
