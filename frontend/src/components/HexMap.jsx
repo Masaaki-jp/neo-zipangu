@@ -8,7 +8,7 @@ const SECTORS = {
   DARK: { name: 'DARK', color: '#444444' }
 };
 
-const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
+const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
   const canvasRef = useRef(null);
   const [boardData, setBoardData] = useState([]);
   const [buildings, setBuildings] = useState({});
@@ -25,12 +25,13 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
       const data = await response.json();
       setBoardData(data.board); setBuildings(data.buildings || {}); 
       setRoads(data.roads || {}); setBots(data.bots || {});
+      // 初回ロード時にApp.jsxにもbuildingsを渡す
+      if (onStateUpdate) onStateUpdate(null, null, data.buildings);
       setLoading(false);
     } catch (error) { console.error("API Error:", error); setLoading(false); }
   };
 
   useEffect(() => { fetchBoard(); }, []);
-
   useEffect(() => { setSelectedBot(null); }, [actionMode]);
 
   useEffect(() => {
@@ -107,31 +108,40 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
       if (buildings[v.id]) {
         const b = buildings[v.id];
         let size = 8; let color = b.player === "NPC_CORP" ? '#ff0055' : '#00ffcc';
-        if (b.type === "LOCAL_HUB") { size = 10; color = b.player === "NPC_CORP" ? '#aa0033' : '#444444'; }
-        if (b.type === "DATA_CENTER") { size = 16; }
-        if (b.type === "MEGA_HQ") { size = 26; color = '#ffcc00'; }
+        
+        if (b.type === "GATEWAY") {
+          ctx.beginPath(); ctx.arc(v.x, v.y, 10, 0, Math.PI * 2);
+          ctx.fillStyle = '#0055ff'; ctx.shadowBlur = 15; ctx.shadowColor = '#0055ff';
+          ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+          ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px monospace';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('GW', v.x, v.y); 
+          ctx.shadowBlur = 0;
+        } else {
+          if (b.type === "LOCAL_HUB") { size = 10; color = b.player === "NPC_CORP" ? '#aa0033' : '#444444'; }
+          if (b.type === "DATA_CENTER") { size = 16; }
+          if (b.type === "MEGA_HQ") { size = 26; color = '#ffcc00'; }
+          ctx.fillStyle = color; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = color;
+          ctx.fillRect(v.x - size/2, v.y - size/2, size, size); ctx.shadowBlur = 0;
+          ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
+        }
 
-        ctx.fillStyle = color; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = color;
-        ctx.fillRect(v.x - size/2, v.y - size/2, size, size); ctx.shadowBlur = 0;
-        ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
+        if (bots[v.id]) {
+          const bot = bots[v.id];
+          const isSelected = selectedBot === v.id;
+          const botColor = isSelected ? '#ffffff' : (bot.player === "NPC_CORP" ? '#aa00ff' : '#ff0055');
+          
+          ctx.beginPath(); ctx.arc(v.x + 14, v.y - 14, 7, 0, Math.PI * 2);
+          ctx.fillStyle = botColor; ctx.shadowBlur = isSelected ? 20 : 10; ctx.shadowColor = botColor;
+          ctx.fill(); ctx.shadowBlur = 0;
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = isSelected ? 2 : 1; ctx.stroke();
+          ctx.fillStyle = isSelected ? '#000000' : '#ffffff'; ctx.font = 'bold 10px monospace';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(bot.level.toString(), v.x + 14, v.y - 14); 
+        }
       } else {
         if (actionMode === 'BUILD') {
           ctx.beginPath(); ctx.arc(v.x, v.y, 4, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
         }
-      }
-
-      if (bots[v.id]) {
-        const bot = bots[v.id];
-        const isSelected = selectedBot === v.id;
-        const botColor = isSelected ? '#ffffff' : (bot.player === "NPC_CORP" ? '#aa00ff' : '#ff0055');
-        
-        ctx.beginPath(); ctx.arc(v.x + 12, v.y - 12, 7, 0, Math.PI * 2);
-        ctx.fillStyle = botColor; ctx.shadowBlur = isSelected ? 20 : 10; ctx.shadowColor = botColor;
-        ctx.fill(); ctx.shadowBlur = 0;
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = isSelected ? 2 : 1; ctx.stroke();
-        ctx.fillStyle = isSelected ? '#000000' : '#ffffff'; ctx.font = 'bold 10px monospace';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(bot.level.toString(), v.x + 12, v.y - 12); 
       }
     });
 
@@ -139,35 +149,60 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
 
   const handleCanvasClick = async (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left; 
-    const clickY = e.clientY - rect.top; // ← ここがエラーの原因でした（修正済）
+    const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
 
     const clickedVertex = verticesCoords.find(v => Math.hypot(v.x - clickX, v.y - clickY) < 15);
     const clickedEdge = !clickedVertex ? edgesCoords.find(edge => Math.hypot(edge.midX - clickX, edge.midY - clickY) < 15) : null;
 
     if (clickedVertex) {
       if (actionMode === 'BUILD') {
+        let upgradeTo = "DATA_CENTER";
+        if (buildings[clickedVertex.id] && buildings[clickedVertex.id].type === "LOCAL_HUB") {
+          const isCoastal = Math.hypot(400 - clickedVertex.x, 300 - clickedVertex.y) > 170;
+          if (isCoastal) {
+            const wantsDataCenter = window.confirm("『データセンター(小城)』にアップグレードしますか？\n\n※[キャンセル] を押すと次の選択肢が出ます。");
+            if (wantsDataCenter) {
+              upgradeTo = "DATA_CENTER";
+            } else {
+              const wantsGateway = window.confirm("では、海沿い特権の『ゲートウェイ(港)』にアップグレードしますか？\n\n※[キャンセル] を押すとアップグレードをやめます。");
+              if (wantsGateway) upgradeTo = "GATEWAY";
+              else return; 
+            }
+          }
+        }
+
         try {
-          const res = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
+          const res = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1", upgrade_to: upgradeTo }) });
           if (res.ok) {
             const result = await res.json(); setBuildings(result.buildings); 
-            if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+            if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
+            if (refreshData) refreshData();
+            if (result.type === "GATEWAY") {
+              if (result.discount) alert(`[ GATEWAY ESTABLISHED ]\n海外サーバーとの接続に成功。\n『${result.discount}』のトレードレートが 1:1 (10.0) になりました！`);
+              else alert(`[ GATEWAY ESTABLISHED ]\n海外サーバーとの接続に成功。\n(※すでに全ての資源が1:1トレード可能です)`);
+            }
           } else {
             const errData = await res.json();
-            if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ ERROR ] 近すぎます。");
+            // === エラー表示にMAX_STOCK_REACHEDを追加 ===
+            if (errData.detail === "MAX_STOCK_REACHED") alert("[ SYSTEM ERROR ] 建物のストック上限に達しています！");
+            else if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ ERROR ] 近すぎます。");
             else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています。");
             else if (errData.detail === "NOT_CONNECTED_TO_ROAD") alert("[ ERROR ] 自分の道に繋がっていません。");
+            else if (errData.detail === "GATEWAY_CANNOT_BE_UPGRADED") alert("[ ERROR ] ゲートウェイはこれ以上アップグレードできません。");
           }
         } catch (err) { console.error(err); }
 
       } else if (actionMode === 'MILITARY') {
+        // ...(MILITARY処理は変更なし)
         if (selectedBot) {
           if (selectedBot === clickedVertex.id) {
             try {
               const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
               if (res.ok) {
-                const result = await res.json(); setBots(result.bots); if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+                const result = await res.json(); setBots(result.bots); 
+                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
                 setSelectedBot(null);
+                if (refreshData) refreshData();
               } else {
                 const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`); setSelectedBot(null);
               }
@@ -177,12 +212,14 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
               const res = await fetch('/api/move_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from_vertex: selectedBot, to_vertex: clickedVertex.id, player: "Player1" }) });
               if (res.ok) {
                 const result = await res.json(); 
-                setBots(result.bots); setBuildings(result.buildings); if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+                setBots(result.bots); setBuildings(result.buildings); 
+                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
                 if (result.combat_log) alert(`[ ⚔️ COMBAT REPORT ⚔️ ]\n\n${result.combat_log}`);
                 setSelectedBot(null);
+                if (refreshData) refreshData();
               } else {
                 const errData = await res.json(); 
-                if (errData.detail === "TOO_FAR") alert("[ ERROR ] 移動距離が遠すぎます（隣の角のみ移動可能）。");
+                if (errData.detail === "TOO_FAR") alert("[ ERROR ] 移動距離が遠すぎます。");
                 else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 進軍には POWER 10.0 が必要です。");
                 else alert(`[ ERROR ] ${errData.detail}`);
                 setSelectedBot(null);
@@ -196,7 +233,9 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
             try {
               const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
               if (res.ok) {
-                const result = await res.json(); setBots(result.bots); if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
+                const result = await res.json(); setBots(result.bots); 
+                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
+                if (refreshData) refreshData();
               } else {
                 const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`);
               }
@@ -209,8 +248,18 @@ const HexMap = ({ activeNumber, actionMode, onInventoryUpdate }) => {
       try {
         const res = await fetch('/api/build_road', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ edge_id: clickedEdge.id, player: "Player1" }) });
         if (res.ok) {
-          const result = await res.json(); setRoads(result.roads); if (onInventoryUpdate) onInventoryUpdate(result.inventory.Player1);
-          if (result.explored) setBoardData(result.board);
+          const result = await res.json(); setRoads(result.roads); 
+          if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
+          if (result.explored) {
+            setBoardData(result.board);
+            if (result.new_sector === "NUCLEAR") alert(`[ ⚠️ WARNING ⚠️ ]\n極秘データ『NUCLEAR (核)』を掘り当てました！`);
+            else alert(`[ SYSTEM MSG ]\n新たなセクター『${result.new_sector}』が開拓されました。`);
+          }
+          if (refreshData) refreshData();
+        } else {
+          const errData = await res.json();
+          if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！");
+          else if (errData.detail === "NOT_CONNECTED") alert("[ SYSTEM ERROR ] 自分の拠点、または道に接続してください！");
         }
       } catch (err) { console.error(err); }
     } else {
