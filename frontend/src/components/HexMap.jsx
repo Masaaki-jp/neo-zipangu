@@ -8,14 +8,17 @@ const SECTORS = {
   DARK: { name: 'DARK', color: '#444444' }
 };
 
-const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
+const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeChange }) => {
   const canvasRef = useRef(null);
   const [boardData, setBoardData] = useState([]);
   const [buildings, setBuildings] = useState({});
   const [roads, setRoads] = useState({});
   const [bots, setBots] = useState({});
+  const [hackerPos, setHackerPos] = useState(null); // ハッカーの位置
+  
   const [verticesCoords, setVerticesCoords] = useState([]);
   const [edgesCoords, setEdgesCoords] = useState([]);
+  const [hexCenters, setHexCenters] = useState([]); // 新規：セクターの中心座標
   const [loading, setLoading] = useState(true);
   const [selectedBot, setSelectedBot] = useState(null);
 
@@ -24,9 +27,8 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
       const response = await fetch('/api/board');
       const data = await response.json();
       setBoardData(data.board); setBuildings(data.buildings || {}); 
-      setRoads(data.roads || {}); setBots(data.bots || {});
-      // 初回ロード時にApp.jsxにもbuildingsを渡す
-      if (onStateUpdate) onStateUpdate(null, null, data.buildings);
+      setRoads(data.roads || {}); setBots(data.bots || {}); setHackerPos(data.hacker_position);
+      if (onStateUpdate) onStateUpdate(null, null, data.buildings, data.score);
       setLoading(false);
     } catch (error) { console.error("API Error:", error); setLoading(false); }
   };
@@ -40,9 +42,9 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
     const centerX = canvas.width / 2; const centerY = canvas.height / 2;
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const tempVertices = new Map(); const tempEdges = new Map();
+    const tempVertices = new Map(); const tempEdges = new Map(); const tempCenters = [];
 
-    const drawHex = (cx, cy, sector, number) => {
+    const drawHex = (cx, cy, sector, number, q, r) => {
       const isHighlight = activeNumber && number === activeNumber;
       let prevPoint = null; let firstPoint = null;
 
@@ -77,7 +79,17 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
       ctx.fillStyle = sector.color; ctx.font = '12px monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sector.name, cx, cy - 20);
 
-      if (number) {
+      // 数字トークンとハッカーの描画
+      const isHackerHere = hackerPos === `${q},${r}`;
+
+      if (isHackerHere) {
+        // ハッカーアイコンの描画
+        ctx.beginPath(); ctx.arc(cx, cy + 10, HEX_SIZE * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff0055'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff0055'; ctx.fill(); 
+        ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke(); ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('☠', cx, cy + 12);
+      } else if (number) {
         ctx.beginPath(); ctx.arc(cx, cy + 10, HEX_SIZE * 0.35, 0, Math.PI * 2);
         ctx.fillStyle = isHighlight ? '#ffffff' : '#050505'; ctx.fill(); 
         ctx.lineWidth = 1; ctx.strokeStyle = sector.color; ctx.stroke();
@@ -90,10 +102,13 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
     boardData.forEach(hex => {
       const x = centerX + HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2);
       const y = centerY + HEX_SIZE * (3 / 2) * hex.r;
-      drawHex(x, y, SECTORS[hex.sector] || SECTORS.DARK, hex.number);
+      tempCenters.push({ id: `${hex.q},${hex.r}`, x, y, sector: hex.sector });
+      drawHex(x, y, SECTORS[hex.sector] || SECTORS.DARK, hex.number, hex.q, hex.r);
     });
 
-    setVerticesCoords(Array.from(tempVertices.values())); setEdgesCoords(Array.from(tempEdges.values()));
+    setVerticesCoords(Array.from(tempVertices.values())); 
+    setEdgesCoords(Array.from(tempEdges.values()));
+    setHexCenters(tempCenters);
 
     tempEdges.forEach((e) => {
       if (roads[e.id]) {
@@ -145,12 +160,30 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
       }
     });
 
-  }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot]);
+  }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos]);
 
   const handleCanvasClick = async (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
 
+    // === 新規：ハッカーモードの時は「セクターの中央」をクリックさせる ===
+    if (actionMode === 'HACKER') {
+      const clickedHex = hexCenters.find(h => Math.hypot(h.x - clickX, h.y - clickY) < 40);
+      if (clickedHex) {
+        if (clickedHex.sector === 'DARK') { alert("[ ERROR ] DARK領域にはハッカーを配置できません。"); return; }
+        try {
+          const res = await fetch('/api/move_hacker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hex_id: clickedHex.id }) });
+          if (res.ok) {
+            const result = await res.json(); setHackerPos(result.hacker_position);
+            onModeChange('BUILD'); // 配置が終わったら元のモードへ戻す
+            if (refreshData) refreshData();
+          }
+        } catch (err) { console.error(err); }
+      }
+      return; // ハッカーモードの時は他のクリック判定（家や道）をしない
+    }
+
+    // -- 以下は従来のクリック判定 --
     const clickedVertex = verticesCoords.find(v => Math.hypot(v.x - clickX, v.y - clickY) < 15);
     const clickedEdge = !clickedVertex ? edgesCoords.find(edge => Math.hypot(edge.midX - clickX, edge.midY - clickY) < 15) : null;
 
@@ -161,12 +194,10 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
           const isCoastal = Math.hypot(400 - clickedVertex.x, 300 - clickedVertex.y) > 170;
           if (isCoastal) {
             const wantsDataCenter = window.confirm("『データセンター(小城)』にアップグレードしますか？\n\n※[キャンセル] を押すと次の選択肢が出ます。");
-            if (wantsDataCenter) {
-              upgradeTo = "DATA_CENTER";
-            } else {
+            if (wantsDataCenter) { upgradeTo = "DATA_CENTER"; } 
+            else {
               const wantsGateway = window.confirm("では、海沿い特権の『ゲートウェイ(港)』にアップグレードしますか？\n\n※[キャンセル] を押すとアップグレードをやめます。");
-              if (wantsGateway) upgradeTo = "GATEWAY";
-              else return; 
+              if (wantsGateway) upgradeTo = "GATEWAY"; else return; 
             }
           }
         }
@@ -175,7 +206,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
           const res = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1", upgrade_to: upgradeTo }) });
           if (res.ok) {
             const result = await res.json(); setBuildings(result.buildings); 
-            if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
+            if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
             if (refreshData) refreshData();
             if (result.type === "GATEWAY") {
               if (result.discount) alert(`[ GATEWAY ESTABLISHED ]\n海外サーバーとの接続に成功。\n『${result.discount}』のトレードレートが 1:1 (10.0) になりました！`);
@@ -183,7 +214,6 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
             }
           } else {
             const errData = await res.json();
-            // === エラー表示にMAX_STOCK_REACHEDを追加 ===
             if (errData.detail === "MAX_STOCK_REACHED") alert("[ SYSTEM ERROR ] 建物のストック上限に達しています！");
             else if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ ERROR ] 近すぎます。");
             else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています。");
@@ -193,16 +223,14 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
         } catch (err) { console.error(err); }
 
       } else if (actionMode === 'MILITARY') {
-        // ...(MILITARY処理は変更なし)
         if (selectedBot) {
           if (selectedBot === clickedVertex.id) {
             try {
               const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
               if (res.ok) {
                 const result = await res.json(); setBots(result.bots); 
-                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
-                setSelectedBot(null);
-                if (refreshData) refreshData();
+                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
+                setSelectedBot(null); if (refreshData) refreshData();
               } else {
                 const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`); setSelectedBot(null);
               }
@@ -211,12 +239,10 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
             try {
               const res = await fetch('/api/move_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from_vertex: selectedBot, to_vertex: clickedVertex.id, player: "Player1" }) });
               if (res.ok) {
-                const result = await res.json(); 
-                setBots(result.bots); setBuildings(result.buildings); 
-                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
+                const result = await res.json(); setBots(result.bots); setBuildings(result.buildings); 
+                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
                 if (result.combat_log) alert(`[ ⚔️ COMBAT REPORT ⚔️ ]\n\n${result.combat_log}`);
-                setSelectedBot(null);
-                if (refreshData) refreshData();
+                setSelectedBot(null); if (refreshData) refreshData();
               } else {
                 const errData = await res.json(); 
                 if (errData.detail === "TOO_FAR") alert("[ ERROR ] 移動距離が遠すぎます。");
@@ -234,11 +260,9 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
               const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
               if (res.ok) {
                 const result = await res.json(); setBots(result.bots); 
-                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
+                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
                 if (refreshData) refreshData();
-              } else {
-                const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`);
-              }
+              } else { const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`); }
             } catch (err) { console.error(err); }
           }
         }
@@ -249,7 +273,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData }) => {
         const res = await fetch('/api/build_road', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ edge_id: clickedEdge.id, player: "Player1" }) });
         if (res.ok) {
           const result = await res.json(); setRoads(result.roads); 
-          if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings);
+          if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
           if (result.explored) {
             setBoardData(result.board);
             if (result.new_sector === "NUCLEAR") alert(`[ ⚠️ WARNING ⚠️ ]\n極秘データ『NUCLEAR (核)』を掘り当てました！`);
