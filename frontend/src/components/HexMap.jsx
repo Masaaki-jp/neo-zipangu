@@ -8,6 +8,15 @@ const SECTORS = {
   DARK: { name: 'DARK', color: '#444444' }
 };
 
+// === 新規：プレイヤーカラーの定義 ===
+const PLAYER_COLORS = {
+  Player1: { hex: '#ff0033', rgba: 'rgba(255, 0, 51, 0.2)' },   // プレイヤー1：赤
+  Player2: { hex: '#0088ff', rgba: 'rgba(0, 136, 255, 0.2)' },  // プレイヤー2：青
+  Player3: { hex: '#ffcc00', rgba: 'rgba(255, 204, 0, 0.2)' },  // プレイヤー3：黄
+  Player4: { hex: '#00ff44', rgba: 'rgba(0, 255, 68, 0.2)' },   // プレイヤー4：緑
+  NPC_CORP: { hex: '#aa00ff', rgba: 'rgba(170, 0, 255, 0.2)' }  // 敵NPC：紫
+};
+
 const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeChange, activeCard, setEventLog }) => {
   const canvasRef = useRef(null);
   const [boardData, setBoardData] = useState([]);
@@ -46,12 +55,15 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
     const drawHex = (cx, cy, sector, number, q, r) => {
       const isHighlight = activeNumber && number === activeNumber;
       let prevPoint = null; let firstPoint = null;
+      const hexVertices = []; // === 新規：このヘックスの6つの頂点を記録 ===
 
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const angle_rad = (Math.PI / 180) * (60 * i - 30);
         const x = cx + HEX_SIZE * Math.cos(angle_rad); const y = cy + HEX_SIZE * Math.sin(angle_rad);
         const vId = `${Math.round(x)},${Math.round(y)}`;
+        hexVertices.push(vId); // 頂点IDを記録
+
         if (!tempVertices.has(vId)) tempVertices.set(vId, { id: vId, x, y });
 
         const currentPoint = { id: vId, x, y };
@@ -71,13 +83,48 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
       }
       ctx.closePath();
 
-      ctx.lineWidth = isHighlight ? 4 : 2; ctx.strokeStyle = isHighlight ? '#ffffff' : sector.color;
-      ctx.shadowBlur = isHighlight ? 30 : 15; ctx.shadowColor = isHighlight ? '#ffffff' : sector.color;
+      // === 新規：占領判定（2拠点以上あるプレイヤーを探す） ===
+      const pCounts = {};
+      hexVertices.forEach(vId => {
+        if (buildings[vId]) {
+          const p = buildings[vId].player;
+          pCounts[p] = (pCounts[p] || 0) + 1;
+        }
+      });
+      let occupier = null;
+      for (const p in pCounts) {
+        if (pCounts[p] >= 2) { occupier = p; break; }
+      }
+
+      // === 修正：塗りつぶしとグレー枠線の適用 ===
+      if (occupier && PLAYER_COLORS[occupier]) {
+        ctx.fillStyle = PLAYER_COLORS[occupier].rgba; // 占領者の色でうっすら塗る
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#050505'; // 通常の黒
+        ctx.fill();
+      }
+
+      ctx.lineWidth = isHighlight ? 4 : 2; 
+      if (isHighlight) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.shadowBlur = 30; ctx.shadowColor = '#ffffff';
+      } else if (occupier && PLAYER_COLORS[occupier]) {
+        // 占領されているマスは枠線もプレイヤーカラーに光る
+        ctx.strokeStyle = PLAYER_COLORS[occupier].hex;
+        ctx.shadowBlur = 10; ctx.shadowColor = PLAYER_COLORS[occupier].hex;
+      } else {
+        // 通常のマスは無機質なグレー枠線
+        ctx.strokeStyle = '#333333';
+        ctx.shadowBlur = 0;
+      }
       ctx.stroke(); ctx.shadowBlur = 0;
 
+      // 文字（リソース色は残す）
       ctx.fillStyle = sector.color; ctx.font = '12px monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sector.name, cx, cy - 20);
 
+      // トークンとハッカーの描画（リソース色は残す）
       const isHackerHere = hackerPos === `${q},${r}`;
       if (isHackerHere) {
         ctx.beginPath(); ctx.arc(cx, cy + 10, HEX_SIZE * 0.4, 0, Math.PI * 2);
@@ -104,31 +151,38 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
 
     setVerticesCoords(Array.from(tempVertices.values())); setEdgesCoords(Array.from(tempEdges.values())); setHexCenters(tempCenters);
 
+    // 道の描画（プレイヤーカラー適用）
     tempEdges.forEach((e) => {
       if (roads[e.id]) {
+        const rColor = PLAYER_COLORS[roads[e.id].player]?.hex || '#ffffff';
         ctx.beginPath(); ctx.moveTo(e.v1.x, e.v1.y); ctx.lineTo(e.v2.x, e.v2.y);
-        ctx.lineWidth = 6; ctx.strokeStyle = roads[e.id].player === "NPC_CORP" ? '#ff0055' : '#00ffcc'; 
-        ctx.shadowBlur = 15; ctx.shadowColor = roads[e.id].player === "NPC_CORP" ? '#ff0055' : '#00ffcc';
+        ctx.lineWidth = 6; ctx.strokeStyle = rColor; 
+        ctx.shadowBlur = 15; ctx.shadowColor = rColor;
         ctx.stroke(); ctx.shadowBlur = 0;
       }
     });
 
+    // 拠点とボットの描画（プレイヤーカラー適用）
     tempVertices.forEach((v) => {
       if (buildings[v.id]) {
         const b = buildings[v.id];
-        let size = 8; let color = b.player === "NPC_CORP" ? '#ff0055' : '#00ffcc';
+        const pColor = PLAYER_COLORS[b.player]?.hex || '#ffffff';
+        let size = 8; let color = pColor;
         
         if (b.type === "GATEWAY") {
           ctx.beginPath(); ctx.arc(v.x, v.y, 10, 0, Math.PI * 2);
-          ctx.fillStyle = '#0055ff'; ctx.shadowBlur = 15; ctx.shadowColor = '#0055ff';
+          ctx.fillStyle = pColor; ctx.shadowBlur = 15; ctx.shadowColor = pColor;
           ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
           ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px monospace';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('GW', v.x, v.y); 
           ctx.shadowBlur = 0;
         } else {
-          if (b.type === "LOCAL_HUB") { size = 10; color = b.player === "NPC_CORP" ? '#aa0033' : '#444444'; }
-          if (b.type === "DATA_CENTER") { size = 16; }
-          if (b.type === "MEGA_HQ") { size = 26; color = '#ffcc00'; }
+          // ローカルハブはプレイヤーカラーを少し暗くする
+          if (b.type === "LOCAL_HUB") { size = 10; color = b.player === "Player1" ? '#cc0022' : '#8800cc'; }
+          if (b.type === "DATA_CENTER") { size = 16; color = pColor; }
+          // メガクラウド本社は特権的に黄金に光らせる（またはプレイヤーカラーを巨大化）
+          if (b.type === "MEGA_HQ") { size = 26; color = pColor; }
+          
           ctx.fillStyle = color; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = color;
           ctx.fillRect(v.x - size/2, v.y - size/2, size, size); ctx.shadowBlur = 0;
           ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
@@ -137,7 +191,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
         if (bots[v.id]) {
           const bot = bots[v.id];
           const isSelected = selectedBot === v.id;
-          const botColor = isSelected ? '#ffffff' : (bot.player === "NPC_CORP" ? '#aa00ff' : '#ff0055');
+          const botColor = isSelected ? '#ffffff' : (PLAYER_COLORS[bot.player]?.hex || '#ffffff');
           
           ctx.beginPath(); ctx.arc(v.x + 14, v.y - 14, 7, 0, Math.PI * 2);
           ctx.fillStyle = botColor; ctx.shadowBlur = isSelected ? 20 : 10; ctx.shadowColor = botColor;
@@ -156,6 +210,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
 
   }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos, activeCard]);
 
+  // === (以下、handleCanvasClickの処理はそのまま) ===
   const handleCanvasClick = async (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
@@ -166,7 +221,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
         if (clickedHex.sector === 'DARK') { alert("[ ERROR ] DARK領域には配置できません。"); return; }
         try {
           const res = await fetch('/api/move_hacker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hex_id: clickedHex.id }) });
-          if (res.ok) { const result = await res.json(); setHackerPos(result.hacker_position); onModeChange('BUILD'); }
+          if (res.ok) { const result = await res.json(); setHackerPos(result.hacker_position); onModeChange('BUILD'); if (refreshData) refreshData(); }
         } catch (err) { console.error(err); }
       }
       return; 
@@ -183,13 +238,8 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
             const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: "Player1", card_id: activeCard.id, target_id: clickedHex.id, target_val: newNum }) });
             if (res.ok) {
               const data = await res.json(); if (setEventLog) setEventLog(data.msg); 
-              
-              // === 修正：マップ自身を即座に再描画させる処理 ===
-              setBoardData(data.board);
-              setBuildings(data.buildings);
-              setBots(data.bots);
+              setBoardData(data.board); setBuildings(data.buildings); setBots(data.bots);
               if (onStateUpdate) onStateUpdate(data.inventory.Player1, null, data.buildings, data.score, data.cards);
-              
               onModeChange('BUILD'); 
             } else { const err = await res.json(); alert(`[ ERROR ] ${err.detail}`); onModeChange('BUILD'); }
           } catch (err) { console.error(err); }
@@ -201,13 +251,8 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
             const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: "Player1", card_id: activeCard.id, target_id: clickedVertex.id }) });
             if (res.ok) {
               const data = await res.json(); if (setEventLog) setEventLog(data.msg); 
-              
-              // === 修正：マップ自身を即座に再描画させる処理 ===
-              setBoardData(data.board);
-              setBuildings(data.buildings);
-              setBots(data.bots);
+              setBoardData(data.board); setBuildings(data.buildings); setBots(data.bots);
               if (onStateUpdate) onStateUpdate(data.inventory.Player1, null, data.buildings, data.score, data.cards);
-              
               onModeChange('BUILD'); 
             } else { const err = await res.json(); alert(`[ ERROR ] ${err.detail}`); onModeChange('BUILD'); }
           } catch (err) { console.error(err); }
@@ -216,7 +261,6 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
       return; 
     }
 
-    // --- (以下、通常の建築と軍事モードの処理) ---
     const clickedVertex = verticesCoords.find(v => Math.hypot(v.x - clickX, v.y - clickY) < 15);
     const clickedEdge = !clickedVertex ? edgesCoords.find(edge => Math.hypot(edge.midX - clickX, edge.midY - clickY) < 15) : null;
 
@@ -239,6 +283,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
           if (res.ok) {
             const result = await res.json(); setBuildings(result.buildings); 
             if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
+            if (refreshData) refreshData();
             if (result.type === "GATEWAY") {
               if (result.discount) alert(`[ GATEWAY ESTABLISHED ]\n海外サーバーとの接続に成功。\n『${result.discount}』のトレードレートが 1:1 (10.0) になりました！`);
               else alert(`[ GATEWAY ESTABLISHED ]\n海外サーバーとの接続に成功。\n(※すでに全ての資源が1:1トレード可能です)`);
@@ -249,6 +294,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
             else if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ ERROR ] 近すぎます。");
             else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています。");
             else if (errData.detail === "NOT_CONNECTED_TO_ROAD") alert("[ ERROR ] 自分の道に繋がっていません。");
+            else if (errData.detail === "GATEWAY_CANNOT_BE_UPGRADED") alert("[ ERROR ] ゲートウェイはこれ以上アップグレードできません。");
           }
         } catch (err) { console.error(err); }
 
@@ -260,7 +306,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
               if (res.ok) {
                 const result = await res.json(); setBots(result.bots); 
                 if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
-                setSelectedBot(null);
+                setSelectedBot(null); if (refreshData) refreshData();
               } else { const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`); setSelectedBot(null); }
             } catch (err) { console.error(err); }
           } else {
@@ -270,7 +316,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
                 const result = await res.json(); setBots(result.bots); setBuildings(result.buildings); 
                 if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
                 if (result.combat_log) alert(`[ ⚔️ COMBAT REPORT ⚔️ ]\n\n${result.combat_log}`);
-                setSelectedBot(null);
+                setSelectedBot(null); if (refreshData) refreshData();
               } else {
                 const errData = await res.json(); 
                 if (errData.detail === "TOO_FAR") alert("[ ERROR ] 移動距離が遠すぎます。");
@@ -289,12 +335,12 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
               if (res.ok) {
                 const result = await res.json(); setBots(result.bots); 
                 if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
+                if (refreshData) refreshData();
               } else { const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`); }
             } catch (err) { console.error(err); }
           }
         }
       }
-
     } else if (clickedEdge && actionMode === 'BUILD') {
       try {
         const res = await fetch('/api/build_road', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ edge_id: clickedEdge.id, player: "Player1" }) });
@@ -306,6 +352,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
             if (result.new_sector === "NUCLEAR") alert(`[ ⚠️ WARNING ⚠️ ]\n極秘データ『NUCLEAR (核)』を掘り当てました！`);
             else alert(`[ SYSTEM MSG ]\n新たなセクター『${result.new_sector}』が開拓されました。`);
           }
+          if (refreshData) refreshData();
         } else {
           const errData = await res.json();
           if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！");

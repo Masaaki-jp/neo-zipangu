@@ -20,6 +20,9 @@ function App() {
   const [receiveRes, setReceiveRes] = useState('SILICON');
   const [eventLog, setEventLog] = useState(null); 
 
+  // === 新規：ターンタイマーのステート（60秒） ===
+  const [timeLeft, setTimeLeft] = useState(60);
+
   const fetchData = async () => {
     try {
       const res1 = await fetch('/api/inventory'); const invData = await res1.json(); setInventory(invData.inventory.Player1);
@@ -33,7 +36,31 @@ function App() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // === 修正：ボードデータやボットデータも強制同期できるように拡張 ===
+  // === 新規：カウントダウン処理（毎秒実行） ===
+  useEffect(() => {
+    // 勝利時はタイマーを止める
+    if (score.total >= 100) return;
+
+    if (timeLeft <= 0) {
+      // 0になったら強制アラートを出して、60秒にリセット（将来はここでターンを強制終了させるAPIを叩く）
+      alert("[ TIME OUT ] 持ち時間の60秒が経過しました。\n強制的にターンを終了します！");
+      setTimeLeft(60);
+      return;
+    }
+
+    const timerId = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timerId); // クリーンアップ
+  }, [timeLeft, score.total]);
+
+  // === 新規：手動でターンを終了するボタン用 ===
+  const handleEndTurn = () => {
+    setTimeLeft(60);
+    // ※マルチプレイ実装後は、ここで「次のプレイヤーへ」というAPIを叩きます
+  };
+
   const handleStateUpdate = (newInventory, newRates, newBuildings, newScore, newCards) => {
     if (newInventory) setInventory({ ...newInventory });
     if (newRates) setTradeRates({ ...newRates });
@@ -83,28 +110,19 @@ function App() {
     try { await fetch('/api/reset', { method: 'POST' }); window.location.reload(); } catch (err) { console.error(err); }
   };
 
-  // === 修正：ダイアログを廃止し、引数でデッキを分岐 ===
   const handleDrawCard = async (deckType) => {
-    if (!inventory || inventory.NUCLEAR < 10.0) {
-      alert("[ ERROR ] NUCLEAR が 10.0 必要です！"); return;
-    }
+    if (!inventory || inventory.NUCLEAR < 10.0) { alert("[ ERROR ] NUCLEAR が 10.0 必要です！"); return; }
     try {
       const res = await fetch('/api/draw_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: "Player1", deck_type: deckType }) });
       if (res.ok) {
-        const data = await res.json();
-        handleStateUpdate(data.inventory.Player1, null, null, data.score, data.cards);
+        const data = await res.json(); handleStateUpdate(data.inventory.Player1, null, null, data.score, data.cards);
         alert(`[ CARD ACQUIRED ]\nカード【${data.drawn.name}】を入手しました！`);
-      } else {
-        const err = await res.json(); alert(`[ ERROR ] ${err.detail}`);
-      }
+      } else { const err = await res.json(); alert(`[ ERROR ] ${err.detail}`); }
     } catch (error) { console.error(error); }
   };
 
   const handleUseCard = async (card) => {
-    if (card.type === "PATENT") {
-      alert("[ INFO ] 特許カードは持っているだけで企業価値(+10万シェア)に貢献します。使う必要はありません。");
-      return;
-    }
+    if (card.type === "PATENT") { alert("[ INFO ] 特許カードは持っているだけで企業価値(+10万シェア)に貢献します。使う必要はありません。"); return; }
     if (card.type === "ZERO_DAY") {
       const numStr = prompt("【ゼロデイ攻撃】\n出したいサイコロの目（2〜12）を入力してください：");
       const num = parseInt(numStr, 10);
@@ -112,18 +130,13 @@ function App() {
       try {
         const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: "Player1", card_id: card.id, target_val: num }) });
         if (res.ok) {
-          const data = await res.json();
-          handleStateUpdate(data.inventory.Player1, null, null, data.score, data.cards);
-          setDice({ dice1: '?', dice2: '?', total: num, yields: data.yields }); 
-          setEventLog(data.msg);
-          // ゼロデイでも強制リフレッシュをかける（盤面同期のため）
-          fetchData();
+          const data = await res.json(); handleStateUpdate(data.inventory.Player1, null, null, data.score, data.cards);
+          setDice({ dice1: '?', dice2: '?', total: num, yields: data.yields }); setEventLog(data.msg); fetchData();
         }
       } catch (err) { console.error(err); }
       return;
     }
-    setActionMode('USE_CARD');
-    setActiveCard(card);
+    setActionMode('USE_CARD'); setActiveCard(card);
     alert(`【${card.name} 準備完了】\n対象となるマップ上の場所（拠点、敵兵、またはセクター）をクリックしてください。`);
   };
 
@@ -146,7 +159,19 @@ function App() {
         </div>
       )}
 
-      <header style={{ padding: '1rem', borderBottom: '1px solid #00ffcc', textAlign: 'center', textShadow: '0 0 5px #00ffcc' }}>
+      {/* === ヘッダーにタイマーを追加 === */}
+      <header style={{ padding: '1rem', borderBottom: '1px solid #00ffcc', textAlign: 'center', textShadow: '0 0 5px #00ffcc', position: 'relative' }}>
+        
+        {/* ターンタイマー UI */}
+        <div style={{ position: 'absolute', top: '15px', right: '20px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: timeLeft <= 10 ? '#ff0055' : '#00ffcc', animation: timeLeft <= 10 ? 'blink 1s infinite' : 'none' }}>
+            [ TIMER: {timeLeft.toString().padStart(2, '0')}s ]
+          </div>
+          <button onClick={handleEndTurn} style={{ marginTop: '5px', padding: '5px 15px', backgroundColor: '#333', color: '#fff', border: '1px solid #555', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
+            END TURN
+          </button>
+        </div>
+
         <h1 style={{ margin: 0, fontSize: '1.8rem', letterSpacing: '0.1em' }}>&gt; NEO-ZIPANGU: TERMINAL _</h1>
         <div style={{ marginTop: '10px', fontSize: '1.1rem', color: '#ffffff' }}>
           CORPORATE VALUE: <span style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '1.3rem' }}>{(score.total * 10000).toLocaleString()}</span> SHARES
@@ -190,8 +215,6 @@ function App() {
               <button onClick={() => setActionMode('BUILD')} style={{ backgroundColor: actionMode === 'BUILD' ? '#00ffcc' : 'transparent', color: actionMode === 'BUILD' ? '#000' : '#00ffcc', border: 'none', padding: '8px 20px', fontWeight: 'bold', fontFamily: 'inherit', cursor: 'pointer', borderRadius: '3px' }}>[ MODE: INFRA ]</button>
               <button onClick={() => setActionMode('MILITARY')} style={{ backgroundColor: actionMode === 'MILITARY' ? '#ff0055' : 'transparent', color: actionMode === 'MILITARY' ? '#000' : '#ff0055', border: 'none', padding: '8px 20px', fontWeight: 'bold', fontFamily: 'inherit', cursor: 'pointer', borderRadius: '3px' }}>[ MODE: MILITARY ]</button>
               <button onClick={() => setIsTradeOpen(!isTradeOpen)} style={{ backgroundColor: isTradeOpen ? '#ffaa00' : 'transparent', color: isTradeOpen ? '#000' : '#ffaa00', border: '1px solid #ffaa00', padding: '8px 20px', fontWeight: 'bold', fontFamily: 'inherit', cursor: 'pointer', borderRadius: '3px' }}>[ BLACK MARKET ]</button>
-              
-              {/* === 修正：ボタンを2種類に分割 === */}
               <button onClick={() => handleDrawCard('TECH')} style={{ backgroundColor: '#00ffcc', color: '#000', border: 'none', padding: '8px 15px', fontWeight: 'bold', fontFamily: 'inherit', cursor: 'pointer', borderRadius: '3px', boxShadow: '0 0 10px rgba(0,255,204,0.5)' }}>[ DRAW TECH (NUC 10) ]</button>
               <button onClick={() => handleDrawCard('WEAPON')} style={{ backgroundColor: '#ff0055', color: '#fff', border: 'none', padding: '8px 15px', fontWeight: 'bold', fontFamily: 'inherit', cursor: 'pointer', borderRadius: '3px', boxShadow: '0 0 10px rgba(255,0,85,0.5)' }}>[ DRAW WEAPON (NUC 10) ]</button>
             </>
