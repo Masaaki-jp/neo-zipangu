@@ -273,7 +273,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       if (actionMode === 'BUILD') {
         let upgradeTo = "DATA_CENTER";
         if (buildings[clickedVertex.id] && buildings[clickedVertex.id].player === currentPlayer && buildings[clickedVertex.id].type === "LOCAL_HUB") {
-          const isCoastal = Math.hypot(CENTER_X - clickedVertex.x, CENTER_Y - clickedVertex.y) > 260; // 拡張マップ用に判定距離を拡大
+          const isCoastal = Math.hypot(500 - clickedVertex.x, 400 - clickedVertex.y) > 260; // 拡張マップ用に判定距離を拡大
           if (isCoastal) {
             const wantsDataCenter = window.confirm("『データセンター(小城)』にアップグレードしますか？\n\n※[キャンセル] を押すと次の選択肢が出ます。");
             if (wantsDataCenter) { upgradeTo = "DATA_CENTER"; } 

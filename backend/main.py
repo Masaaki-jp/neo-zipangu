@@ -25,7 +25,7 @@ init_rolls = {}; roll_counter = 0
 
 # === 修正：Canvasサイズ拡張に合わせて中心座標をズラす ===
 HEX_SIZE = 60; CENTER_X = 500; CENTER_Y = 400 
-
+COASTAL_DIST = 260
 BUILDING_YIELDS = {"LOCAL_HUB": 0.0, "DATA_CENTER": 10.0, "GATEWAY": 10.0, "MEGA_HQ": 30.0}
 MAX_BUILDINGS = {"LOCAL_HUB": 5, "DATA_CENTER": 4, "GATEWAY": 3, "MEGA_HQ": 2}
 COSTS = {
@@ -302,7 +302,7 @@ def build_hub(req: BuildRequest):
         if is_free_phase: raise HTTPException(status_code=400, detail="CANNOT_UPGRADE_IN_SETUP")
         
         # 海沿い判定距離も拡張(260px程度に広げる)
-        is_coastal = math.hypot(CENTER_X - new_x, CENTER_Y - new_y) > 260
+        is_coastal = math.hypot(CENTER_X - new_x, CENTER_Y - new_y) > COASTAL_DIST
         if b["type"] == "LOCAL_HUB":
             if is_coastal and req.upgrade_to == "GATEWAY":
                 if counts["GATEWAY"] >= MAX_BUILDINGS["GATEWAY"]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
