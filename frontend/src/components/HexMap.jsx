@@ -1,6 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react';
 
 const HEX_SIZE = 60; 
+const PLAYER_COLORS = {
+  Player1: { hex: '#ff0033', rgba: 'rgba(255, 0, 51, 0.2)' },   
+  Player2: { hex: '#0088ff', rgba: 'rgba(0, 136, 255, 0.2)' },  
+  Player3: { hex: '#ffcc00', rgba: 'rgba(255, 204, 0, 0.2)' },  
+  Player4: { hex: '#00ff44', rgba: 'rgba(0, 255, 68, 0.2)' },   
+  NPC_CORP: { hex: '#aa00ff', rgba: 'rgba(170, 0, 255, 0.2)' }  
+};
 const SECTORS = {
   POWER: { name: 'POWER', color: '#ffcc00' }, DATA: { name: 'DATA', color: '#00ffcc' },
   SILICON: { name: 'SILICON', color: '#aaaaaa' }, HARD: { name: 'HARD', color: '#ff0055' },
@@ -8,16 +15,8 @@ const SECTORS = {
   DARK: { name: 'DARK', color: '#444444' }
 };
 
-// === 新規：プレイヤーカラーの定義 ===
-const PLAYER_COLORS = {
-  Player1: { hex: '#ff0033', rgba: 'rgba(255, 0, 51, 0.2)' },   // プレイヤー1：赤
-  Player2: { hex: '#0088ff', rgba: 'rgba(0, 136, 255, 0.2)' },  // プレイヤー2：青
-  Player3: { hex: '#ffcc00', rgba: 'rgba(255, 204, 0, 0.2)' },  // プレイヤー3：黄
-  Player4: { hex: '#00ff44', rgba: 'rgba(0, 255, 68, 0.2)' },   // プレイヤー4：緑
-  NPC_CORP: { hex: '#aa00ff', rgba: 'rgba(170, 0, 255, 0.2)' }  // 敵NPC：紫
-};
-
-const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeChange, activeCard, setEventLog }) => {
+// === 修正：すべてのProps（currentPlayer, hasRolledDice, gameStatus等）を正しく受け取る ===
+const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refreshData, onModeChange, activeCard, setEventLog, hasRolledDice, gameStatus }) => {
   const canvasRef = useRef(null);
   const [boardData, setBoardData] = useState([]);
   const [buildings, setBuildings] = useState({});
@@ -36,7 +35,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
       const data = await response.json();
       setBoardData(data.board); setBuildings(data.buildings || {}); 
       setRoads(data.roads || {}); setBots(data.bots || {}); setHackerPos(data.hacker_position);
-      if (onStateUpdate) onStateUpdate(null, null, data.buildings, data.score, data.cards);
+      if (onStateUpdate) onStateUpdate(null, null, data.buildings, data.score, data.cards, data.game_status);
       setLoading(false);
     } catch (error) { console.error("API Error:", error); setLoading(false); }
   };
@@ -55,14 +54,14 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
     const drawHex = (cx, cy, sector, number, q, r) => {
       const isHighlight = activeNumber && number === activeNumber;
       let prevPoint = null; let firstPoint = null;
-      const hexVertices = []; // === 新規：このヘックスの6つの頂点を記録 ===
+      const hexVertices = []; 
 
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const angle_rad = (Math.PI / 180) * (60 * i - 30);
         const x = cx + HEX_SIZE * Math.cos(angle_rad); const y = cy + HEX_SIZE * Math.sin(angle_rad);
         const vId = `${Math.round(x)},${Math.round(y)}`;
-        hexVertices.push(vId); // 頂点IDを記録
+        hexVertices.push(vId); 
 
         if (!tempVertices.has(vId)) tempVertices.set(vId, { id: vId, x, y });
 
@@ -83,7 +82,6 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
       }
       ctx.closePath();
 
-      // === 新規：占領判定（2拠点以上あるプレイヤーを探す） ===
       const pCounts = {};
       hexVertices.forEach(vId => {
         if (buildings[vId]) {
@@ -92,39 +90,24 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
         }
       });
       let occupier = null;
-      for (const p in pCounts) {
-        if (pCounts[p] >= 2) { occupier = p; break; }
-      }
+      for (const p in pCounts) { if (pCounts[p] >= 2) { occupier = p; break; } }
 
-      // === 修正：塗りつぶしとグレー枠線の適用 ===
-      if (occupier && PLAYER_COLORS[occupier]) {
-        ctx.fillStyle = PLAYER_COLORS[occupier].rgba; // 占領者の色でうっすら塗る
-        ctx.fill();
-      } else {
-        ctx.fillStyle = '#050505'; // 通常の黒
-        ctx.fill();
-      }
+      if (occupier && PLAYER_COLORS[occupier]) { ctx.fillStyle = PLAYER_COLORS[occupier].rgba; ctx.fill(); } 
+      else { ctx.fillStyle = '#050505'; ctx.fill(); }
 
       ctx.lineWidth = isHighlight ? 4 : 2; 
       if (isHighlight) {
-        ctx.strokeStyle = '#ffffff';
-        ctx.shadowBlur = 30; ctx.shadowColor = '#ffffff';
+        ctx.strokeStyle = '#ffffff'; ctx.shadowBlur = 30; ctx.shadowColor = '#ffffff';
       } else if (occupier && PLAYER_COLORS[occupier]) {
-        // 占領されているマスは枠線もプレイヤーカラーに光る
-        ctx.strokeStyle = PLAYER_COLORS[occupier].hex;
-        ctx.shadowBlur = 10; ctx.shadowColor = PLAYER_COLORS[occupier].hex;
+        ctx.strokeStyle = PLAYER_COLORS[occupier].hex; ctx.shadowBlur = 10; ctx.shadowColor = PLAYER_COLORS[occupier].hex;
       } else {
-        // 通常のマスは無機質なグレー枠線
-        ctx.strokeStyle = '#333333';
-        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#333333'; ctx.shadowBlur = 0;
       }
       ctx.stroke(); ctx.shadowBlur = 0;
 
-      // 文字（リソース色は残す）
       ctx.fillStyle = sector.color; ctx.font = '12px monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sector.name, cx, cy - 20);
 
-      // トークンとハッカーの描画（リソース色は残す）
       const isHackerHere = hackerPos === `${q},${r}`;
       if (isHackerHere) {
         ctx.beginPath(); ctx.arc(cx, cy + 10, HEX_SIZE * 0.4, 0, Math.PI * 2);
@@ -151,7 +134,6 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
 
     setVerticesCoords(Array.from(tempVertices.values())); setEdgesCoords(Array.from(tempEdges.values())); setHexCenters(tempCenters);
 
-    // 道の描画（プレイヤーカラー適用）
     tempEdges.forEach((e) => {
       if (roads[e.id]) {
         const rColor = PLAYER_COLORS[roads[e.id].player]?.hex || '#ffffff';
@@ -162,7 +144,6 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
       }
     });
 
-    // 拠点とボットの描画（プレイヤーカラー適用）
     tempVertices.forEach((v) => {
       if (buildings[v.id]) {
         const b = buildings[v.id];
@@ -177,28 +158,13 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('GW', v.x, v.y); 
           ctx.shadowBlur = 0;
         } else {
-          // ローカルハブはプレイヤーカラーを少し暗くする
           if (b.type === "LOCAL_HUB") { size = 10; color = b.player === "Player1" ? '#cc0022' : '#8800cc'; }
           if (b.type === "DATA_CENTER") { size = 16; color = pColor; }
-          // メガクラウド本社は特権的に黄金に光らせる（またはプレイヤーカラーを巨大化）
           if (b.type === "MEGA_HQ") { size = 26; color = pColor; }
           
           ctx.fillStyle = color; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = color;
           ctx.fillRect(v.x - size/2, v.y - size/2, size, size); ctx.shadowBlur = 0;
           ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
-        }
-
-        if (bots[v.id]) {
-          const bot = bots[v.id];
-          const isSelected = selectedBot === v.id;
-          const botColor = isSelected ? '#ffffff' : (PLAYER_COLORS[bot.player]?.hex || '#ffffff');
-          
-          ctx.beginPath(); ctx.arc(v.x + 14, v.y - 14, 7, 0, Math.PI * 2);
-          ctx.fillStyle = botColor; ctx.shadowBlur = isSelected ? 20 : 10; ctx.shadowColor = botColor;
-          ctx.fill(); ctx.shadowBlur = 0;
-          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = isSelected ? 2 : 1; ctx.stroke();
-          ctx.fillStyle = isSelected ? '#000000' : '#ffffff'; ctx.font = 'bold 10px monospace';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(bot.level.toString(), v.x + 14, v.y - 14); 
         }
       } else {
         if (actionMode === 'BUILD' || (actionMode === 'USE_CARD' && activeCard?.type === 'VPN')) {
@@ -206,12 +172,31 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
           ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
         }
       }
+
+      if (bots[v.id]) {
+        const bot = bots[v.id];
+        const isSelected = selectedBot === v.id;
+        const isMoved = bot.has_moved;
+        const botColor = isSelected ? '#ffffff' : (isMoved ? '#555555' : (PLAYER_COLORS[bot.player]?.hex || '#ffffff'));
+        
+        ctx.beginPath(); ctx.arc(v.x + 14, v.y - 14, 7, 0, Math.PI * 2);
+        ctx.fillStyle = botColor; ctx.shadowBlur = isSelected ? 20 : (isMoved ? 0 : 10); ctx.shadowColor = botColor;
+        ctx.fill(); ctx.shadowBlur = 0;
+        ctx.strokeStyle = isMoved ? '#333333' : '#ffffff'; ctx.lineWidth = isSelected ? 2 : 1; ctx.stroke();
+        ctx.fillStyle = isSelected ? '#000000' : '#ffffff'; ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(bot.level.toString(), v.x + 14, v.y - 14); 
+      }
     });
 
-  }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos, activeCard]);
+  }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos, activeCard, currentPlayer]);
 
-  // === (以下、handleCanvasClickの処理はそのまま) ===
   const handleCanvasClick = async (e) => {
+    // === 修正：gameStatus が存在しないことによるエラーを回避 ===
+    if (gameStatus && gameStatus.state === "playing" && !hasRolledDice && actionMode !== 'HACKER') {
+      alert("[ ERROR ] アクションを行う前に、必ずサイコロを振ってください！");
+      return;
+    }
+
     const rect = canvasRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
 
@@ -233,31 +218,50 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
         if (clickedHex) {
           const newNumStr = prompt("新しい数字(2〜12)を入力してください:");
           const newNum = parseInt(newNumStr, 10);
-          if (isNaN(newNum) || newNum < 2 || newNum > 12) { alert("キャンセルしました。"); onModeChange('BUILD'); return; }
+          if (isNaN(newNum) || newNum < 2 || newNum > 12) { onModeChange('BUILD'); return; }
           try {
-            const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: "Player1", card_id: activeCard.id, target_id: clickedHex.id, target_val: newNum }) });
+            const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: currentPlayer, card_id: activeCard.id, target_id: clickedHex.id, target_val: newNum }) });
             if (res.ok) {
               const data = await res.json(); if (setEventLog) setEventLog(data.msg); 
               setBoardData(data.board); setBuildings(data.buildings); setBots(data.bots);
-              if (onStateUpdate) onStateUpdate(data.inventory.Player1, null, data.buildings, data.score, data.cards);
+              if (onStateUpdate) onStateUpdate(data.inventory[currentPlayer], null, data.buildings, data.score, data.cards, data.game_status);
               onModeChange('BUILD'); 
             } else { const err = await res.json(); alert(`[ ERROR ] ${err.detail}`); onModeChange('BUILD'); }
           } catch (err) { console.error(err); }
+          return;
+        }
+      } 
+      else if (activeCard.type === 'DDOS') {
+        const clickedEdge = edgesCoords.find(edge => Math.hypot(edge.midX - clickX, edge.midY - clickY) < 15);
+        if (clickedEdge) {
+          try {
+            const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: currentPlayer, card_id: activeCard.id, target_id: clickedEdge.id }) });
+            if (res.ok) {
+              const data = await res.json(); if (setEventLog) setEventLog(data.msg); 
+              setBoardData(data.board); setBuildings(data.buildings); setBots(data.bots); setRoads(data.roads);
+              if (onStateUpdate) onStateUpdate(data.inventory[currentPlayer], null, data.buildings, data.score, data.cards, data.game_status);
+              onModeChange('BUILD'); if (refreshData) refreshData();
+            } else { const err = await res.json(); alert(`[ ERROR ] ${err.detail}`); onModeChange('BUILD'); }
+          } catch (err) { console.error(err); }
+          return;
         }
       } else {
         const clickedVertex = verticesCoords.find(v => Math.hypot(v.x - clickX, v.y - clickY) < 15);
         if (clickedVertex) {
           try {
-            const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: "Player1", card_id: activeCard.id, target_id: clickedVertex.id }) });
+            const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: currentPlayer, card_id: activeCard.id, target_id: clickedVertex.id }) });
             if (res.ok) {
               const data = await res.json(); if (setEventLog) setEventLog(data.msg); 
               setBoardData(data.board); setBuildings(data.buildings); setBots(data.bots);
-              if (onStateUpdate) onStateUpdate(data.inventory.Player1, null, data.buildings, data.score, data.cards);
+              if (onStateUpdate) onStateUpdate(data.inventory[currentPlayer], null, data.buildings, data.score, data.cards, data.game_status);
               onModeChange('BUILD'); 
             } else { const err = await res.json(); alert(`[ ERROR ] ${err.detail}`); onModeChange('BUILD'); }
           } catch (err) { console.error(err); }
+          return;
         }
       }
+      alert("[ INFO ] ターゲットが無効なため、カードの使用をキャンセルしました。");
+      onModeChange('BUILD');
       return; 
     }
 
@@ -267,7 +271,7 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
     if (clickedVertex) {
       if (actionMode === 'BUILD') {
         let upgradeTo = "DATA_CENTER";
-        if (buildings[clickedVertex.id] && buildings[clickedVertex.id].type === "LOCAL_HUB") {
+        if (buildings[clickedVertex.id] && buildings[clickedVertex.id].player === currentPlayer && buildings[clickedVertex.id].type === "LOCAL_HUB") {
           const isCoastal = Math.hypot(400 - clickedVertex.x, 300 - clickedVertex.y) > 170;
           if (isCoastal) {
             const wantsDataCenter = window.confirm("『データセンター(小城)』にアップグレードしますか？\n\n※[キャンセル] を押すと次の選択肢が出ます。");
@@ -279,10 +283,10 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
           }
         }
         try {
-          const res = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1", upgrade_to: upgradeTo }) });
+          const res = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: currentPlayer, upgrade_to: upgradeTo }) });
           if (res.ok) {
             const result = await res.json(); setBuildings(result.buildings); 
-            if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
+            if (onStateUpdate) onStateUpdate(result.inventory, result.trade_rates, result.buildings, result.score, null, result.game_status);
             if (refreshData) refreshData();
             if (result.type === "GATEWAY") {
               if (result.discount) alert(`[ GATEWAY ESTABLISHED ]\n海外サーバーとの接続に成功。\n『${result.discount}』のトレードレートが 1:1 (10.0) になりました！`);
@@ -290,11 +294,14 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
             }
           } else {
             const errData = await res.json();
-            if (errData.detail === "MAX_STOCK_REACHED") alert("[ SYSTEM ERROR ] 建物のストック上限に達しています！");
+            // === 修正：未知のエラーもアラートで出す ===
+            if (errData.detail === "ALREADY_BUILT_IN_THIS_SETUP_TURN") alert("[ ERROR ] 1ターンに建てられる拠点は1つまでです！");
+            else if (errData.detail === "MAX_STOCK_REACHED") alert("[ SYSTEM ERROR ] 建物のストック上限に達しています！");
             else if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ ERROR ] 近すぎます。");
             else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています。");
             else if (errData.detail === "NOT_CONNECTED_TO_ROAD") alert("[ ERROR ] 自分の道に繋がっていません。");
             else if (errData.detail === "GATEWAY_CANNOT_BE_UPGRADED") alert("[ ERROR ] ゲートウェイはこれ以上アップグレードできません。");
+            else alert(`[ ERROR ] ${errData.detail}`);
           }
         } catch (err) { console.error(err); }
 
@@ -302,39 +309,41 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
         if (selectedBot) {
           if (selectedBot === clickedVertex.id) {
             try {
-              const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
+              const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: currentPlayer }) });
               if (res.ok) {
                 const result = await res.json(); setBots(result.bots); 
-                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
+                if (onStateUpdate) onStateUpdate(result.inventory, result.trade_rates, result.buildings, result.score, null, result.game_status);
                 setSelectedBot(null); if (refreshData) refreshData();
               } else { const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`); setSelectedBot(null); }
             } catch (err) { console.error(err); }
           } else {
             try {
-              const res = await fetch('/api/move_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from_vertex: selectedBot, to_vertex: clickedVertex.id, player: "Player1" }) });
+              const res = await fetch('/api/move_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from_vertex: selectedBot, to_vertex: clickedVertex.id, player: currentPlayer }) });
               if (res.ok) {
                 const result = await res.json(); setBots(result.bots); setBuildings(result.buildings); 
-                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
+                if (onStateUpdate) onStateUpdate(result.inventory, result.trade_rates, result.buildings, result.score, null, result.game_status);
                 if (result.combat_log) alert(`[ ⚔️ COMBAT REPORT ⚔️ ]\n\n${result.combat_log}`);
                 setSelectedBot(null); if (refreshData) refreshData();
               } else {
                 const errData = await res.json(); 
-                if (errData.detail === "TOO_FAR") alert("[ ERROR ] 移動距離が遠すぎます。");
+                if (errData.detail === "ALREADY_MOVED_THIS_TURN") alert("[ ERROR ] このボットは今ターンすでに行動済みです。");
+                else if (errData.detail === "TOO_FAR") alert("[ ERROR ] 移動距離が遠すぎます。");
                 else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 進軍には POWER 10.0 が必要です。");
+                else if (errData.detail === "MUST_MOVE_ALONG_ANY_ROAD") alert("[ ERROR ] ネットワーク（道）に沿ってしか移動できません！");
                 else alert(`[ ERROR ] ${errData.detail}`);
                 setSelectedBot(null);
               }
             } catch (err) { console.error(err); }
           }
         } else {
-          if (bots[clickedVertex.id] && bots[clickedVertex.id].player === "Player1") {
+          if (bots[clickedVertex.id] && bots[clickedVertex.id].player === currentPlayer) {
             setSelectedBot(clickedVertex.id);
           } else {
             try {
-              const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: "Player1" }) });
+              const res = await fetch('/api/deploy_bot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: clickedVertex.id, player: currentPlayer }) });
               if (res.ok) {
                 const result = await res.json(); setBots(result.bots); 
-                if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
+                if (onStateUpdate) onStateUpdate(result.inventory, result.trade_rates, result.buildings, result.score, null, result.game_status);
                 if (refreshData) refreshData();
               } else { const errData = await res.json(); alert(`[ ERROR ] ${errData.detail}`); }
             } catch (err) { console.error(err); }
@@ -343,10 +352,10 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
       }
     } else if (clickedEdge && actionMode === 'BUILD') {
       try {
-        const res = await fetch('/api/build_road', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ edge_id: clickedEdge.id, player: "Player1" }) });
+        const res = await fetch('/api/build_road', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ edge_id: clickedEdge.id, player: currentPlayer }) });
         if (res.ok) {
           const result = await res.json(); setRoads(result.roads); 
-          if (onStateUpdate) onStateUpdate(result.inventory.Player1, result.trade_rates.Player1, result.buildings, result.score);
+          if (onStateUpdate) onStateUpdate(result.inventory, result.trade_rates, result.buildings, result.score, null, result.game_status);
           if (result.explored) {
             setBoardData(result.board);
             if (result.new_sector === "NUCLEAR") alert(`[ ⚠️ WARNING ⚠️ ]\n極秘データ『NUCLEAR (核)』を掘り当てました！`);
@@ -355,8 +364,12 @@ const HexMap = ({ activeNumber, actionMode, onStateUpdate, refreshData, onModeCh
           if (refreshData) refreshData();
         } else {
           const errData = await res.json();
-          if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！");
+          // === 追加：SETUP時のエラーハンドリング ===
+          if (errData.detail === "ALREADY_BUILT_IN_THIS_SETUP_TURN") alert("[ ERROR ] 1ターンに引ける道は1本までです！");
+          else if (errData.detail === "MUST_CONNECT_TO_YOUR_NEW_HUB") alert("[ ERROR ] 初期配置フェーズでは、自分が建てた拠点に繋がるように道を引いてください！");
+          else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！");
           else if (errData.detail === "NOT_CONNECTED") alert("[ SYSTEM ERROR ] 自分の拠点、または道に接続してください！");
+          else alert(`[ ERROR ] ${errData.detail}`);
         }
       } catch (err) { console.error(err); }
     } else {
