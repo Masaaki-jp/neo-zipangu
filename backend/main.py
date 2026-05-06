@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import random
 import math
 
-app = FastAPI(title="Neo Zipang Core API", version="1.8.0-beta")
+app = FastAPI(title="Neo Zipang Core API", version="1.9.0-beta")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 PLAYERS = ["Player1", "Player2", "Player3", "Player4"]
@@ -23,9 +23,7 @@ game_status = {
 }
 init_rolls = {}; roll_counter = 0
 
-# === 修正：Canvasサイズ拡張に合わせて中心座標をズラす ===
 HEX_SIZE = 60; CENTER_X = 500; CENTER_Y = 400 
-COASTAL_DIST = 260
 BUILDING_YIELDS = {"LOCAL_HUB": 0.0, "DATA_CENTER": 10.0, "GATEWAY": 10.0, "MEGA_HQ": 30.0}
 MAX_BUILDINGS = {"LOCAL_HUB": 5, "DATA_CENTER": 4, "GATEWAY": 3, "MEGA_HQ": 2}
 COSTS = {
@@ -41,6 +39,9 @@ CARD_DEFS = {
     "WEAPON_DEV": {"name": "兵器開発", "desc": "自ボットランク+2"}, "DDOS": {"name": "DDoS", "desc": "他社の道を破壊"}
 }
 TECH_DECK = ["PATENT", "ZERO_DAY", "VPN", "DATA_HACK"]; WEAPON_DECK = ["EMP", "DRONE_STRIKE", "WEAPON_DEV", "DDOS"]; card_counter_id = 0
+
+# === 新規：海沿いの頂点IDを記憶するリスト ===
+coastal_vertices = set()
 
 class BuildRequest(BaseModel): vertex_id: str; player: str; upgrade_to: str = "DATA_CENTER"
 class RoadRequest(BaseModel): edge_id: str; player: str
@@ -79,7 +80,7 @@ def calculate_yields(total: int):
         if hex_data["number"] == total:
             hex_id = f"{hex_data['q']},{hex_data['r']}"
             if hex_id == hacker_position: continue
-            sector_type = hex_data["sector"]; sector_amounts, sector_counts = {}, {}
+            sector_type = hex_data["sector"]; sector_amounts, sector_counts = {}
             cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2); cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
             for b_id, b_info in buildings.items():
                 bx, by = map(int, b_id.split(','))
@@ -96,7 +97,6 @@ def calculate_yields(total: int):
     return yields
 
 def check_annihilation():
-    global game_status
     pass
 
 @app.get("/health")
@@ -104,62 +104,60 @@ def health_check(): return {"status": "operational"}
 
 @app.get("/api/board")
 def get_or_generate_board():
-    global current_board, buildings, roads, bots, hacker_position, cards, game_status, init_rolls
+    global current_board, buildings, roads, bots, hacker_position, cards, game_status, init_rolls, coastal_vertices
     if len(current_board) == 0:
-        # 半径3のマップ（計37マス）
         MAP_RADIUS = 3
         sectors = ["POWER"]*7 + ["DATA"]*7 + ["SILICON"]*7 + ["HARD"]*6 + ["POLYMER"]*7 + ["DARK"]*3
         random.shuffle(sectors)
-        
         base_nums = [2,3,4,5,6,8,9,10,11,12]
         numbers = base_nums * 3 + [random.choice(base_nums) for _ in range(4)]
         random.shuffle(numbers)
+        
+        # === 新規：すべてのセクターの頂点を収集して「海沿い（外周）」を判定するロジック ===
+        vertex_counts = {} # {"x,y": 共有されているセクター数}
         
         for q in range(-MAP_RADIUS, MAP_RADIUS + 1):
             for r in range(max(-MAP_RADIUS, -q - MAP_RADIUS), min(MAP_RADIUS, -q + MAP_RADIUS) + 1):
                 sector_type = sectors.pop()
                 current_board.append({"q": q, "r": r, "s": -q - r, "sector": sector_type, "number": None if sector_type == "DARK" else numbers.pop()})
+                
+                # このセクターの6つの頂点を計算
+                cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (q + r / 2)
+                cy = CENTER_Y + HEX_SIZE * (3 / 2) * r
+                for i in range(6):
+                    angle_rad = math.radians(60 * i - 30)
+                    vx = round(cx + HEX_SIZE * math.cos(angle_rad))
+                    vy = round(cy + HEX_SIZE * math.sin(angle_rad))
+                    # 座標の微小な誤差を吸収するために丸める
+                    v_id = f"{vx},{vy}"
+                    vertex_counts[v_id] = vertex_counts.get(v_id, 0) + 1
+                    
+        # 共有数が2以下の頂点を「海沿い(Coastal)」として登録
+        coastal_vertices = {v_id for v_id, count in vertex_counts.items() if count <= 2}
         
-        # === 修正：NPCの数を「マップ総数の 8%（切り上げ）」にする ===
+        # NPCの配置
         total_hexes = len(current_board)
         npc_count = math.ceil(total_hexes * 0.08)
-        
-        # === 修正：距離ルールを守ってNPCを配置する ===
-        placed_np_hubs = 0
-        attempts = 0 # 無限ループ防止用
-        
+        placed_np_hubs = 0; attempts = 0
         while placed_np_hubs < npc_count and attempts < 1000:
             attempts += 1
             target_hex = random.choice([h for h in current_board if h["sector"] != "DARK"])
-            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (target_hex["q"] + target_hex["r"] / 2)
-            cy = CENTER_Y + HEX_SIZE * (3 / 2) * target_hex["r"]
-            
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (target_hex["q"] + target_hex["r"] / 2); cy = CENTER_Y + HEX_SIZE * (3 / 2) * target_hex["r"]
             angle_rad = math.radians(random.choice([30, 90, 150, 210, 270, 330]))
-            npc_x = round(cx + HEX_SIZE * math.cos(angle_rad))
-            npc_y = round(cy + HEX_SIZE * math.sin(angle_rad))
+            npc_x = round(cx + HEX_SIZE * math.cos(angle_rad)); npc_y = round(cy + HEX_SIZE * math.sin(angle_rad))
             npc_vertex = f"{npc_x},{npc_y}"
-            
-            # 1. すでに同じ場所に建っていないか
-            if npc_vertex in buildings:
-                continue
-                
-            # 2. 距離ルール：他の拠点（NPC含む）から近すぎないかチェック
+            if npc_vertex in buildings: continue
             too_close = False
             for ex_id in buildings.keys():
                 ex_x, ex_y = map(int, ex_id.split(','))
-                if math.hypot(npc_x - ex_x, npc_y - ex_y) < (HEX_SIZE + 5):
-                    too_close = True
-                    break
-            
-            if too_close:
-                continue
-                
-            # ルールをクリアした場合のみ配置
+                if math.hypot(npc_x - ex_x, npc_y - ex_y) < (HEX_SIZE + 5): too_close = True; break
+            if too_close: continue
             buildings[npc_vertex] = {"player": "NPC_CORP", "type": "DATA_CENTER"}
             bots[npc_vertex] = {"player": "NPC_CORP", "level": random.randint(1, 3), "has_moved": False}
             placed_np_hubs += 1
 
-    return {"board": current_board, "buildings": buildings, "roads": roads, "bots": bots, "hacker_position": hacker_position, "cards": cards, "game_status": game_status, "inventory": inventory, "trade_rates": trade_rates, "init_rolls": init_rolls}
+    # coastal_vertices の情報をフロントエンドに渡す
+    return {"board": current_board, "buildings": buildings, "roads": roads, "bots": bots, "hacker_position": hacker_position, "cards": cards, "game_status": game_status, "inventory": inventory, "trade_rates": trade_rates, "init_rolls": init_rolls, "coastal_vertices": list(coastal_vertices)}
 
 @app.post("/api/init_roll")
 def init_roll(req: InitRollRequest):
@@ -289,20 +287,21 @@ def get_trade_rates(player: str = "Player1"): return {"rates": trade_rates[playe
 
 @app.post("/api/build")
 def build_hub(req: BuildRequest):
-    global buildings, inventory, roads, trade_rates, game_status
+    global buildings, inventory, roads, trade_rates, game_status, coastal_vertices
     my_bldgs = [b for b in buildings.values() if b["player"] == req.player]; is_free_phase = game_status["state"] == "setup"
     counts = {"LOCAL_HUB": 0, "DATA_CENTER": 0, "GATEWAY": 0, "MEGA_HQ": 0}
     for b in my_bldgs: counts[b["type"]] += 1
     try: new_x, new_y = map(int, req.vertex_id.split(',')); 
     except ValueError: raise HTTPException(status_code=400, detail="INVALID")
 
+    # === 修正：距離ではなく coastal_vertices リストに含まれているかで海沿い判定 ===
+    is_coastal = req.vertex_id in coastal_vertices
+
     if req.vertex_id in buildings:
         b = buildings[req.vertex_id]
         if b["player"] != req.player: raise HTTPException(status_code=400, detail="ALREADY_BUILT")
         if is_free_phase: raise HTTPException(status_code=400, detail="CANNOT_UPGRADE_IN_SETUP")
         
-        # 海沿い判定距離も拡張(260px程度に広げる)
-        is_coastal = math.hypot(CENTER_X - new_x, CENTER_Y - new_y) > COASTAL_DIST
         if b["type"] == "LOCAL_HUB":
             if is_coastal and req.upgrade_to == "GATEWAY":
                 if counts["GATEWAY"] >= MAX_BUILDINGS["GATEWAY"]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
@@ -341,7 +340,8 @@ def build_hub(req: BuildRequest):
     else:
         st = game_status["setup_turn"]
         expected = 1 if st < 4 else 2
-        if len(my_bldgs) >= expected: raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
+        if len(my_bldgs) >= expected:
+            raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
 
     buildings[req.vertex_id] = {"player": req.player, "type": new_type, "bot_level": 0}
     return {"status": "success", "buildings": buildings, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
@@ -396,6 +396,7 @@ def move_bot(req: MoveRequest):
             if target_bldg: target_bldg["player"] = req.player 
             if target_bot: del bots[req.to_vertex] 
             bot_data["has_moved"] = True; bots[req.to_vertex] = bot_data; del bots[req.from_vertex]
+            check_annihilation() 
         else:
             combat_log = f"DEFEAT... Atk:{atk_sum} vs Def:{def_sum} | 我が軍のボットは破壊されました。"
             del bots[req.from_vertex]
@@ -407,7 +408,9 @@ def move_bot(req: MoveRequest):
 @app.post("/api/build_road")
 def build_road(req: RoadRequest):
     global roads, current_board, inventory, buildings, trade_rates, game_status
-    my_roads = [r for r in roads.values() if r["player"] == req.player]; is_free_phase = game_status["state"] == "setup"
+    my_roads = [r for r in roads.values() if r["player"] == req.player]
+    is_free_phase = game_status["state"] == "setup"
+    
     if req.edge_id in roads: raise HTTPException(status_code=400, detail="ROAD_ALREADY_EXISTS")
     
     v1, v2 = req.edge_id.split('_')
@@ -415,14 +418,17 @@ def build_road(req: RoadRequest):
     if is_free_phase:
         st = game_status["setup_turn"]
         expected = 1 if st < 4 else 2
-        if len(my_roads) >= expected: raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
+        if len(my_roads) >= expected:
+            raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
         is_connected_to_hub = False
         if (v1 in buildings and buildings[v1]["player"] == req.player) or (v2 in buildings and buildings[v2]["player"] == req.player): 
             is_connected_to_hub = True
-        if not is_connected_to_hub: raise HTTPException(status_code=400, detail="MUST_CONNECT_TO_YOUR_NEW_HUB")
+        if not is_connected_to_hub: 
+            raise HTTPException(status_code=400, detail="MUST_CONNECT_TO_YOUR_NEW_HUB")
     else:
         is_connected = False
-        if (v1 in buildings and buildings[v1]["player"] == req.player) or (v2 in buildings and buildings[v2]["player"] == req.player): is_connected = True
+        if (v1 in buildings and buildings[v1]["player"] == req.player) or (v2 in buildings and buildings[v2]["player"] == req.player): 
+            is_connected = True
         else:
             for r_id, r_info in roads.items():
                 if r_info["player"] == req.player:
@@ -432,6 +438,7 @@ def build_road(req: RoadRequest):
         if not pay_cost(req.player, "ROAD"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
         
     roads[req.edge_id] = {"player": req.player}
+    
     mid_x, mid_y = (float(v1.split(',')[0]) + float(v2.split(',')[0])) / 2, (float(v1.split(',')[1]) + float(v2.split(',')[1])) / 2 
     explored, new_sector = False, None
     for hex_data in current_board:
@@ -472,8 +479,8 @@ def roll_dice():
 
 @app.post("/api/reset")
 def reset_game():
-    global current_board, buildings, roads, bots, inventory, trade_rates, hacker_position, cards, card_counter_id, game_status, init_rolls, roll_counter
-    current_board.clear(); buildings.clear(); roads.clear(); bots.clear(); hacker_position = None; cards.clear(); card_counter_id = 0; init_rolls.clear(); roll_counter = 0
+    global current_board, buildings, roads, bots, inventory, trade_rates, hacker_position, cards, card_counter_id, game_status, init_rolls, roll_counter, coastal_vertices
+    current_board.clear(); buildings.clear(); roads.clear(); bots.clear(); hacker_position = None; cards.clear(); card_counter_id = 0; init_rolls.clear(); roll_counter = 0; coastal_vertices.clear()
     game_status = {"state": "init_roll", "winner": None, "reason": "", "turn_order": [], "current_turn_index": 0, "current_player": "Player1", "setup_turn": 0}
     for p in PLAYERS:
         inventory[p] = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0}

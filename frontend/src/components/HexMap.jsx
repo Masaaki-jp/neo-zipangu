@@ -25,6 +25,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   const [verticesCoords, setVerticesCoords] = useState([]);
   const [edgesCoords, setEdgesCoords] = useState([]);
   const [hexCenters, setHexCenters] = useState([]); 
+  const [coastalVertices, setCoastalVertices] = useState([]); // === 新規：海沿いの頂点リスト ===
   const [loading, setLoading] = useState(true);
   const [selectedBot, setSelectedBot] = useState(null);
 
@@ -34,6 +35,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       const data = await response.json();
       setBoardData(data.board); setBuildings(data.buildings || {}); 
       setRoads(data.roads || {}); setBots(data.bots || {}); setHackerPos(data.hacker_position);
+      setCoastalVertices(data.coastal_vertices || []); // サーバーからリストを受け取る
       if (onStateUpdate) onStateUpdate(null, null, data.buildings, data.score, data.cards, data.game_status);
       setLoading(false);
     } catch (error) { console.error("API Error:", error); setLoading(false); }
@@ -45,10 +47,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   useEffect(() => {
     if (loading || boardData.length === 0) return;
     const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
-    
-    // === 修正：Canvasサイズに依存せず固定の中心座標(500,400)を使う ===
-    const centerX = 500; const centerY = 400;
-    
+    const centerX = 500; const centerY = 400; // === 修正：Canvas中心の固定 ===
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const tempVertices = new Map(); const tempEdges = new Map(); const tempCenters = [];
@@ -194,8 +193,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
 
   const handleCanvasClick = async (e) => {
     if (gameStatus && gameStatus.state === "playing" && !hasRolledDice && actionMode !== 'HACKER') {
-      alert("[ ERROR ] アクションを行う前に、必ずサイコロを振ってください！");
-      return;
+      alert("[ ERROR ] アクションを行う前に、必ずサイコロを振ってください！"); return;
     }
 
     const rect = canvasRef.current.getBoundingClientRect();
@@ -273,7 +271,10 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       if (actionMode === 'BUILD') {
         let upgradeTo = "DATA_CENTER";
         if (buildings[clickedVertex.id] && buildings[clickedVertex.id].player === currentPlayer && buildings[clickedVertex.id].type === "LOCAL_HUB") {
-          const isCoastal = Math.hypot(500 - clickedVertex.x, 400 - clickedVertex.y) > 260; // 拡張マップ用に判定距離を拡大
+          
+          // === 修正：サーバーが判定した「海沿いリスト」に入っているかを確認する ===
+          const isCoastal = coastalVertices.includes(clickedVertex.id);
+
           if (isCoastal) {
             const wantsDataCenter = window.confirm("『データセンター(小城)』にアップグレードしますか？\n\n※[キャンセル] を押すと次の選択肢が出ます。");
             if (wantsDataCenter) { upgradeTo = "DATA_CENTER"; } 
@@ -377,7 +378,6 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {/* === 修正：Canvasサイズを 1000x800 に拡大 === */}
       {loading ? <div style={{ color: '#00ffcc', margin: '100px 0' }}>&gt; CONTACTING SERVER...</div> : <canvas ref={canvasRef} width={1000} height={800} onClick={handleCanvasClick} style={{ border: '1px solid #33ffcc', cursor: 'crosshair', backgroundColor: '#000', borderRadius: '8px' }} />}
     </div>
   );
