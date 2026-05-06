@@ -15,7 +15,6 @@ const SECTORS = {
   DARK: { name: 'DARK', color: '#444444' }
 };
 
-// === 修正：すべてのProps（currentPlayer, hasRolledDice, gameStatus等）を正しく受け取る ===
 const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refreshData, onModeChange, activeCard, setEventLog, hasRolledDice, gameStatus }) => {
   const canvasRef = useRef(null);
   const [boardData, setBoardData] = useState([]);
@@ -46,7 +45,10 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   useEffect(() => {
     if (loading || boardData.length === 0) return;
     const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
-    const centerX = canvas.width / 2; const centerY = canvas.height / 2;
+    
+    // === 修正：Canvasサイズに依存せず固定の中心座標(500,400)を使う ===
+    const centerX = 500; const centerY = 400;
+    
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const tempVertices = new Map(); const tempEdges = new Map(); const tempCenters = [];
@@ -158,7 +160,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('GW', v.x, v.y); 
           ctx.shadowBlur = 0;
         } else {
-          if (b.type === "LOCAL_HUB") { size = 10; color = b.player === "Player1" ? '#cc0022' : '#8800cc'; }
+          if (b.type === "LOCAL_HUB") { size = 10; color = pColor; }
           if (b.type === "DATA_CENTER") { size = 16; color = pColor; }
           if (b.type === "MEGA_HQ") { size = 26; color = pColor; }
           
@@ -191,7 +193,6 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos, activeCard, currentPlayer]);
 
   const handleCanvasClick = async (e) => {
-    // === 修正：gameStatus が存在しないことによるエラーを回避 ===
     if (gameStatus && gameStatus.state === "playing" && !hasRolledDice && actionMode !== 'HACKER') {
       alert("[ ERROR ] アクションを行う前に、必ずサイコロを振ってください！");
       return;
@@ -272,7 +273,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       if (actionMode === 'BUILD') {
         let upgradeTo = "DATA_CENTER";
         if (buildings[clickedVertex.id] && buildings[clickedVertex.id].player === currentPlayer && buildings[clickedVertex.id].type === "LOCAL_HUB") {
-          const isCoastal = Math.hypot(400 - clickedVertex.x, 300 - clickedVertex.y) > 170;
+          const isCoastal = Math.hypot(CENTER_X - clickedVertex.x, CENTER_Y - clickedVertex.y) > 260; // 拡張マップ用に判定距離を拡大
           if (isCoastal) {
             const wantsDataCenter = window.confirm("『データセンター(小城)』にアップグレードしますか？\n\n※[キャンセル] を押すと次の選択肢が出ます。");
             if (wantsDataCenter) { upgradeTo = "DATA_CENTER"; } 
@@ -294,13 +295,12 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
             }
           } else {
             const errData = await res.json();
-            // === 修正：未知のエラーもアラートで出す ===
             if (errData.detail === "ALREADY_BUILT_IN_THIS_SETUP_TURN") alert("[ ERROR ] 1ターンに建てられる拠点は1つまでです！");
+            else if (errData.detail === "CANNOT_UPGRADE_IN_SETUP") alert("[ ERROR ] 初期配置フェーズ中はアップグレードできません！");
             else if (errData.detail === "MAX_STOCK_REACHED") alert("[ SYSTEM ERROR ] 建物のストック上限に達しています！");
             else if (errData.detail === "TOO_CLOSE_TO_ANOTHER_HUB") alert("[ ERROR ] 近すぎます。");
             else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています。");
             else if (errData.detail === "NOT_CONNECTED_TO_ROAD") alert("[ ERROR ] 自分の道に繋がっていません。");
-            else if (errData.detail === "GATEWAY_CANNOT_BE_UPGRADED") alert("[ ERROR ] ゲートウェイはこれ以上アップグレードできません。");
             else alert(`[ ERROR ] ${errData.detail}`);
           }
         } catch (err) { console.error(err); }
@@ -364,12 +364,10 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
           if (refreshData) refreshData();
         } else {
           const errData = await res.json();
-          // === 追加：SETUP時のエラーハンドリング ===
           if (errData.detail === "ALREADY_BUILT_IN_THIS_SETUP_TURN") alert("[ ERROR ] 1ターンに引ける道は1本までです！");
           else if (errData.detail === "MUST_CONNECT_TO_YOUR_NEW_HUB") alert("[ ERROR ] 初期配置フェーズでは、自分が建てた拠点に繋がるように道を引いてください！");
           else if (errData.detail === "INSUFFICIENT_RESOURCES") alert("[ ERROR ] 資源が不足しています！");
           else if (errData.detail === "NOT_CONNECTED") alert("[ SYSTEM ERROR ] 自分の拠点、または道に接続してください！");
-          else alert(`[ ERROR ] ${errData.detail}`);
         }
       } catch (err) { console.error(err); }
     } else {
@@ -379,7 +377,8 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {loading ? <div style={{ color: '#00ffcc', margin: '100px 0' }}>&gt; CONTACTING SERVER...</div> : <canvas ref={canvasRef} width={800} height={600} onClick={handleCanvasClick} style={{ border: '1px solid #33ffcc', cursor: 'crosshair', backgroundColor: '#000', borderRadius: '8px' }} />}
+      {/* === 修正：Canvasサイズを 1000x800 に拡大 === */}
+      {loading ? <div style={{ color: '#00ffcc', margin: '100px 0' }}>&gt; CONTACTING SERVER...</div> : <canvas ref={canvasRef} width={1000} height={800} onClick={handleCanvasClick} style={{ border: '1px solid #33ffcc', cursor: 'crosshair', backgroundColor: '#000', borderRadius: '8px' }} />}
     </div>
   );
 };

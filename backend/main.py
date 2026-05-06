@@ -13,18 +13,19 @@ inventory = {p: {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYME
 trade_rates = {p: {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0} for p in PLAYERS}
 cards = {p: [] for p in PLAYERS}
 
-# === ゲーム進行ステート ===
 game_status = {
     "state": "init_roll", 
     "winner": None, "reason": "",
     "turn_order": [], 
     "current_turn_index": 0, 
     "current_player": "Player1",
-    "setup_turn": 0 # 初期配置フェーズの進行度(0〜7)
+    "setup_turn": 0
 }
 init_rolls = {}; roll_counter = 0
 
-HEX_SIZE = 60; CENTER_X = 400; CENTER_Y = 300 
+# === 修正：Canvasサイズ拡張に合わせて中心座標をズラす ===
+HEX_SIZE = 60; CENTER_X = 500; CENTER_Y = 400 
+
 BUILDING_YIELDS = {"LOCAL_HUB": 0.0, "DATA_CENTER": 10.0, "GATEWAY": 10.0, "MEGA_HQ": 30.0}
 MAX_BUILDINGS = {"LOCAL_HUB": 5, "DATA_CENTER": 4, "GATEWAY": 3, "MEGA_HQ": 2}
 COSTS = {
@@ -105,17 +106,59 @@ def health_check(): return {"status": "operational"}
 def get_or_generate_board():
     global current_board, buildings, roads, bots, hacker_position, cards, game_status, init_rolls
     if len(current_board) == 0:
-        sectors = ["POWER"]*4 + ["DATA"]*3 + ["SILICON"]*4 + ["HARD"]*3 + ["POLYMER"]*4 + ["DARK"]*1
-        random.shuffle(sectors); numbers = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]; random.shuffle(numbers)
-        for q in range(-2, 3):
-            for r in range(max(-2, -q - 2), min(2, -q + 2) + 1):
+        # 半径3のマップ（計37マス）
+        MAP_RADIUS = 3
+        sectors = ["POWER"]*7 + ["DATA"]*7 + ["SILICON"]*7 + ["HARD"]*6 + ["POLYMER"]*7 + ["DARK"]*3
+        random.shuffle(sectors)
+        
+        base_nums = [2,3,4,5,6,8,9,10,11,12]
+        numbers = base_nums * 3 + [random.choice(base_nums) for _ in range(4)]
+        random.shuffle(numbers)
+        
+        for q in range(-MAP_RADIUS, MAP_RADIUS + 1):
+            for r in range(max(-MAP_RADIUS, -q - MAP_RADIUS), min(MAP_RADIUS, -q + MAP_RADIUS) + 1):
                 sector_type = sectors.pop()
                 current_board.append({"q": q, "r": r, "s": -q - r, "sector": sector_type, "number": None if sector_type == "DARK" else numbers.pop()})
-        target_hex = random.choice(current_board)
-        cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (target_hex["q"] + target_hex["r"] / 2); cy = CENTER_Y + HEX_SIZE * (3 / 2) * target_hex["r"]
-        npc_x = round(cx + HEX_SIZE * math.cos(math.radians(270))); npc_y = round(cy + HEX_SIZE * math.sin(math.radians(270)))
-        buildings[f"{npc_x},{npc_y}"] = {"player": "NPC_CORP", "type": "DATA_CENTER"}
-        bots[f"{npc_x},{npc_y}"] = {"player": "NPC_CORP", "level": random.randint(1, 2), "has_moved": False}
+        
+        # === 修正：NPCの数を「マップ総数の 8%（切り上げ）」にする ===
+        total_hexes = len(current_board)
+        npc_count = math.ceil(total_hexes * 0.08)
+        
+        # === 修正：距離ルールを守ってNPCを配置する ===
+        placed_np_hubs = 0
+        attempts = 0 # 無限ループ防止用
+        
+        while placed_np_hubs < npc_count and attempts < 1000:
+            attempts += 1
+            target_hex = random.choice([h for h in current_board if h["sector"] != "DARK"])
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (target_hex["q"] + target_hex["r"] / 2)
+            cy = CENTER_Y + HEX_SIZE * (3 / 2) * target_hex["r"]
+            
+            angle_rad = math.radians(random.choice([30, 90, 150, 210, 270, 330]))
+            npc_x = round(cx + HEX_SIZE * math.cos(angle_rad))
+            npc_y = round(cy + HEX_SIZE * math.sin(angle_rad))
+            npc_vertex = f"{npc_x},{npc_y}"
+            
+            # 1. すでに同じ場所に建っていないか
+            if npc_vertex in buildings:
+                continue
+                
+            # 2. 距離ルール：他の拠点（NPC含む）から近すぎないかチェック
+            too_close = False
+            for ex_id in buildings.keys():
+                ex_x, ex_y = map(int, ex_id.split(','))
+                if math.hypot(npc_x - ex_x, npc_y - ex_y) < (HEX_SIZE + 5):
+                    too_close = True
+                    break
+            
+            if too_close:
+                continue
+                
+            # ルールをクリアした場合のみ配置
+            buildings[npc_vertex] = {"player": "NPC_CORP", "type": "DATA_CENTER"}
+            bots[npc_vertex] = {"player": "NPC_CORP", "level": random.randint(1, 3), "has_moved": False}
+            placed_np_hubs += 1
+
     return {"board": current_board, "buildings": buildings, "roads": roads, "bots": bots, "hacker_position": hacker_position, "cards": cards, "game_status": game_status, "inventory": inventory, "trade_rates": trade_rates, "init_rolls": init_rolls}
 
 @app.post("/api/init_roll")
@@ -247,9 +290,7 @@ def get_trade_rates(player: str = "Player1"): return {"rates": trade_rates[playe
 @app.post("/api/build")
 def build_hub(req: BuildRequest):
     global buildings, inventory, roads, trade_rates, game_status
-    my_bldgs = [b for b in buildings.values() if b["player"] == req.player]
-    is_free_phase = game_status["state"] == "setup"
-    
+    my_bldgs = [b for b in buildings.values() if b["player"] == req.player]; is_free_phase = game_status["state"] == "setup"
     counts = {"LOCAL_HUB": 0, "DATA_CENTER": 0, "GATEWAY": 0, "MEGA_HQ": 0}
     for b in my_bldgs: counts[b["type"]] += 1
     try: new_x, new_y = map(int, req.vertex_id.split(',')); 
@@ -260,7 +301,8 @@ def build_hub(req: BuildRequest):
         if b["player"] != req.player: raise HTTPException(status_code=400, detail="ALREADY_BUILT")
         if is_free_phase: raise HTTPException(status_code=400, detail="CANNOT_UPGRADE_IN_SETUP")
         
-        is_coastal = math.hypot(CENTER_X - new_x, CENTER_Y - new_y) > 170
+        # 海沿い判定距離も拡張(260px程度に広げる)
+        is_coastal = math.hypot(CENTER_X - new_x, CENTER_Y - new_y) > 260
         if b["type"] == "LOCAL_HUB":
             if is_coastal and req.upgrade_to == "GATEWAY":
                 if counts["GATEWAY"] >= MAX_BUILDINGS["GATEWAY"]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
@@ -297,11 +339,9 @@ def build_hub(req: BuildRequest):
         if not is_connected: raise HTTPException(status_code=400, detail="NOT_CONNECTED_TO_ROAD")
         if not pay_cost(req.player, "LOCAL_HUB"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
     else:
-        # SETUP中は、1ターンにつき家1軒まで
         st = game_status["setup_turn"]
         expected = 1 if st < 4 else 2
-        if len(my_bldgs) >= expected:
-            raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
+        if len(my_bldgs) >= expected: raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
 
     buildings[req.vertex_id] = {"player": req.player, "type": new_type, "bot_level": 0}
     return {"status": "success", "buildings": buildings, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
@@ -356,7 +396,6 @@ def move_bot(req: MoveRequest):
             if target_bldg: target_bldg["player"] = req.player 
             if target_bot: del bots[req.to_vertex] 
             bot_data["has_moved"] = True; bots[req.to_vertex] = bot_data; del bots[req.from_vertex]
-            check_annihilation() 
         else:
             combat_log = f"DEFEAT... Atk:{atk_sum} vs Def:{def_sum} | 我が軍のボットは破壊されました。"
             del bots[req.from_vertex]
@@ -368,32 +407,22 @@ def move_bot(req: MoveRequest):
 @app.post("/api/build_road")
 def build_road(req: RoadRequest):
     global roads, current_board, inventory, buildings, trade_rates, game_status
-    my_roads = [r for r in roads.values() if r["player"] == req.player]
-    is_free_phase = game_status["state"] == "setup"
-    
+    my_roads = [r for r in roads.values() if r["player"] == req.player]; is_free_phase = game_status["state"] == "setup"
     if req.edge_id in roads: raise HTTPException(status_code=400, detail="ROAD_ALREADY_EXISTS")
     
     v1, v2 = req.edge_id.split('_')
     
     if is_free_phase:
-        # SETUPフェーズ中の制限チェック
         st = game_status["setup_turn"]
         expected = 1 if st < 4 else 2
-        if len(my_roads) >= expected:
-            raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
-        
-        # === 修正：自分の新しい拠点に繋がっているかだけをチェック ===
+        if len(my_roads) >= expected: raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
         is_connected_to_hub = False
         if (v1 in buildings and buildings[v1]["player"] == req.player) or (v2 in buildings and buildings[v2]["player"] == req.player): 
             is_connected_to_hub = True
-            
-        if not is_connected_to_hub: 
-            raise HTTPException(status_code=400, detail="MUST_CONNECT_TO_YOUR_NEW_HUB")
+        if not is_connected_to_hub: raise HTTPException(status_code=400, detail="MUST_CONNECT_TO_YOUR_NEW_HUB")
     else:
-        # 通常プレイ時の接続チェック
         is_connected = False
-        if (v1 in buildings and buildings[v1]["player"] == req.player) or (v2 in buildings and buildings[v2]["player"] == req.player): 
-            is_connected = True
+        if (v1 in buildings and buildings[v1]["player"] == req.player) or (v2 in buildings and buildings[v2]["player"] == req.player): is_connected = True
         else:
             for r_id, r_info in roads.items():
                 if r_info["player"] == req.player:
@@ -403,7 +432,6 @@ def build_road(req: RoadRequest):
         if not pay_cost(req.player, "ROAD"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
         
     roads[req.edge_id] = {"player": req.player}
-    
     mid_x, mid_y = (float(v1.split(',')[0]) + float(v2.split(',')[0])) / 2, (float(v1.split(',')[1]) + float(v2.split(',')[1])) / 2 
     explored, new_sector = False, None
     for hex_data in current_board:
