@@ -1,12 +1,15 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import random
 import math
 
 # === 追加：モジュールのインポート ===
 from game_logic import pay_cost, get_score, calculate_yields
 import state_manager as state
+from schemas import (
+    BuildRequest, RoadRequest, MoveRequest, TradeRequest,
+    HackerRequest, CardRequest, UseCardRequest, InitRollRequest
+)
 
 app = FastAPI(title="Neo Zipang Core API", version="1.9.0-beta")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -29,15 +32,6 @@ CARD_DEFS = {
     "WEAPON_DEV": {"name": "兵器開発", "desc": "自ボットランク+2"}, "DDOS": {"name": "DDoS", "desc": "他社の道を破壊"}
 }
 TECH_DECK = ["PATENT", "ZERO_DAY", "VPN", "DATA_HACK"]; WEAPON_DECK = ["EMP", "DRONE_STRIKE", "WEAPON_DEV", "DDOS"]
-
-class BuildRequest(BaseModel): vertex_id: str; player: str; upgrade_to: str = "DATA_CENTER"
-class RoadRequest(BaseModel): edge_id: str; player: str
-class MoveRequest(BaseModel): from_vertex: str; to_vertex: str; player: str
-class TradeRequest(BaseModel): offer_res: str; receive_res: str; player: str
-class HackerRequest(BaseModel): hex_id: str
-class CardRequest(BaseModel): player: str; deck_type: str = "TECH"
-class UseCardRequest(BaseModel): player: str; card_id: str; target_id: str = None; target_val: int = None
-class InitRollRequest(BaseModel): player: str
 
 def check_annihilation():
     pass
