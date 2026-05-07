@@ -28,7 +28,10 @@ def calculate_yields(total: int, current_board: list, hacker_position: str, buil
         if hex_data["number"] == total:
             hex_id = f"{hex_data['q']},{hex_data['r']}"
             if hex_id == hacker_position: continue
-            sector_type = hex_data["sector"]; sector_amounts, sector_counts = {}
+            sector_type = hex_data["sector"]
+            # ↓ここを修正しました
+            sector_amounts = {}
+            sector_counts = {}
             cx = center_x + hex_size * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2); cy = center_y + hex_size * (3 / 2) * hex_data["r"]
             for b_id, b_info in buildings.items():
                 bx, by = map(int, b_id.split(','))
