@@ -4,6 +4,9 @@ from pydantic import BaseModel
 import random
 import math
 
+# === 追加：game_logic.pyからのインポート ===
+from game_logic import pay_cost, get_score, calculate_yields
+
 app = FastAPI(title="Neo Zipang Core API", version="1.9.0-beta")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
@@ -51,50 +54,6 @@ class HackerRequest(BaseModel): hex_id: str
 class CardRequest(BaseModel): player: str; deck_type: str = "TECH"
 class UseCardRequest(BaseModel): player: str; card_id: str; target_id: str = None; target_val: int = None
 class InitRollRequest(BaseModel): player: str
-
-def pay_cost(player: str, cost_type: str):
-    cost = COSTS[cost_type]
-    for res, amount in cost.items():
-        if inventory[player][res] < amount: return False
-    for res, amount in cost.items(): inventory[player][res] -= amount
-    return True
-
-def get_score(player: str):
-    base_shares = 0; bonus_shares = 0; titles = []
-    b_counts = {"LOCAL_HUB": 0, "DATA_CENTER": 0, "GATEWAY": 0, "MEGA_HQ": 0}
-    for b in buildings.values():
-        if b["player"] == player: b_counts[b["type"]] += 1
-    base_shares += b_counts["DATA_CENTER"] * 10; base_shares += b_counts["GATEWAY"] * 10; base_shares += b_counts["MEGA_HQ"] * 20
-    p_count = sum(1 for c in cards.get(player, []) if c["type"] == "PATENT")
-    base_shares += p_count * 10; 
-    if p_count >= 3: titles.append("三種の神器大名"); bonus_shares += 20
-    if b_counts["MEGA_HQ"] >= 2: titles.append("メガテック大名"); bonus_shares += 20
-    if b_counts["GATEWAY"] >= 3: titles.append("GW大名"); bonus_shares += 20
-    if sum(1 for r in roads.values() if r["player"] == player) >= 10: titles.append("道大名"); bonus_shares += 20
-    if any(b.get("level", 0) >= 4 for b in bots.values() if b["player"] == player): titles.append("軍師大名"); bonus_shares += 20
-    return {"base": base_shares, "bonus": bonus_shares, "total": base_shares + bonus_shares, "titles": titles}
-
-def calculate_yields(total: int):
-    yields = []
-    for hex_data in current_board:
-        if hex_data["number"] == total:
-            hex_id = f"{hex_data['q']},{hex_data['r']}"
-            if hex_id == hacker_position: continue
-            sector_type = hex_data["sector"]; sector_amounts, sector_counts = {}
-            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2); cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
-            for b_id, b_info in buildings.items():
-                bx, by = map(int, b_id.split(','))
-                if 50 < math.hypot(cx - bx, cy - by) < 70:
-                    p = b_info["player"]
-                    amt = BUILDING_YIELDS.get(b_info["type"], 0.0)
-                    sector_amounts[p] = sector_amounts.get(p, 0.0) + amt
-                    sector_counts[p] = sector_counts.get(p, 0) + 1
-            for p, amt in sector_amounts.items():
-                if amt > 0 and p in inventory: 
-                    if sector_counts[p] >= 2: amt = amt * 1.5
-                    yields.append({"player": p, "sector": sector_type})
-                    inventory[p][sector_type] += amt
-    return yields
 
 def check_annihilation():
     pass
@@ -203,7 +162,7 @@ def end_turn(req: BuildRequest):
             game_status["current_player"] = game_status["turn_order"][idx]
             
     elif game_status["state"] == "playing":
-        score = get_score(req.player)
+        score = get_score(req.player, buildings, cards, roads, bots)
         if score["total"] >= 100:
             game_status["state"] = "finished"
             game_status["winner"] = req.player
@@ -213,7 +172,7 @@ def end_turn(req: BuildRequest):
             game_status["current_turn_index"] = next_idx
             game_status["current_player"] = game_status["turn_order"][next_idx]
             
-    return {"status": "success", "game_status": game_status, "score": get_score(req.player), "bots": bots}
+    return {"status": "success", "game_status": game_status, "score": get_score(req.player, buildings, cards, roads, bots), "bots": bots}
 
 @app.post("/api/draw_card")
 def draw_card(req: CardRequest):
@@ -224,7 +183,7 @@ def draw_card(req: CardRequest):
     card_counter_id += 1
     new_card = {"id": f"c_{card_counter_id}", "type": drawn_type, "name": CARD_DEFS[drawn_type]["name"], "desc": CARD_DEFS[drawn_type]["desc"]}
     cards[req.player].append(new_card)
-    return {"status": "success", "cards": cards, "inventory": inventory, "score": get_score(req.player), "drawn": new_card, "game_status": game_status}
+    return {"status": "success", "cards": cards, "inventory": inventory, "score": get_score(req.player, buildings, cards, roads, bots), "drawn": new_card, "game_status": game_status}
 
 @app.post("/api/use_card")
 def use_card(req: UseCardRequest):
@@ -235,7 +194,7 @@ def use_card(req: UseCardRequest):
     c_type = card["type"]; msg = ""; yields = []
     
     if c_type == "ZERO_DAY":
-        total = req.target_val; yields = calculate_yields(total)
+        total = req.target_val; yields = calculate_yields(total, current_board, hacker_position, buildings, inventory, CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS)
         msg = f"ゼロデイ発動！ 出目【{total}】を強制実行。"
     elif c_type == "VPN":
         if req.target_id in buildings: raise HTTPException(status_code=400, detail="ALREADY_BUILT")
@@ -272,7 +231,7 @@ def use_card(req: UseCardRequest):
         msg = "DDoS攻撃成功！標的のネットワークを破壊しました。"
         
     player_cards.remove(card)
-    return {"status": "success", "msg": msg, "yields": yields, "cards": cards, "board": current_board, "buildings": buildings, "roads": roads, "bots": bots, "inventory": inventory, "score": get_score(req.player), "game_status": game_status}
+    return {"status": "success", "msg": msg, "yields": yields, "cards": cards, "board": current_board, "buildings": buildings, "roads": roads, "bots": bots, "inventory": inventory, "score": get_score(req.player, buildings, cards, roads, bots), "game_status": game_status}
 
 @app.post("/api/trade")
 def trade_resources(req: TradeRequest):
@@ -280,7 +239,7 @@ def trade_resources(req: TradeRequest):
     if req.offer_res not in inventory[req.player] or req.receive_res not in inventory[req.player]: raise HTTPException(status_code=400, detail="INVALID_RESOURCE")
     if inventory[req.player][req.offer_res] < trade_rates[req.player][req.offer_res]: raise HTTPException(status_code=400, detail="INSUFFICIENT_FUNDS")
     inventory[req.player][req.offer_res] -= trade_rates[req.player][req.offer_res]; inventory[req.player][req.receive_res] += 10.0
-    return {"status": "success", "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
+    return {"status": "success", "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player, buildings, cards, roads, bots), "game_status": game_status}
 
 @app.get("/api/trade_rates")
 def get_trade_rates(player: str = "Player1"): return {"rates": trade_rates[player]}
@@ -294,7 +253,6 @@ def build_hub(req: BuildRequest):
     try: new_x, new_y = map(int, req.vertex_id.split(',')); 
     except ValueError: raise HTTPException(status_code=400, detail="INVALID")
 
-    # === 修正：距離ではなく coastal_vertices リストに含まれているかで海沿い判定 ===
     is_coastal = req.vertex_id in coastal_vertices
 
     if req.vertex_id in buildings:
@@ -305,22 +263,22 @@ def build_hub(req: BuildRequest):
         if b["type"] == "LOCAL_HUB":
             if is_coastal and req.upgrade_to == "GATEWAY":
                 if counts["GATEWAY"] >= MAX_BUILDINGS["GATEWAY"]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
-                if not pay_cost(req.player, "GATEWAY"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+                if not pay_cost(req.player, "GATEWAY", COSTS, inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
                 b["type"] = "GATEWAY"
                 available_res = [res for res, rate in trade_rates[req.player].items() if rate > 10.0]
                 discount_res = random.choice(available_res) if available_res else None
                 if discount_res: trade_rates[req.player][discount_res] = 10.0
-                return {"status": "upgraded", "type": "GATEWAY", "discount": discount_res, "buildings": buildings, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
+                return {"status": "upgraded", "type": "GATEWAY", "discount": discount_res, "buildings": buildings, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player, buildings, cards, roads, bots), "game_status": game_status}
             else:
                 if counts["DATA_CENTER"] >= MAX_BUILDINGS["DATA_CENTER"]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
-                if not pay_cost(req.player, "DATA_CENTER"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+                if not pay_cost(req.player, "DATA_CENTER", COSTS, inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
                 b["type"] = "DATA_CENTER"
         elif b["type"] == "DATA_CENTER":
             if counts["MEGA_HQ"] >= MAX_BUILDINGS["MEGA_HQ"]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
-            if not pay_cost(req.player, "MEGA_HQ"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+            if not pay_cost(req.player, "MEGA_HQ", COSTS, inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
             b["type"] = "MEGA_HQ"
         else: raise HTTPException(status_code=400, detail="MAX_LEVEL_REACHED")
-        return {"status": "upgraded", "type": b["type"], "buildings": buildings, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
+        return {"status": "upgraded", "type": b["type"], "buildings": buildings, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player, buildings, cards, roads, bots), "game_status": game_status}
         
     for ex_id in buildings.keys():
         ex_x, ex_y = map(int, ex_id.split(','))
@@ -336,7 +294,7 @@ def build_hub(req: BuildRequest):
                 v1, v2 = r_id.split('_')
                 if req.vertex_id == v1 or req.vertex_id == v2: is_connected = True; break
         if not is_connected: raise HTTPException(status_code=400, detail="NOT_CONNECTED_TO_ROAD")
-        if not pay_cost(req.player, "LOCAL_HUB"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+        if not pay_cost(req.player, "LOCAL_HUB", COSTS, inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
     else:
         st = game_status["setup_turn"]
         expected = 1 if st < 4 else 2
@@ -344,7 +302,7 @@ def build_hub(req: BuildRequest):
             raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
 
     buildings[req.vertex_id] = {"player": req.player, "type": new_type, "bot_level": 0}
-    return {"status": "success", "buildings": buildings, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
+    return {"status": "success", "buildings": buildings, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player, buildings, cards, roads, bots), "game_status": game_status}
 
 @app.post("/api/move_hacker")
 def move_hacker(req: HackerRequest):
@@ -357,13 +315,13 @@ def deploy_bot(req: BuildRequest):
     if game_status["state"] == "setup": raise HTTPException(status_code=400, detail="CANNOT_DEPLOY_IN_SETUP")
     if req.vertex_id in bots and bots[req.vertex_id]["player"] == req.player:
         if bots[req.vertex_id]["level"] >= 4: raise HTTPException(status_code=400, detail="MAX_BOT_LEVEL_REACHED")
-        if not pay_cost(req.player, "BOT"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+        if not pay_cost(req.player, "BOT", COSTS, inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
         bots[req.vertex_id]["level"] += 1
     else:
         if req.vertex_id not in buildings or buildings[req.vertex_id]["player"] != req.player: raise HTTPException(status_code=400, detail="MUST_DEPLOY_ON_YOUR_HUB")
-        if not pay_cost(req.player, "BOT"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+        if not pay_cost(req.player, "BOT", COSTS, inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
         bots[req.vertex_id] = {"player": req.player, "level": 1, "has_moved": False}
-    return {"status": "success", "bots": bots, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
+    return {"status": "success", "bots": bots, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player, buildings, cards, roads, bots), "game_status": game_status}
 
 @app.post("/api/move_bot")
 def move_bot(req: MoveRequest):
@@ -377,7 +335,7 @@ def move_bot(req: MoveRequest):
     
     pts = [req.from_vertex, req.to_vertex]; pts.sort(); edge_id = f"{pts[0]}_{pts[1]}"
     if edge_id not in roads: raise HTTPException(status_code=400, detail="MUST_MOVE_ALONG_ANY_ROAD")
-    if not pay_cost(req.player, "MOVE_BOT"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+    if not pay_cost(req.player, "MOVE_BOT", COSTS, inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
     
     bot_data = dict(bot); atk_level = bot_data["level"]; target_bldg = buildings.get(req.to_vertex); target_bot = bots.get(req.to_vertex)
     is_enemy = (target_bldg and target_bldg["player"] != req.player) or (target_bot and target_bot["player"] != req.player)
@@ -403,7 +361,7 @@ def move_bot(req: MoveRequest):
     else:
         if req.to_vertex in bots: raise HTTPException(status_code=400, detail="ALLY_BOT_ALREADY_HERE")
         bot_data["has_moved"] = True; bots[req.to_vertex] = bot_data; del bots[req.from_vertex]
-    return {"status": "success", "bots": bots, "buildings": buildings, "inventory": inventory, "combat_log": combat_log, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
+    return {"status": "success", "bots": bots, "buildings": buildings, "inventory": inventory, "combat_log": combat_log, "trade_rates": trade_rates, "score": get_score(req.player, buildings, cards, roads, bots), "game_status": game_status}
 
 @app.post("/api/build_road")
 def build_road(req: RoadRequest):
@@ -435,7 +393,7 @@ def build_road(req: RoadRequest):
                     ex_v1, ex_v2 = r_id.split('_')
                     if v1 == ex_v1 or v1 == ex_v2 or v2 == ex_v1 or v2 == ex_v2: is_connected = True; break
         if not is_connected: raise HTTPException(status_code=400, detail="NOT_CONNECTED")
-        if not pay_cost(req.player, "ROAD"): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+        if not pay_cost(req.player, "ROAD", COSTS, inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
         
     roads[req.edge_id] = {"player": req.player}
     
@@ -449,14 +407,14 @@ def build_road(req: RoadRequest):
                 hex_data["sector"] = new_sector; hex_data["number"] = random.choice([2, 3, 4, 5, 6, 8, 9, 10, 11, 12])
                 explored = True; break
                 
-    return {"status": "success", "roads": roads, "board": current_board, "explored": explored, "new_sector": new_sector, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
+    return {"status": "success", "roads": roads, "board": current_board, "explored": explored, "new_sector": new_sector, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player, buildings, cards, roads, bots), "game_status": game_status}
 
 @app.get("/api/inventory")
 def get_inventory(): return {"inventory": inventory}
 @app.post("/api/hack_resources")
 def hack_resources(req: InitRollRequest):
     for res in inventory[req.player]: inventory[req.player][res] += 100.0
-    return {"status": "hacked", "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player), "game_status": game_status}
+    return {"status": "hacked", "inventory": inventory, "trade_rates": trade_rates, "score": get_score(req.player, buildings, cards, roads, bots), "game_status": game_status}
 
 @app.get("/api/dice")
 def roll_dice():
@@ -474,8 +432,8 @@ def roll_dice():
                     for res in inventory[p]: inventory[p][res] += 10.0
                 event_type = "BOOM"; event_log = "【好景気（助成金）】すべての資源が +10.0 されました！"
         else: event_type = "HACKER"; event_log = "【ランサムウェア集団出現】マップを開拓済みのセクターをクリックして、ハッカーを配置してください！"
-    yields = calculate_yields(total)
-    return {"dice1": dice1, "dice2": dice2, "total": total, "yields": yields, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(game_status["current_player"]), "event_type": event_type, "event_log": event_log, "hacker_position": hacker_position, "game_status": game_status}
+    yields = calculate_yields(total, current_board, hacker_position, buildings, inventory, CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS)
+    return {"dice1": dice1, "dice2": dice2, "total": total, "yields": yields, "inventory": inventory, "trade_rates": trade_rates, "score": get_score(game_status["current_player"], buildings, cards, roads, bots), "event_type": event_type, "event_log": event_log, "hacker_position": hacker_position, "game_status": game_status}
 
 @app.post("/api/reset")
 def reset_game():
