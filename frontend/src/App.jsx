@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import HexMap from './components/HexMap';
-// === 追加：PlayerStatusコンポーネントの読み込み ===
 import PlayerStatus from './components/PlayerStatus';
+// === 追加：CardHandコンポーネントの読み込み ===
+import CardHand from './components/CardHand';
 
 const RESOURCE_TYPES = ["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"];
 const MAX_STOCKS = { LOCAL_HUB: 5, DATA_CENTER: 4, GATEWAY: 3, MEGA_HQ: 2 };
@@ -236,7 +237,6 @@ function App() {
         </div>
       )}
 
-      {/* === 修正箇所：切り出したPlayerStatusコンポーネントを配置 === */}
       <PlayerStatus 
         currentPlayer={currentPlayer}
         pColor={pColor}
@@ -317,22 +317,9 @@ function App() {
 
         <HexMap currentPlayer={currentPlayer} activeNumber={dice ? dice.total : null} actionMode={actionMode} onStateUpdate={handleStateUpdate} refreshData={fetchData} onModeChange={setActionMode} activeCard={activeCard} setEventLog={setEventLog} hasRolledDice={hasRolledDice} gameStatus={gameStatus} />
         
-        {cards && cards.length > 0 && (
-          <div style={{ marginTop: '20px', width: '800px', padding: '15px', border: '1px solid #bfff00', borderRadius: '5px', backgroundColor: '#0a0a0a' }}>
-            <h3 style={{ margin: '0 0 10px 0', color: '#bfff00', fontSize: '1rem' }}>[ YOUR HAND (CARDS) ]</h3>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {cards.map(c => (
-                <div key={c.id} style={{ padding: '10px', border: '1px solid #555', borderRadius: '4px', backgroundColor: '#111', width: '230px' }}>
-                  <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '5px' }}>{c.name}</div>
-                  <div style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '10px', minHeight: '30px' }}>{c.desc}</div>
-                  <button onClick={() => handleUseCard(c)} disabled={actionMode === 'USE_CARD' || actionMode === 'HACKER'} style={{ width: '100%', padding: '5px', backgroundColor: c.type === 'PATENT' ? '#333' : '#bfff00', color: c.type === 'PATENT' ? '#888' : '#000', border: 'none', fontWeight: 'bold', cursor: c.type === 'PATENT' ? 'not-allowed' : 'pointer' }}>
-                    {c.type === 'PATENT' ? 'PASSIVE EFFECT' : 'EXECUTE CARD'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* === 修正箇所：切り出したCardHandコンポーネントを配置 === */}
+        <CardHand cards={cards} actionMode={actionMode} handleUseCard={handleUseCard} />
+
       </main>
       <style>{`@keyframes blink { 50% { opacity: 0.5; } }`}</style>
       <footer style={{ padding: '0.5rem', borderTop: `1px dotted ${pColor}`, textAlign: 'center', fontSize: '0.8rem', opacity: 0.7 }}>&gt; SYSTEM SECURE. SURVIVAL DX.</footer>
