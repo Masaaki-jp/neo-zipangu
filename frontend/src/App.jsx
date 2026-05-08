@@ -78,8 +78,8 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-  const handleEndTurn = async () => {
-    if (gameStatus.state === "playing" && !hasRolledDice) {
+  const handleEndTurn = async (isForcedTimeout = false) => {
+    if (!isForcedTimeout && gameStatus.state === "playing" && !hasRolledDice) {
       alert("[ ERROR ] ターンを終了する前に、必ずサイコロ（ROLL DICE）を振るか、ゼロデイ攻撃を使用してください！");
       return;
     }
@@ -100,14 +100,15 @@ function App() {
 
   useEffect(() => {
     if (gameStatus.state !== "playing" && gameStatus.state !== "setup") return;
-    if (timeLeft <= 0) { 
-      if (!hasRolledDice && gameStatus.state === "playing") handleRollDice();
+    if (timeLeft <= 0) {
+      // ▼ ここにあった handleRollDice() を削除！サイコロを振らずに即終了させます。
+      
       setTimeout(() => {
-        alert(`[ TIME OUT ] ${currentPlayer} の持ち時間が経過しました。\n強制的にターンを終了します！`); 
-        handleEndTurn(); 
+        handleEndTurn(true); // 門番のいないターン終了APIだけを安全に叩く
       }, 1000);
-      return; 
+      return;
     }
+    
     const timerId = setInterval(() => { setTimeLeft((prev) => prev - 1); }, 1000);
     return () => clearInterval(timerId);
   }, [timeLeft, gameStatus.state]);
