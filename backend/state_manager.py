@@ -1,6 +1,15 @@
 # プレイヤー定義
 PLAYERS = ["Player1", "Player2", "Player3", "Player4"]
 
+# === 新規追加：プレイヤー属性（人間かCOMか） ===
+# 検証のため、Player2だけを com_speeder に設定し、他は human にします
+player_types = {
+    "Player1": "human",
+    "Player2": "com_speeder",
+    "Player3": "human",
+    "Player4": "human"
+}
+
 # マップ・インフラ関連
 current_board = []
 buildings = {}
