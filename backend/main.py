@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import random
 import math
 
@@ -11,16 +12,20 @@ from schemas import (
     HackerRequest, CardRequest, UseCardRequest, InitRollRequest
 )
 
-# === 追加：定数のインポート ===
 from constants import (
     HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS, MAX_BUILDINGS, 
     COSTS, CARD_DEFS, TECH_DECK, WEAPON_DECK
 )
 
+# === 新規追加：AIモジュールのインポート ===
+from com_ai import com_speeder
+
 app = FastAPI(title="Neo Zipang Core API", version="1.9.0-beta")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# （ここにあった HEX_SIZE や COSTS などの定数は constants.py に移動したため削除）
+# === 新規追加：COM実行用のリクエストモデル ===
+class ComExecuteRequest(BaseModel):
+    player: str
 
 def check_annihilation():
     pass
@@ -76,7 +81,14 @@ def get_or_generate_board():
             state.bots[npc_vertex] = {"player": "NPC_CORP", "level": random.randint(1, 3), "has_moved": False}
             placed_np_hubs += 1
 
-    return {"board": state.current_board, "buildings": state.buildings, "roads": state.roads, "bots": state.bots, "hacker_position": state.hacker_position, "cards": state.cards, "game_status": state.game_status, "inventory": state.inventory, "trade_rates": state.trade_rates, "init_rolls": state.init_rolls, "coastal_vertices": list(state.coastal_vertices)}
+    # === 修正箇所：player_types をフロントに渡す ===
+    return {
+        "board": state.current_board, "buildings": state.buildings, "roads": state.roads, 
+        "bots": state.bots, "hacker_position": state.hacker_position, "cards": state.cards, 
+        "game_status": state.game_status, "inventory": state.inventory, "trade_rates": state.trade_rates, 
+        "init_rolls": state.init_rolls, "coastal_vertices": list(state.coastal_vertices),
+        "player_types": state.player_types
+    }
 
 @app.post("/api/init_roll")
 def init_roll(req: InitRollRequest):
@@ -131,6 +143,49 @@ def end_turn(req: BuildRequest):
             state.game_status["current_player"] = state.game_status["turn_order"][next_idx]
             
     return {"status": "success", "game_status": state.game_status, "score": get_score(req.player, state.buildings, state.cards, state.roads, state.bots), "bots": state.bots}
+
+# === 新規追加：COM実行用エンドポイント ===
+@app.post("/api/com_execute")
+def com_execute(req: ComExecuteRequest):
+    import game_logic
+    import constants
+    
+    # セキュリティ・整合性チェック
+    if state.game_status["current_player"] != req.player:
+        raise HTTPException(status_code=400, detail="NOT_COM_TURN")
+    
+    current_type = state.player_types.get(req.player, "human")
+    if current_type == "human":
+        raise HTTPException(status_code=400, detail="PLAYER_IS_HUMAN")
+        
+    if state.game_status["state"] != "playing":
+        raise HTTPException(status_code=400, detail="COM_ONLY_ACTIVE_IN_PLAYING_STATE")
+
+    # AIの種類に応じて処理を委譲
+    if current_type == "com_speeder":
+        result = com_speeder.execute_turn(req.player, state, game_logic, constants)
+    else:
+        # 他のAIが指定されていた場合のフェイルセーフ（今回はspeeder固定）
+        result = com_speeder.execute_turn(req.player, state, game_logic, constants)
+        
+    # スコア計算（勝利判定）
+    score = get_score(req.player, state.buildings, state.cards, state.roads, state.bots)
+    if score["total"] >= 100:
+        state.game_status["state"] = "finished"
+        state.game_status["winner"] = req.player
+        state.game_status["reason"] = "100M_SHARES"
+
+    # 最新状態をフロントに返す
+    return {
+        "status": "success",
+        "action_logs": result["logs"],
+        "dice": result["dice"],
+        "game_status": state.game_status,
+        "inventory": state.inventory,
+        "score": score,
+        "board": state.current_board,
+        "bots": state.bots
+    }
 
 @app.post("/api/draw_card")
 def draw_card(req: CardRequest):
