@@ -38,10 +38,6 @@ function App() {
       setBuildings(boardData.buildings || {});
       setGameStatus(boardData.game_status);
       setInitRolls(boardData.init_rolls || {});
-      // バックエンドから送られてきた player_types も gameStatus に含めておく
-      if (boardData.player_types) {
-        setGameStatus(prev => ({ ...prev, player_types: boardData.player_types }));
-      }
       if (boardData.inventory) setInventory(boardData.inventory[currentPlayer]);
       if (boardData.trade_rates) setTradeRates(boardData.trade_rates[currentPlayer]);
       if (boardData.score) setScore(boardData.score);
@@ -58,8 +54,7 @@ function App() {
     if (newScore) setScore({ ...newScore });
     if (newCards && newCards[currentPlayer]) setCards([...newCards[currentPlayer]]);
     if (newGameStatus) {
-      // player_types が既存のステートにあれば引き継ぐ
-      setGameStatus(prev => ({ ...newGameStatus, player_types: prev.player_types || newGameStatus.player_types }));
+      setGameStatus({ ...newGameStatus });
       if (newGameStatus.current_player !== currentPlayer) {
         setTimeLeft(60); 
         setHasRolledDice(false);
@@ -74,8 +69,7 @@ function App() {
       const res = await fetch('/api/init_roll', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: p }) });
       if (res.ok) {
         const data = await res.json();
-        setInitRolls(data.init_rolls); 
-        setGameStatus(prev => ({ ...data.game_status, player_types: prev.player_types }));
+        setInitRolls(data.init_rolls); setGameStatus(data.game_status);
         if (data.game_status.state === 'setup') {
           fetchData();
           setHasRolledDice(true); 
@@ -94,8 +88,7 @@ function App() {
       const res = await fetch('/api/end_turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: "", player: currentPlayer }) });
       if (res.ok) {
         const data = await res.json(); 
-        setGameStatus(prev => ({ ...data.game_status, player_types: prev.player_types })); 
-        setScore(data.score); 
+        setGameStatus(data.game_status); setScore(data.score); 
         setHasRolledDice(false); setDice(null); setEventLog(null); setIsTradeOpen(false); setActionMode('BUILD');
         fetchData();
       } else {
@@ -118,47 +111,6 @@ function App() {
     const timerId = setInterval(() => { setTimeLeft((prev) => prev - 1); }, 1000);
     return () => clearInterval(timerId);
   }, [timeLeft, gameStatus.state]);
-
-  // === 新規追加：COMターン自動進行処理 ===
-  useEffect(() => {
-    // プレイ中以外、または player_types のデータがない場合は何もしない
-    if (gameStatus.state !== "playing" || !gameStatus.player_types) return;
-
-    const currentType = gameStatus.player_types[currentPlayer];
-    
-    // 現在のプレイヤーが人間なら何もしない
-    if (currentType === "human") return;
-
-    // COMのターンであれば、自動で実行APIを叩く
-    const executeComTurn = async () => {
-      try {
-        const res = await fetch('/api/com_execute', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ player: currentPlayer })
-        });
-        
-        if (res.ok) {
-          const data = await res.json();
-          // ログを画面のイベントログに表示（COMのダイス結果など）
-          setEventLog(data.action_logs.join('\n'));
-          // 数秒待ってから画面を更新（COMが考えている「フリ」を演出）
-          setTimeout(() => {
-            handleStateUpdate(data.inventory, null, null, data.score, null, data.game_status);
-            setDice(data.dice);
-            fetchData();
-          }, 2000);
-        } else {
-          console.error("COM実行エラー:", await res.json());
-        }
-      } catch (err) {
-        console.error("COM通信エラー:", err);
-      }
-    };
-
-    executeComTurn();
-  }, [gameStatus.current_player, gameStatus.state, gameStatus.player_types]);
-  // === 新規追加ここまで ===
 
   const handleRollDice = async () => {
     if (isRolling || hasRolledDice) return;

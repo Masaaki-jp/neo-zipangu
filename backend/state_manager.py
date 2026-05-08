@@ -34,6 +34,7 @@ game_status = {
     "current_turn_index": 0, 
     "current_player": "Player1",
     "setup_turn": 0
+    "turn_end_time": 0.0  # === 新規追加：サーバーが管理するターンの締め切り時刻 ===
 }
 init_rolls = {}
 roll_counter = 0
