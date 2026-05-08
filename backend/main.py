@@ -19,6 +19,8 @@ from constants import (
 
 # === 新規追加：AIモジュールのインポート ===
 from com_ai import com_speeder
+# === 新規追加：カウントダウンモジュールのインポート ===
+from countdown import calculate_deadline, is_time_up
 
 app = FastAPI(title="Neo Zipang Core API", version="1.9.0-beta")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -29,6 +31,12 @@ class ComExecuteRequest(BaseModel):
 
 def check_annihilation():
     pass
+
+def enforce_time_limit():
+    """現在時刻が締切を過ぎていれば、即座に408エラーで弾き返す門番"""
+    deadline = state.game_status.get("turn_end_time")
+    if is_time_up(deadline):
+        raise HTTPException(status_code=408, detail="TURN_TIMEOUT")
 
 @app.get("/health")
 def health_check(): return {"status": "operational"}
@@ -103,6 +111,14 @@ def init_roll(req: InitRollRequest):
         state.game_status["current_player"] = sorted_players[0]
         state.game_status["state"] = "setup"
         state.game_status["setup_turn"] = 0
+
+        # （ゲーム開始時の最初の人のタイマーセット）
+        current_p = state.game_status["current_player"]
+        if state.player_types.get(current_p, "human") == "human":
+            state.game_status["turn_end_time"] = calculate_deadline(60)
+        else:
+            state.game_status["turn_end_time"] = None
+
     return {"status": "success", "init_rolls": state.init_rolls, "game_status": state.game_status}
 
 @app.post("/api/end_turn")
@@ -141,6 +157,14 @@ def end_turn(req: BuildRequest):
             next_idx = (state.game_status["current_turn_index"] + 1) % 4
             state.game_status["current_turn_index"] = next_idx
             state.game_status["current_player"] = state.game_status["turn_order"][next_idx]
+
+    # （次の人のためのタイマーセット）
+    if state.game_status["state"] != "finished":
+        next_p = state.game_status["current_player"]
+        if state.player_types.get(next_p, "human") == "human":
+            state.game_status["turn_end_time"] = calculate_deadline(60)
+        else:
+            state.game_status["turn_end_time"] = None
             
     return {"status": "success", "game_status": state.game_status, "score": get_score(req.player, state.buildings, state.cards, state.roads, state.bots), "bots": state.bots}
 
@@ -189,6 +213,7 @@ def com_execute(req: ComExecuteRequest):
 
 @app.post("/api/draw_card")
 def draw_card(req: CardRequest):
+    enforce_time_limit()
     if state.inventory[req.player]["NUCLEAR"] < 10.0: raise HTTPException(status_code=400, detail="INSUFFICIENT_NUCLEAR")
     state.inventory[req.player]["NUCLEAR"] -= 10.0
     drawn_type = random.choice(TECH_DECK) if req.deck_type == "TECH" else random.choice(WEAPON_DECK)
@@ -199,6 +224,7 @@ def draw_card(req: CardRequest):
 
 @app.post("/api/use_card")
 def use_card(req: UseCardRequest):
+    enforce_time_limit()
     player_cards = state.cards.get(req.player, [])
     card = next((c for c in player_cards if c["id"] == req.card_id), None)
     if not card: raise HTTPException(status_code=400, detail="CARD_NOT_FOUND")
@@ -246,6 +272,7 @@ def use_card(req: UseCardRequest):
 
 @app.post("/api/trade")
 def trade_resources(req: TradeRequest):
+    enforce_time_limit()
     if req.offer_res not in state.inventory[req.player] or req.receive_res not in state.inventory[req.player]: raise HTTPException(status_code=400, detail="INVALID_RESOURCE")
     if state.inventory[req.player][req.offer_res] < state.trade_rates[req.player][req.offer_res]: raise HTTPException(status_code=400, detail="INSUFFICIENT_FUNDS")
     state.inventory[req.player][req.offer_res] -= state.trade_rates[req.player][req.offer_res]; state.inventory[req.player][req.receive_res] += 10.0
@@ -256,6 +283,7 @@ def get_trade_rates(player: str = "Player1"): return {"rates": state.trade_rates
 
 @app.post("/api/build")
 def build_hub(req: BuildRequest):
+    enforce_time_limit()
     my_bldgs = [b for b in state.buildings.values() if b["player"] == req.player]; is_free_phase = state.game_status["state"] == "setup"
     counts = {"LOCAL_HUB": 0, "DATA_CENTER": 0, "GATEWAY": 0, "MEGA_HQ": 0}
     for b in my_bldgs: counts[b["type"]] += 1
@@ -315,11 +343,13 @@ def build_hub(req: BuildRequest):
 
 @app.post("/api/move_hacker")
 def move_hacker(req: HackerRequest):
+    enforce_time_limit()
     state.hacker_position = req.hex_id
     return {"status": "success", "hacker_position": state.hacker_position}
 
 @app.post("/api/deploy_bot")
 def deploy_bot(req: BuildRequest):
+    enforce_time_limit()
     if state.game_status["state"] == "setup": raise HTTPException(status_code=400, detail="CANNOT_DEPLOY_IN_SETUP")
     if req.vertex_id in state.bots and state.bots[req.vertex_id]["player"] == req.player:
         if state.bots[req.vertex_id]["level"] >= 4: raise HTTPException(status_code=400, detail="MAX_BOT_LEVEL_REACHED")
@@ -333,6 +363,7 @@ def deploy_bot(req: BuildRequest):
 
 @app.post("/api/move_bot")
 def move_bot(req: MoveRequest):
+    enforce_time_limit()
     if state.game_status["state"] == "setup": raise HTTPException(status_code=400, detail="CANNOT_MOVE_IN_SETUP")
     if req.from_vertex not in state.bots or state.bots[req.from_vertex]["player"] != req.player: raise HTTPException(status_code=400, detail="NO_BOT_HERE")
     bot = state.bots[req.from_vertex]
@@ -372,6 +403,7 @@ def move_bot(req: MoveRequest):
 
 @app.post("/api/build_road")
 def build_road(req: RoadRequest):
+    enforce_time_limit()
     my_roads = [r for r in state.roads.values() if r["player"] == req.player]
     is_free_phase = state.game_status["state"] == "setup"
     
@@ -425,6 +457,7 @@ def hack_resources(req: InitRollRequest):
 
 @app.get("/api/dice")
 def roll_dice():
+    enforce_time_limit()
     if state.game_status["state"] == "setup": raise HTTPException(status_code=400, detail="CANNOT_ROLL_IN_SETUP")
     dice1, dice2 = random.randint(1, 6), random.randint(1, 6); total = dice1 + dice2; event_log = None; event_type = None
     if dice1 == dice2:
