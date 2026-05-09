@@ -30,7 +30,36 @@ class ComExecuteRequest(BaseModel):
     player: str
 
 def check_annihilation():
-    pass
+    # プレイ中でなければ何もしない
+    if state.game_status.get("state") != "playing":
+        return
+
+    # 全プレイヤーの現在の拠点数を数える
+    bldg_counts = {p: 0 for p in state.game_status.get("turn_order", [])}
+    for b in state.buildings.values():
+        if b["player"] in bldg_counts:
+            bldg_counts[b["player"]] += 1
+            
+    # 拠点が0個になったプレイヤーを探す
+    annihilated_players = [p for p, count in bldg_counts.items() if count == 0]
+    
+    if annihilated_players:
+        loser = annihilated_players[0] # 倒産したプレイヤー
+        
+        # 全員の時価総額（スコア）を計算してトップを決める
+        best_player = None
+        max_score = -1
+        
+        for p in state.game_status["turn_order"]:
+            score_data = get_score(p, state.buildings, state.cards, state.roads, state.bots)
+            if score_data["total"] > max_score:
+                max_score = score_data["total"]
+                best_player = p
+                
+        # ゲーム終了の判決を下す！
+        state.game_status["state"] = "finished"
+        state.game_status["winner"] = best_player
+        state.game_status["reason"] = f"ANNIHILATION: {loser} の全拠点が陥落し、倒産しました！"
 
 def enforce_time_limit():
     """現在時刻が締切を過ぎていれば、即座に408エラーで弾き返す門番"""
