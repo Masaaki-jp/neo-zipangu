@@ -132,8 +132,15 @@ def end_turn(req: BuildRequest):
         st = state.game_status["setup_turn"]
         expected_count = 1 if st < 4 else 2
         
-        if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
-            raise HTTPException(status_code=400, detail="MUST_BUILD_HUB_AND_ROAD")
+        # --- 🥷 追加：タイムアウトしているか（絶対時刻を過ぎているか）を確認 ---
+        deadline = state.game_status.get("turn_end_time")
+        is_timeout = is_time_up(deadline)
+
+        # 時間が残っている（通常の手動終了）時「だけ」、配置の強制ルールを適用する
+        if not is_timeout:
+            if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
+                raise HTTPException(status_code=400, detail="MUST_BUILD_HUB_AND_ROAD")
+        # -------------------------------------------------------------
             
         state.game_status["setup_turn"] += 1
         st = state.game_status["setup_turn"]
