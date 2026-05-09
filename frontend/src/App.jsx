@@ -199,6 +199,33 @@ function App() {
     try { await fetch('/api/reset', { method: 'POST' }); window.location.reload(); } catch (err) { console.error(err); }
   };
 
+  // 🥷 緊急脱出：初期画面（順番決め）に戻る
+  const handleExitToTitle = async () => {
+    const confirmExit = window.confirm("タイトル画面に戻りますか？現在の進行状況は破棄されます。");
+    if (!confirmExit) return;
+
+    try {
+      // 1. バックエンドの状態をリセット
+      const res = await fetch('/api/reset', { method: 'POST' });
+      if (res.ok) {
+        // 2. フロントエンドの全ての状態を初期値にリセット
+        setGameStatus({ state: "init_roll", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 });
+        setInitRolls({});
+        setDice(null);
+        setInventory(null);
+        setCards([]);
+        setScore({ total: 0, titles: [] });
+        setHasRolledDice(false);
+        setEventLog(null);
+        
+        console.log("イジェクト成功：初期画面に戻りました。");
+      }
+    } catch (err) {
+      console.error("緊急脱出に失敗:", err);
+      alert("システムリセットに失敗しました。ページをリロードしてください。");
+    }
+  };
+
   const handleDrawCard = async (deckType) => {
     if (!inventory || inventory.NUCLEAR < 10.0) { alert("[ ERROR ] NUCLEAR が 10.0 必要です！"); return; }
     try {
@@ -336,7 +363,39 @@ function App() {
 
       </main>
       <style>{`@keyframes blink { 50% { opacity: 0.5; } }`}</style>
-      <footer style={{ padding: '0.5rem', borderTop: `1px dotted ${pColor}`, textAlign: 'center', fontSize: '0.8rem', opacity: 0.7 }}>&gt; SYSTEM SECURE. SURVIVAL DX.</footer>
+      <footer style={{ 
+        padding: '1rem', 
+        borderTop: `1px dotted ${pColor}`, 
+        textAlign: 'center', 
+        fontSize: '0.8rem', 
+        opacity: 0.8,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '20px'
+      　}}>
+        <span>&gt; SYSTEM SECURE. SURVIVAL DX.</span>
+        
+        {/* 🥷 緊急脱出ボタン */}
+        <button 
+          onClick={handleExitToTitle}
+          style={{
+            backgroundColor: 'transparent',
+            color: '#ff0055', // 警告色（赤）
+            border: '1px solid #ff0055',
+            padding: '2px 10px',
+            cursor: 'pointer',
+            fontSize: '0.7rem',
+            fontWeight: 'bold',
+            borderRadius: '3px',
+            transition: '0.3s'
+          }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = '#ff005522'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+        >
+          [ EXIT TO TITLE ]
+        </button>
+      </footer>
     </div>
   );
 }
