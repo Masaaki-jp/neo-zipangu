@@ -12,13 +12,14 @@ from schemas import (
     HackerRequest, CardRequest, UseCardRequest, InitRollRequest
 )
 
+# === 新規追加：AIモジュールのインポート ===
+from com_ai import com_speeder
+
 from constants import (
     HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS, MAX_BUILDINGS, 
     COSTS, CARD_DEFS, TECH_DECK, WEAPON_DECK
 )
 
-# === 新規追加：AIモジュールのインポート ===
-from com_ai import com_speeder
 # === 新規追加：カウントダウンモジュールのインポート ===
 from countdown import calculate_deadline, is_time_up
 
@@ -243,6 +244,17 @@ def com_execute(req: ComExecuteRequest):
         state.game_status["state"] = "finished"
         state.game_status["winner"] = req.player
         state.game_status["reason"] = "100M_SHARES"
+
+# 🥷 修正：次のプレイヤーのための締切時刻を生成する
+    from countdown import calculate_deadline
+    if state.game_status["state"] != "finished":
+        next_p = state.game_status["current_player"]
+        if state.player_types.get(next_p, "human") == "human":
+            # 次が人間なら60秒の絶対時刻をセット
+            state.game_status["turn_end_time"] = calculate_deadline(60)
+        else:
+            # 次がCOMならタイマー不要
+            state.game_status["turn_end_time"] = None
 
     # 最新状態をフロントに返す
     return {

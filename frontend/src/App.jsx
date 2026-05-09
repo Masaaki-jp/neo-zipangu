@@ -98,20 +98,67 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
+// ==============================================================
+  // 🥷 監視カメラ（useEffect）群：ここから一箇所にまとめます
+  // ==============================================================
+
+  // ① COMターンの自動実行監視カメラ
   useEffect(() => {
-    if (gameStatus.state !== "playing" && gameStatus.state !== "setup") return;
-    if (timeLeft <= 0) {
-      // ▼ ここにあった handleRollDice() を削除！サイコロを振らずに即終了させます。
-      
-      setTimeout(() => {
-        handleEndTurn(true); // 門番のいないターン終了APIだけを安全に叩く
-      }, 1000);
-      return;
+    if (gameStatus.state === "playing" && gameStatus.current_player !== "Player1") {
+      const runComTurn = async () => {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+          const res = await fetch('/api/com_execute', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ player: gameStatus.current_player })
+          });
+          const data = await res.json();
+          if (data.status === "success") {
+            setGameStatus(data.game_status);
+            setDice(data.dice);
+            console.log("COMの行動:", data.action_logs);
+          }
+        } catch (error) {
+          console.error("COMターンの実行に失敗:", error);
+        }
+      };
+      runComTurn();
     }
-    
-    const timerId = setInterval(() => { setTimeLeft((prev) => prev - 1); }, 1000);
+  }, [gameStatus.current_player, gameStatus.state]);
+
+  // ② タイマー同期 ＆ 0秒時の自動スキップ監視カメラ
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      if (!gameStatus.turn_end_time) {
+        setTimeLeft(60); 
+        return;
+      }
+
+      const now = Date.now() / 1000;
+      const diff = Math.max(0, Math.floor(gameStatus.turn_end_time - now));
+      setTimeLeft(diff);
+
+      // 0秒になったら、冗長なfetchは書かずに上の handleEndTurn を直接呼ぶ！
+      if (diff === 0 && gameStatus.current_player === "Player1") {
+        clearInterval(timerId); 
+        console.log("タイムアウト！強制ターンエンドを実行します。");
+        handleEndTurn(true); 
+      }
+    }, 1000); 
+
     return () => clearInterval(timerId);
-  }, [timeLeft, gameStatus.state]);
+  }, [gameStatus.turn_end_time, gameStatus.current_player]);
+
+  // ③ ターン切り替え時の画面リセット（清掃係）監視カメラ
+  useEffect(() => {
+    // 順番が切り替わった瞬間に前の人のサイコロの表示を消す
+    setDice(null);
+  }, [gameStatus.current_player]);
+
+  // ==============================================================
+  // 🥷 監視カメラ群：ここまで
+  // ==============================================================
 
   const handleRollDice = async () => {
     if (isRolling || hasRolledDice) return;
