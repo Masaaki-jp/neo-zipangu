@@ -1,4 +1,5 @@
 import random
+import time  # 🥷 追加：タイマー更新のために絶対必要！
 
 def execute_turn(player_id: str, state, logic, constants):
     """
@@ -40,13 +41,16 @@ def execute_turn(player_id: str, state, logic, constants):
         b["has_moved"] = False
         
     # 次のプレイヤーへターンを回す
-    next_idx = (state.game_status["current_turn_index"] + 1) % 4
+    next_idx = (state.game_status["current_turn_index"] + 1) % len(state.game_status["turn_order"])
     state.game_status["current_turn_index"] = next_idx
     state.game_status["current_player"] = state.game_status["turn_order"][next_idx]
     
+    # 🥷 ！！！ここがロールバックの原因を潰す最重要コード！！！ 🥷
+    # 次のプレイヤー（人間）にターンが渡る瞬間に、新しく60秒の猶予を与える
+    state.game_status["turn_end_time"] = time.time() + 60
+    
     action_logs.append(f"[COM] 何も建築せず、ターンを終了しました。")
 
-    # === 修正箇所：フロントエンドが要求する yields を必ず含めて返す ===
     return {
         "dice": {
             "dice1": dice1, 
