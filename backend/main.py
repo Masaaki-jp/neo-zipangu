@@ -138,8 +138,17 @@ def end_turn(req: BuildRequest):
 
         # 時間が残っている（通常の手動終了）時「だけ」、配置の強制ルールを適用する
         if not is_timeout:
+            # 通常時：ちゃんと置いてないとエラーで弾く
             if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
                 raise HTTPException(status_code=400, detail="MUST_BUILD_HUB_AND_ROAD")
+        else:
+            # ！！！追加：タイムアウト時、配置をサボっていたら「無効試合」にする！！！
+            if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
+                reset_game() # 既存の神関数を呼び出してすべてを「無」に帰す
+                state.game_status["reason"] = f"{req.player} が初期配置を放棄したため、無効試合（解散）となりました。"
+                
+                # スコア計算などはせずに、即座にリセット状態を返す
+                return {"status": "success", "game_status": state.game_status, "score": {"total": 0, "titles": []}, "bots": {}}
         # -------------------------------------------------------------
             
         state.game_status["setup_turn"] += 1
