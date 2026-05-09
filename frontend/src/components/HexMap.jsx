@@ -1,19 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
+// 🥷 外部ファイルから設定値をインポートする
+import { PLAYER_COLORS, SECTORS, BUILDING_STYLES } from '../styles'; // パスは適宜合わせてください
 
 const HEX_SIZE = 60; 
-const PLAYER_COLORS = {
-  Player1: { hex: '#ff0033', rgba: 'rgba(255, 0, 51, 0.2)' },   
-  Player2: { hex: '#0088ff', rgba: 'rgba(0, 136, 255, 0.2)' },  
-  Player3: { hex: '#ffcc00', rgba: 'rgba(255, 204, 0, 0.2)' },  
-  Player4: { hex: '#00ff44', rgba: 'rgba(0, 255, 68, 0.2)' },   
-  NPC_CORP: { hex: '#aa00ff', rgba: 'rgba(170, 0, 255, 0.2)' }  
-};
-const SECTORS = {
-  POWER: { name: 'POWER', color: '#ffcc00' }, DATA: { name: 'DATA', color: '#00ffcc' },
-  SILICON: { name: 'SILICON', color: '#aaaaaa' }, HARD: { name: 'HARD', color: '#ff0055' },
-  POLYMER: { name: 'POLYMER', color: '#00ff44' }, NUCLEAR: { name: 'NUCLEAR', color: '#bfff00' },
-  DARK: { name: 'DARK', color: '#444444' }
-};
 
 const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refreshData, onModeChange, activeCard, setEventLog, hasRolledDice, gameStatus }) => {
   const canvasRef = useRef(null);
@@ -25,7 +14,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   const [verticesCoords, setVerticesCoords] = useState([]);
   const [edgesCoords, setEdgesCoords] = useState([]);
   const [hexCenters, setHexCenters] = useState([]); 
-  const [coastalVertices, setCoastalVertices] = useState([]); // === 新規：海沿いの頂点リスト ===
+  const [coastalVertices, setCoastalVertices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBot, setSelectedBot] = useState(null);
 
@@ -35,7 +24,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       const data = await response.json();
       setBoardData(data.board); setBuildings(data.buildings || {}); 
       setRoads(data.roads || {}); setBots(data.bots || {}); setHackerPos(data.hacker_position);
-      setCoastalVertices(data.coastal_vertices || []); // サーバーからリストを受け取る
+      setCoastalVertices(data.coastal_vertices || []);
       if (onStateUpdate) onStateUpdate(null, null, data.buildings, data.score, data.cards, data.game_status);
       setLoading(false);
     } catch (error) { console.error("API Error:", error); setLoading(false); }
@@ -47,7 +36,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   useEffect(() => {
     if (loading || boardData.length === 0) return;
     const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
-    const centerX = 500; const centerY = 400; // === 修正：Canvas中心の固定 ===
+    const centerX = 500; const centerY = 400; 
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const tempVertices = new Map(); const tempEdges = new Map(); const tempCenters = [];
@@ -149,22 +138,22 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       if (buildings[v.id]) {
         const b = buildings[v.id];
         const pColor = PLAYER_COLORS[b.player]?.hex || '#ffffff';
-        let size = 8; let color = pColor;
+        
+        // 🥷 外部定義（BUILDING_STYLES）を使って拠点を描画
+        const style = BUILDING_STYLES[b.type] || BUILDING_STYLES.LOCAL_HUB;
+        const size = style.size;
         
         if (b.type === "GATEWAY") {
-          ctx.beginPath(); ctx.arc(v.x, v.y, 10, 0, Math.PI * 2);
+          ctx.beginPath(); ctx.arc(v.x, v.y, size / 2, 0, Math.PI * 2);
           ctx.fillStyle = pColor; ctx.shadowBlur = 15; ctx.shadowColor = pColor;
-          ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+          ctx.fill(); ctx.lineWidth = style.strokeWidth; ctx.strokeStyle = '#ffffff'; ctx.stroke();
           ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px monospace';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('GW', v.x, v.y); 
           ctx.shadowBlur = 0;
         } else {
-          if (b.type === "LOCAL_HUB") { size = 10; color = pColor; }
-          if (b.type === "DATA_CENTER") { size = 16; color = pColor; }
-          if (b.type === "MEGA_HQ") { size = 26; color = pColor; }
-          
-          ctx.fillStyle = color; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = color;
+          ctx.fillStyle = pColor; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = pColor;
           ctx.fillRect(v.x - size/2, v.y - size/2, size, size); ctx.shadowBlur = 0;
+          ctx.lineWidth = style.strokeWidth; // 🥷 線の太さを一括管理
           ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
         }
       } else {
@@ -174,6 +163,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
         }
       }
 
+      // ボット描画ロジックはそのまま...
       if (bots[v.id]) {
         const bot = bots[v.id];
         const isSelected = selectedBot === v.id;
