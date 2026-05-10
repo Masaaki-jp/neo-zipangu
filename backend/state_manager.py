@@ -28,7 +28,7 @@ card_counter_id = 0
 
 # ゲーム進行状態関連
 game_status = {
-    "state": "init_roll", 
+    "state": "map_selection",  # 🥷 マップ選択からスタートするように変更！
     "winner": None, "reason": "",
     "turn_order": [], 
     "current_turn_index": 0, 

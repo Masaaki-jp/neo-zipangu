@@ -35,3 +35,6 @@ class UseCardRequest(BaseModel):
 
 class InitRollRequest(BaseModel): 
     player: str
+
+class ResetRequest(BaseModel): 
+    map_id: Optional[str] = "STAGE_01_BEGINNER"
