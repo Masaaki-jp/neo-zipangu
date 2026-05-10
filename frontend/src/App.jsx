@@ -81,12 +81,17 @@ function App() {
   };
 
 const handleEndTurn = async (isForcedTimeout = false) => {
-    // 🥷 2つ目のバグ修正：ReactのonClickイベントが誤って入り込んだ場合のすり抜けを防ぐ！
-    const isTimeout = isForcedTimeout === true; // 厳密に true の場合のみタイムアウト扱いにする
+    const isTimeout = isForcedTimeout === true; 
     const isHumanTurn = gameStatus.current_player === "Player1";
     const isPlayingMode = gameStatus.state === "playing";
 
-    // isTimeoutが false の場合のみ、サイコロのチェックを行う
+    // 🥷 3つ目のバグ修正：敵のターン中に手動でボタンを押した場合をブロック！
+    if (!isTimeout && !isHumanTurn) {
+      alert("[ ERROR ] 現在は敵対企業のターンです。待機してください。");
+      return;
+    }
+
+    // 2つ目のバグ修正：サイコロ未実施ブロック（isTimeoutが false の場合のみ）
     if (!isTimeout && isHumanTurn && isPlayingMode && hasRolledDice === false) {
       console.warn("[ SYSTEM ] サイコロ未実施のため、ターン終了をブロックしました。");
       alert("[ ERROR ] ターンを終了する前に、必ずサイコロ（ROLL DICE）を振るか、ゼロデイ攻撃を使用してください！");
