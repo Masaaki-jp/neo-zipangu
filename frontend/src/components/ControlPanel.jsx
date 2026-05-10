@@ -24,7 +24,8 @@ const ControlPanel = ({
   handleRollDice,
   handleHackResources,
   dice,
-  eventLog
+  eventLog,
+  turnLogs // 🥷 追加：App.jsxから受け取る記憶データ
 }) => {
   return (
     <>
@@ -86,6 +87,19 @@ const ControlPanel = ({
               &gt; サイコロを振るか、ゼロデイ攻撃を発動してください。
             </div>
           )}
+
+          {/* 🥷 追加：他プレイヤーの直近ログ（シンプル表示） */}
+          {turnLogs && turnLogs.length > 0 && (
+            <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dotted #333', color: '#aaaaaa', fontSize: '0.9rem' }}>
+               <span style={{ marginRight: '10px', color: '#555' }}>[ PREV TURNS ]</span>
+               {turnLogs.slice(-3).map((log, i) => (
+                 <span key={i} style={{ marginRight: '15px' }}>
+                   {log.player}: <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>{log.dice}</span>
+                 </span>
+               ))}
+            </div>
+          )}
+
         </div>
       </div>
     </>

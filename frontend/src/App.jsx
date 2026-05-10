@@ -25,8 +25,10 @@ function App() {
   const [receiveRes, setReceiveRes] = useState('SILICON');
   const [eventLog, setEventLog] = useState(null); 
   const [timeLeft, setTimeLeft] = useState(60);
-  
   const [hasRolledDice, setHasRolledDice] = useState(false);
+
+// 🥷 追加：ターンごとの行動履歴をまるごと記憶する配列
+  const [turnLogs, setTurnLogs] = useState([]);
 
   const currentPlayer = gameStatus.current_player || "Player1";
   const pColor = PLAYER_COLORS[currentPlayer];
@@ -102,7 +104,7 @@ function App() {
   // 🥷 監視カメラ（useEffect）群：ここから一箇所にまとめます
   // ==============================================================
 
-  // ① COMターンの自動実行監視カメラ
+// ① COMターンの自動実行監視カメラ
   useEffect(() => {
     // 🥷 playing か setup の時で、かつ自分のターンじゃない時に自動起動！
     if ((gameStatus.state === "playing" || gameStatus.state === "setup") && gameStatus.current_player !== "Player1") {
@@ -118,12 +120,20 @@ function App() {
           if (data.status === "success") {
             setGameStatus(data.game_status);
             setDice(data.dice);
+            
+            // 🥷 修正：エラーの原因だった setBuildings と setRoads を削除しました！
 
-            // 🥷 バックエンドから届いた最新の配置データを即座に画面に反映させる！
-            if (data.buildings) setBuildings(data.buildings);
-            if (data.roads) setRoads(data.roads);
-
-            console.log("COMの行動:", data.action_logs);
+            // 🥷 超安全・デバッグ付きの保存処理
+            setTurnLogs(prev => {
+              const currentLogs = Array.isArray(prev) ? prev : []; 
+              const newLog = { 
+                player: gameStatus.current_player, 
+                dice: data.dice && data.dice.total ? data.dice.total : '-', 
+                details: data.action_logs || [] 
+              };
+              console.log(`[ デバッグ ] ${newLog.player} のログをメモリに保存:`, newLog);
+              return [...currentLogs, newLog].slice(-10);
+            });
           }
         } catch (error) {
           console.error("COMターンの実行に失敗:", error);
@@ -396,6 +406,7 @@ function App() {
           handleHackResources={handleHackResources}
           dice={dice}
           eventLog={eventLog}
+          turnLogs={turnLogs} // 🥷 追加：コントロールパネルに履歴データを渡す
         />
 
         <HexMap currentPlayer={currentPlayer} activeNumber={dice ? dice.total : null} actionMode={actionMode} onStateUpdate={handleStateUpdate} refreshData={fetchData} onModeChange={setActionMode} activeCard={activeCard} setEventLog={setEventLog} hasRolledDice={hasRolledDice} gameStatus={gameStatus} />
