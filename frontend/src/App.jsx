@@ -162,6 +162,26 @@ function App() {
     setDice(null);
   }, [gameStatus.current_player]);
 
+  // ④ イニシアチブ・ロール（順番決め）のCOM自動実行カメラ
+  useEffect(() => {
+    // 順番決めフェーズでなければ何もしない
+    if (gameStatus.state === "init_roll") {
+      
+      // COM（Player2〜4）のうち、まだサイコロを振っていない人を1人見つける
+      const nextCom = PLAYERS.find(p => p !== "Player1" && !initRolls[p]);
+      
+      if (nextCom) {
+        // 0.8秒のディレイを入れてサイコロを振る（カチャ…カチャ…という演出）
+        const timer = setTimeout(() => {
+          handleInitRoll(nextCom);
+        }, 800);
+        
+        // 掃除係
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [gameStatus.state, initRolls]);
+
   // ==============================================================
   // 🥷 監視カメラ群：ここまで
   // ==============================================================
