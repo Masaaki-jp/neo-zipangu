@@ -350,9 +350,24 @@ function App() {
         MAX_STOCKS={MAX_STOCKS}
       />
 
-      <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem' }}>
+      {/* 🥷 修正：position: 'relative' を追加して、シールドの基準点にする */}
+      <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative' }}>
         
+        {/* 🥷 追加：敵のターン中、画面の中央エリア全てを覆う物理シールド */}
+        {gameStatus.current_player !== "Player1" && (
+          <div 
+            onClick={(e) => {
+              e.stopPropagation(); // クリックが下のマップに貫通するのを防ぐ
+              alert("[ ERROR ] 現在は敵対企業のターンです。待機してください。");
+            }}
+            style={{ 
+              position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 50 
+            }} 
+          />
+        )}
+
         {gameStatus.state === "setup" && (
+
           <div style={{ width: '800px', padding: '15px', marginBottom: '15px', backgroundColor: pColor + '33', border: `2px solid ${pColor}`, borderRadius: '5px', textAlign: 'center' }}>
             <h2 style={{ margin: 0, color: '#fff', textShadow: `0 0 10px ${pColor}` }}>【 初期配置フェーズ (TURN {gameStatus.setup_turn + 1}/8) 】</h2>
             <p style={{ margin: '10px 0 0 0', color: '#ccc', fontWeight: 'bold' }}>拠点(DC)を1つと、それに繋がる道(ROAD)を1本、無料で配置してください。<br/>配置が終わったら右上の [ END TURN ] を押して次の企業へ回します。</p>

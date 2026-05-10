@@ -184,7 +184,8 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
 
   }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos, activeCard, currentPlayer]);
 
-  const handleCanvasClick = async (e) => {
+const handleCanvasClick = async (e) => {
+
     if (gameStatus && gameStatus.state === "playing" && !hasRolledDice && actionMode !== 'HACKER') {
       alert("[ ERROR ] アクションを行う前に、必ずサイコロを振ってください！"); return;
     }
