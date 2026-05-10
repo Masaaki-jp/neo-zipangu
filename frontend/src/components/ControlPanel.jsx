@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react'; // 🥷 修正：useStateを追加
 
 // 取引で使用する資源リスト
 const RESOURCE_TYPES = ["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"];
@@ -25,8 +25,11 @@ const ControlPanel = ({
   handleHackResources,
   dice,
   eventLog,
-  turnLogs // 🥷 追加：App.jsxから受け取る記憶データ
+  turnLogs 
 }) => {
+  // 🥷 追加：詳細ログを表示するかどうかのスイッチ（初期値はOFF）
+  const [showDetailLogs, setShowDetailLogs] = useState(false);
+
   return (
     <>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', padding: '5px', backgroundColor: '#111', borderRadius: '5px', border: '1px solid #333' }}>
@@ -71,7 +74,7 @@ const ControlPanel = ({
             [ DEPLOY: HACK RESOURCES ]
           </button>
         </div>
-        <div style={{ marginTop: '15px', textAlign: 'center', minHeight: '60px' }}>
+        <div style={{ marginTop: '15px', textAlign: 'center', minHeight: '60px', width: '100%', maxWidth: '700px' }}>
           {dice && (
             <>
               <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>RESULT: [ <span style={{ color: '#ff0055' }}>{dice.dice1}</span> ] + [ <span style={{ color: '#ff0055' }}>{dice.dice2}</span> ] = <span style={{ color: '#ffffff', fontSize: '1.8rem', textShadow: '0 0 10px #ffffff' }}>{dice.total}</span></div>
@@ -88,15 +91,50 @@ const ControlPanel = ({
             </div>
           )}
 
-          {/* 🥷 追加：他プレイヤーの直近ログ（シンプル表示） */}
+          {/* 🥷 追加＆修正：他プレイヤーの直近ログ（詳細トグル付き） */}
           {turnLogs && turnLogs.length > 0 && (
             <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dotted #333', color: '#aaaaaa', fontSize: '0.9rem' }}>
-               <span style={{ marginRight: '10px', color: '#555' }}>[ PREV TURNS ]</span>
-               {turnLogs.slice(-3).map((log, i) => (
-                 <span key={i} style={{ marginRight: '15px' }}>
-                   {log.player}: <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>{log.dice}</span>
-                 </span>
-               ))}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                <span style={{ color: '#555' }}>[ PREV TURNS ]</span>
+                
+                {/* スイッチがOFFの時はシンプルな横並び表示 */}
+                {!showDetailLogs && turnLogs.slice(-3).map((log, i) => (
+                  <span key={i}>
+                    {log.player}: <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>{log.dice}</span>
+                  </span>
+                ))}
+                
+                {/* 🥷 切り替えボタン */}
+                <button 
+                  onClick={() => setShowDetailLogs(!showDetailLogs)}
+                  style={{ backgroundColor: showDetailLogs ? '#333' : '#00ffcc22', color: showDetailLogs ? '#fff' : '#00ffcc', border: `1px solid ${showDetailLogs ? '#555' : '#00ffcc'}`, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', borderRadius: '3px', transition: '0.2s' }}
+                >
+                  {showDetailLogs ? '> CLOSE DETAILS' : '> DETAIL LOGS'}
+               </button>
+              </div>
+
+              {/* 🥷 スイッチがONの時だけ展開される詳細ログUI */}
+              {showDetailLogs && (
+                <div style={{ marginTop: '15px', backgroundColor: '#050505', border: '1px solid #333', borderRadius: '4px', padding: '15px', textAlign: 'left', maxHeight: '180px', overflowY: 'auto', boxShadow: 'inset 0 0 10px #000' }}>
+                  {turnLogs.slice(-3).map((log, i) => (
+                    <div key={i} style={{ marginBottom: i !== 2 ? '10px' : '0', borderBottom: i !== 2 ? '1px dashed #222' : 'none', paddingBottom: i !== 2 ? '10px' : '0' }}>
+                      <div style={{ color: '#fff', fontWeight: 'bold', marginBottom: '5px' }}>
+                        {log.player} <span style={{ color: '#888', fontSize: '0.8rem', fontWeight: 'normal' }}>- DICE: <span style={{ color: '#ffcc00' }}>{log.dice}</span></span>
+                      </div>
+                      {/* 詳細な行動ログの配列（details）を一つずつ箇条書きで出力 */}
+                      {log.details && log.details.length > 0 ? (
+                        <ul style={{ margin: 0, paddingLeft: '20px', color: '#ccc', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                          {log.details.map((detail, idx) => (
+                            <li key={idx}>{detail}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div style={{ paddingLeft: '20px', color: '#555', fontSize: '0.85rem', fontStyle: 'italic' }}>&gt; NO MAJOR ACTIONS</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
