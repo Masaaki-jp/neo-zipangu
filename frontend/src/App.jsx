@@ -80,24 +80,46 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-  const handleEndTurn = async (isForcedTimeout = false) => {
-    if (!isForcedTimeout && gameStatus.state === "playing" && !hasRolledDice) {
+const handleEndTurn = async (isForcedTimeout = false) => {
+    // 🥷 2つ目のバグ修正：ReactのonClickイベントが誤って入り込んだ場合のすり抜けを防ぐ！
+    const isTimeout = isForcedTimeout === true; // 厳密に true の場合のみタイムアウト扱いにする
+    const isHumanTurn = gameStatus.current_player === "Player1";
+    const isPlayingMode = gameStatus.state === "playing";
+
+    // isTimeoutが false の場合のみ、サイコロのチェックを行う
+    if (!isTimeout && isHumanTurn && isPlayingMode && hasRolledDice === false) {
+      console.warn("[ SYSTEM ] サイコロ未実施のため、ターン終了をブロックしました。");
       alert("[ ERROR ] ターンを終了する前に、必ずサイコロ（ROLL DICE）を振るか、ゼロデイ攻撃を使用してください！");
       return;
     }
+
     setTimeLeft(60); 
     try {
-      const res = await fetch('/api/end_turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vertex_id: "", player: currentPlayer }) });
+      const res = await fetch('/api/end_turn', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ vertex_id: "", player: currentPlayer }) 
+      });
       if (res.ok) {
         const data = await res.json(); 
-        setGameStatus(data.game_status); setScore(data.score); 
-        setHasRolledDice(false); setDice(null); setEventLog(null); setIsTradeOpen(false); setActionMode('BUILD');
+        setGameStatus(data.game_status); 
+        setScore(data.score); 
+        
+        setHasRolledDice(false); 
+        setDice(null); 
+        setEventLog(null); 
+        setIsTradeOpen(false); 
+        setActionMode('BUILD');
         fetchData();
       } else {
         const err = await res.json();
-        if (err.detail === "MUST_BUILD_HUB_AND_ROAD") alert("[ ERROR ] 初期配置フェーズです。拠点と道を1つずつ配置してからターンを終了してください。");
+        if (err.detail === "MUST_BUILD_HUB_AND_ROAD") {
+          alert("[ ERROR ] 初期配置フェーズです。拠点と道を1つずつ配置してからターンを終了してください。");
+        }
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error("ターン終了処理中にエラー:", err); 
+    }
   };
 
   // ① COMターンの自動実行監視カメラ
