@@ -189,10 +189,31 @@ const handleEndTurn = async (isForcedTimeout = false) => {
     setDice(null);
   }, [gameStatus.current_player]);
 
-  // 🥷 マップ選択時の処理を追加
-  const handleSelectMap = (mapId) => {
+  // 🥷 マップ選択時の処理を追加 
+  //  修正：マップ選択時にバックエンドへ「このマップでリセットして！」と伝える
+
+  const handleSelectMap = async (mapId) => {
     console.log(`[ SYSTEM ] MAP SELECTED: ${mapId}`);
-    setGameStatus(prev => ({ ...prev, state: "init_roll" }));
+    try {
+      // バックエンドの /api/reset に、選んだマップIDを送信して初期化を要求する
+      const res = await fetch('/api/reset', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ map_id: mapId }) // 🥷 ここが重要！
+      });
+      
+      if (res.ok) {
+        // バックエンドの準備ができたら、順番決めフェーズへ
+        setGameStatus({ state: "init_roll", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 });
+        setInitRolls({});
+        setDice(null);
+        setHasRolledDice(false);
+      } else {
+        alert("[ ERROR ] バックエンドの初期化に失敗しました。");
+      }
+    } catch (error) {
+      console.error("マップ初期化エラー:", error);
+    }
   };
 
   // ④ イニシアチブ・ロール（順番決め）のCOM自動実行カメラ

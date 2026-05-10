@@ -18,8 +18,7 @@ const MapSelector = ({ onSelectMap, pColor }) => {
         gap: '20px', width: '100%', maxWidth: '1200px'
       }}>
         {STAGE_DATA.map((stage) => {
-          const isImplemented = stage.id === "STAGE_01_BEGINNER";
-
+          const isImplemented = stage.id === "STAGE_01_BEGINNER" || stage.id === "STAGE_02_VOLCANO";
           return (
             <div 
               key={stage.id}

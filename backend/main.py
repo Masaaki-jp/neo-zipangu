@@ -9,7 +9,7 @@ from game_logic import pay_cost, get_score, calculate_yields
 import state_manager as state
 from schemas import (
     BuildRequest, RoadRequest, MoveRequest, TradeRequest,
-    HackerRequest, CardRequest, UseCardRequest, InitRollRequest
+    HackerRequest, CardRequest, UseCardRequest, InitRollRequest, ResetRequest
 )
 
 # === 新規追加：AIモジュールのインポート ===
@@ -74,40 +74,66 @@ def health_check(): return {"status": "operational"}
 @app.get("/api/board")
 def get_or_generate_board():
     if len(state.current_board) == 0:
-        MAP_RADIUS = 3
-        sectors = ["POWER"]*7 + ["DATA"]*7 + ["SILICON"]*7 + ["HARD"]*6 + ["POLYMER"]*7 + ["DARK"]*3
+        import map_layouts
+        
+        # 🥷 記憶したマップIDを使って、設計図（座標リスト）を呼び出す
+        map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
+        layout = map_layouts.get_map_layout(map_id)
+        total_hexes = len(layout)
+        
+        # マップの広さに合わせて資源（セクター）を動的に分配
+        base_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
+        sectors = [base_types[i % 5] for i in range(total_hexes)]
         random.shuffle(sectors)
+        
         base_nums = [2,3,4,5,6,8,9,10,11,12]
-        numbers = base_nums * 3 + [random.choice(base_nums) for _ in range(4)]
+        numbers = [random.choice(base_nums) for _ in range(total_hexes)]
         random.shuffle(numbers)
         
         vertex_counts = {}
         
-        for q in range(-MAP_RADIUS, MAP_RADIUS + 1):
-            for r in range(max(-MAP_RADIUS, -q - MAP_RADIUS), min(MAP_RADIUS, -q + MAP_RADIUS) + 1):
-                sector_type = sectors.pop()
-                state.current_board.append({"q": q, "r": r, "s": -q - r, "sector": sector_type, "number": None if sector_type == "DARK" else numbers.pop()})
+        for q, r in layout:
+            sector_type = sectors.pop()
+            state.current_board.append({
+                "q": q, "r": r, "s": -q - r, 
+                "sector": sector_type, 
+                "number": numbers.pop()
+            })
+            
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (q + r / 2)
+            cy = CENTER_Y + HEX_SIZE * (3 / 2) * r
+            for i in range(6):
+                angle_rad = math.radians(60 * i - 30)
+                vx = round(cx + HEX_SIZE * math.cos(angle_rad))
+                vy = round(cy + HEX_SIZE * math.sin(angle_rad))
+                v_id = f"{vx},{vy}"
+                vertex_counts[v_id] = vertex_counts.get(v_id, 0) + 1
                 
-                cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (q + r / 2)
-                cy = CENTER_Y + HEX_SIZE * (3 / 2) * r
-                for i in range(6):
-                    angle_rad = math.radians(60 * i - 30)
-                    vx = round(cx + HEX_SIZE * math.cos(angle_rad))
-                    vy = round(cy + HEX_SIZE * math.sin(angle_rad))
-                    v_id = f"{vx},{vy}"
-                    vertex_counts[v_id] = vertex_counts.get(v_id, 0) + 1
+        # 🥷 港の候補地（海岸線）を計算
+        for v_id, count in vertex_counts.items():
+            if count <= 2:
+                # 2面の「内海（火口）には港を作れない」ルールの完全再現
+                vx, vy = map(int, v_id.split(','))
+                dist_from_center = math.hypot(vx - CENTER_X, vy - CENTER_Y)
+                
+                # 中心（火口）から近すぎる頂点は港候補から除外する！
+                if map_id == "STAGE_02_VOLCANO" and dist_from_center < (HEX_SIZE * 1.5):
+                    continue 
                     
-        state.coastal_vertices = {v_id for v_id, count in vertex_counts.items() if count <= 2}
+                state.coastal_vertices.add(v_id)
         
-        total_hexes = len(state.current_board)
+        # ボット拠点の初期配置
         npc_count = math.ceil(total_hexes * 0.08)
-        placed_np_hubs = 0; attempts = 0
+        placed_np_hubs = 0
+        attempts = 0
         while placed_np_hubs < npc_count and attempts < 1000:
             attempts += 1
             target_hex = random.choice([h for h in state.current_board if h["sector"] != "DARK"])
-            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (target_hex["q"] + target_hex["r"] / 2); cy = CENTER_Y + HEX_SIZE * (3 / 2) * target_hex["r"]
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (target_hex["q"] + target_hex["r"] / 2)
+            cy = CENTER_Y + HEX_SIZE * (3 / 2) * target_hex["r"]
             angle_rad = math.radians(random.choice([30, 90, 150, 210, 270, 330]))
-            npc_x = round(cx + HEX_SIZE * math.cos(angle_rad)); npc_y = round(cy + HEX_SIZE * math.sin(angle_rad))
+            npc_x = round(cx + HEX_SIZE * math.cos(angle_rad))
+            npc_y = round(cy + HEX_SIZE * math.sin(angle_rad))
             npc_vertex = f"{npc_x},{npc_y}"
             if npc_vertex in state.buildings: continue
             too_close = False
@@ -119,13 +145,12 @@ def get_or_generate_board():
             state.bots[npc_vertex] = {"player": "NPC_CORP", "level": random.randint(1, 3), "has_moved": False}
             placed_np_hubs += 1
 
-    # === 修正箇所：player_types をフロントに渡す ===
     return {
         "board": state.current_board, "buildings": state.buildings, "roads": state.roads, 
         "bots": state.bots, "hacker_position": state.hacker_position, "cards": state.cards, 
         "game_status": state.game_status, "inventory": state.inventory, "trade_rates": state.trade_rates, 
         "init_rolls": state.init_rolls, "coastal_vertices": list(state.coastal_vertices),
-        "player_types": state.player_types
+        "player_types": getattr(state, "player_types", {})
     }
 
 @app.post("/api/init_roll")
@@ -539,11 +564,25 @@ def roll_dice():
     return {"dice1": dice1, "dice2": dice2, "total": total, "yields": yields, "inventory": state.inventory, "trade_rates": state.trade_rates, "score": get_score(state.game_status["current_player"], state.buildings, state.cards, state.roads, state.bots), "event_type": event_type, "event_log": event_log, "hacker_position": state.hacker_position, "game_status": state.game_status}
 
 @app.post("/api/reset")
-def reset_game():
+def reset_game(req: ResetRequest = None):
+    # 🥷 分岐：マップIDが送られてきたか、それ以外（放棄・脱出）か
+    if req and req.map_id:
+        # マップが選択された ➡ 順番決めへ
+        state.current_map_id = req.map_id
+        new_state = "init_roll"
+    else:
+        # 脱出ボタンや、初期配置放置による強制リセット ➡ マップ選択へ
+        state.current_map_id = "STAGE_01_BEGINNER"
+        new_state = "map_selection"
+
     state.current_board.clear(); state.buildings.clear(); state.roads.clear(); state.bots.clear(); state.hacker_position = None; state.cards.clear(); state.card_counter_id = 0; state.init_rolls.clear(); state.roll_counter = 0; state.coastal_vertices.clear()
-    state.game_status.update({"state": "init_roll", "winner": None, "reason": "", "turn_order": [], "current_turn_index": 0, "current_player": "Player1", "setup_turn": 0})
+    
+    # 🥷 判定した new_state をセットする
+    state.game_status.update({"state": new_state, "winner": None, "reason": "", "turn_order": [], "current_turn_index": 0, "current_player": "Player1", "setup_turn": 0})
+    
     for p in state.PLAYERS:
         state.inventory[p] = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0}
         state.trade_rates[p] = {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0}
         state.cards[p] = []
+        
     return {"status": "system_reset_complete"}
