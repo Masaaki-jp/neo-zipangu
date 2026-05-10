@@ -7,6 +7,7 @@ export const STAGE_DATA = [
     totalHexes: 19,
     darkHexes: 0,
     targetScore: 100, // 100万シェア
+    zoom: 1.0, // 🥷 追加：標準サイズ
     difficulty: "NORMAL",
     description: "別名「たたかいの島」。19マスの最小構成。対角線配置は即・窒息を意味する。100万シェアへの到達スピードを競う純粋な実力派マップ。",
     themeColor: "#00ffcc"
@@ -17,6 +18,7 @@ export const STAGE_DATA = [
     totalHexes: 24,
     darkHexes: 0,
     targetScore: 100,
+    zoom: 0.95, // 🥷 追加：少しだけ縮小
     difficulty: "HARD",
     description: "内海に港を作れない制約があるが、広さは標準的。100万シェアへの最短ルートは、外周ゲートウェイの早期確保にある。",
     themeColor: "#ff3333"
@@ -25,7 +27,8 @@ export const STAGE_DATA = [
     id: "STAGE_03_CANYON",
     name: "3面: けいこく",
     totalHexes: 28,
-    targetScore: 120, // マス増に伴いゴール引き上げ
+    targetScore: 160, // マス増に伴いゴール引き上げ
+    zoom: 0.75, // 🥷 追加：上下に広いため、強めに縮小（これで枠内に完璧に収まります）
     difficulty: "NORMAL",
     description: "4つの島が連なる28マスの広域マップ。島をまたぐネットワーク構築が必須となるため、ゴールは120万シェアに設定されている。",
     themeColor: "#ccff00"

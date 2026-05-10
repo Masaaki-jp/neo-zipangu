@@ -1,8 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-// 🥷 外部ファイルから設定値をインポートする
-import { PLAYER_COLORS, SECTORS, BUILDING_STYLES } from '../styles'; // パスは適宜合わせてください
-
-const HEX_SIZE = 60; 
+import { PLAYER_COLORS, SECTORS, BUILDING_STYLES } from '../styles';
+import { STAGE_DATA } from '../maps/stageData'; // 🥷 マップカタログを読み込む
 
 const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refreshData, onModeChange, activeCard, setEventLog, hasRolledDice, gameStatus }) => {
   const canvasRef = useRef(null);
@@ -17,11 +15,15 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   const [coastalVertices, setCoastalVertices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBot, setSelectedBot] = useState(null);
+  
+  // 🥷 現在のマップIDを保持
+  const [mapId, setMapId] = useState("STAGE_01_BEGINNER");
 
   const fetchBoard = async () => {
     try {
       const response = await fetch('/api/board');
       const data = await response.json();
+      setMapId(data.map_id); // 🥷 バックエンドからマップIDを受け取る
       setBoardData(data.board); setBuildings(data.buildings || {}); 
       setRoads(data.roads || {}); setBots(data.bots || {}); setHackerPos(data.hacker_position);
       setCoastalVertices(data.coastal_vertices || []);
@@ -30,11 +32,16 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
     } catch (error) { console.error("API Error:", error); setLoading(false); }
   };
 
-  // 🥷 ターンが進むたびに、最新のマップ状況（COMの建築結果など）を再取得して描画する
   useEffect(() => { 
     fetchBoard(); 
   }, [gameStatus?.current_player, gameStatus?.setup_turn]);
+  
   useEffect(() => { setSelectedBot(null); }, [actionMode]);
+
+  // 🥷 カタログから現在のマップの設定（zoom）を取得し、マスのサイズを動的に決定
+  const stageConfig = STAGE_DATA.find(s => s.id === mapId) || STAGE_DATA[0];
+  const currentZoom = stageConfig.zoom || 1.0;
+  const DYNAMIC_HEX_SIZE = 60 * currentZoom;
 
   useEffect(() => {
     if (loading || boardData.length === 0) return;
@@ -52,7 +59,8 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const angle_rad = (Math.PI / 180) * (60 * i - 30);
-        const x = cx + HEX_SIZE * Math.cos(angle_rad); const y = cy + HEX_SIZE * Math.sin(angle_rad);
+        // 🥷 DYNAMIC_HEX_SIZE を使用
+        const x = cx + DYNAMIC_HEX_SIZE * Math.cos(angle_rad); const y = cy + DYNAMIC_HEX_SIZE * Math.sin(angle_rad);
         const vId = `${Math.round(x)},${Math.round(y)}`;
         hexVertices.push(vId); 
 
@@ -90,37 +98,38 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
 
       ctx.lineWidth = isHighlight ? 4 : 2; 
       if (isHighlight) {
-        ctx.strokeStyle = '#ffffff'; ctx.shadowBlur = 30; ctx.shadowColor = '#ffffff';
+        ctx.strokeStyle = '#ffffff'; ctx.shadowBlur = 30 * currentZoom; ctx.shadowColor = '#ffffff';
       } else if (occupier && PLAYER_COLORS[occupier]) {
-        ctx.strokeStyle = PLAYER_COLORS[occupier].hex; ctx.shadowBlur = 10; ctx.shadowColor = PLAYER_COLORS[occupier].hex;
+        ctx.strokeStyle = PLAYER_COLORS[occupier].hex; ctx.shadowBlur = 10 * currentZoom; ctx.shadowColor = PLAYER_COLORS[occupier].hex;
       } else {
         ctx.strokeStyle = '#333333'; ctx.shadowBlur = 0;
       }
       ctx.stroke(); ctx.shadowBlur = 0;
 
-      ctx.fillStyle = sector.color; ctx.font = '12px monospace';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sector.name, cx, cy - 20);
+      ctx.fillStyle = sector.color; ctx.font = `${Math.max(8, 12 * currentZoom)}px monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(sector.name, cx, cy - (20 * currentZoom));
 
       const isHackerHere = hackerPos === `${q},${r}`;
       if (isHackerHere) {
-        ctx.beginPath(); ctx.arc(cx, cy + 10, HEX_SIZE * 0.4, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(cx, cy + (10 * currentZoom), DYNAMIC_HEX_SIZE * 0.4, 0, Math.PI * 2);
         ctx.fillStyle = '#ff0055'; ctx.shadowBlur = 15; ctx.shadowColor = '#ff0055'; ctx.fill(); 
         ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke(); ctx.shadowBlur = 0;
-        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('☠', cx, cy + 12);
+        ctx.fillStyle = '#ffffff'; ctx.font = `bold ${20 * currentZoom}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('☠', cx, cy + (12 * currentZoom));
       } else if (number) {
-        ctx.beginPath(); ctx.arc(cx, cy + 10, HEX_SIZE * 0.35, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(cx, cy + (10 * currentZoom), DYNAMIC_HEX_SIZE * 0.35, 0, Math.PI * 2);
         ctx.fillStyle = isHighlight ? '#ffffff' : '#050505'; ctx.fill(); 
         ctx.lineWidth = 1; ctx.strokeStyle = sector.color; ctx.stroke();
-        ctx.fillStyle = isHighlight ? '#000000' : '#ffffff'; ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = isHighlight ? '#000000' : '#ffffff'; ctx.font = `bold ${16 * currentZoom}px monospace`;
         if (!isHighlight && (number === 6 || number === 8)) ctx.fillStyle = '#ff0055';
-        ctx.fillText(number.toString(), cx, cy + 10);
+        ctx.fillText(number.toString(), cx, cy + (10 * currentZoom));
       }
     };
 
     boardData.forEach(hex => {
-      const x = centerX + HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2);
-      const y = centerY + HEX_SIZE * (3 / 2) * hex.r;
+      // 🥷 座標計算にも DYNAMIC_HEX_SIZE を適用
+      const x = centerX + DYNAMIC_HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2);
+      const y = centerY + DYNAMIC_HEX_SIZE * (3 / 2) * hex.r;
       tempCenters.push({ id: `${hex.q},${hex.r}`, x, y, sector: hex.sector });
       drawHex(x, y, SECTORS[hex.sector] || SECTORS.DARK, hex.number, hex.q, hex.r);
     });
@@ -131,7 +140,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       if (roads[e.id]) {
         const rColor = PLAYER_COLORS[roads[e.id].player]?.hex || '#ffffff';
         ctx.beginPath(); ctx.moveTo(e.v1.x, e.v1.y); ctx.lineTo(e.v2.x, e.v2.y);
-        ctx.lineWidth = 6; ctx.strokeStyle = rColor; 
+        ctx.lineWidth = 6 * currentZoom; ctx.strokeStyle = rColor; 
         ctx.shadowBlur = 15; ctx.shadowColor = rColor;
         ctx.stroke(); ctx.shadowBlur = 0;
       }
@@ -142,59 +151,62 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
         const b = buildings[v.id];
         const pColor = PLAYER_COLORS[b.player]?.hex || '#ffffff';
         
-        // 🥷 外部定義（BUILDING_STYLES）を使って拠点を描画
         const style = BUILDING_STYLES[b.type] || BUILDING_STYLES.LOCAL_HUB;
-        const size = style.size;
+        const size = style.size * currentZoom; // 🥷 建物も縮小
         
         if (b.type === "GATEWAY") {
           ctx.beginPath(); ctx.arc(v.x, v.y, size / 2, 0, Math.PI * 2);
           ctx.fillStyle = pColor; ctx.shadowBlur = 15; ctx.shadowColor = pColor;
           ctx.fill(); ctx.lineWidth = style.strokeWidth; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-          ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px monospace';
+          ctx.fillStyle = '#ffffff'; ctx.font = `bold ${10 * currentZoom}px monospace`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('GW', v.x, v.y); 
           ctx.shadowBlur = 0;
         } else {
           ctx.fillStyle = pColor; ctx.shadowBlur = b.type === "MEGA_HQ" ? 20 : 10; ctx.shadowColor = pColor;
           ctx.fillRect(v.x - size/2, v.y - size/2, size, size); ctx.shadowBlur = 0;
-          ctx.lineWidth = style.strokeWidth; // 🥷 線の太さを一括管理
+          ctx.lineWidth = style.strokeWidth; 
           ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
         }
       } else {
         if (actionMode === 'BUILD' || (actionMode === 'USE_CARD' && activeCard?.type === 'VPN')) {
-          ctx.beginPath(); ctx.arc(v.x, v.y, 4, 0, Math.PI * 2);
+          ctx.beginPath(); ctx.arc(v.x, v.y, 4 * currentZoom, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
         }
       }
 
-      // ボット描画ロジックはそのまま...
       if (bots[v.id]) {
         const bot = bots[v.id];
         const isSelected = selectedBot === v.id;
         const isMoved = bot.has_moved;
         const botColor = isSelected ? '#ffffff' : (isMoved ? '#555555' : (PLAYER_COLORS[bot.player]?.hex || '#ffffff'));
         
-        ctx.beginPath(); ctx.arc(v.x + 14, v.y - 14, 7, 0, Math.PI * 2);
+        const offset = 14 * currentZoom;
+        ctx.beginPath(); ctx.arc(v.x + offset, v.y - offset, 7 * currentZoom, 0, Math.PI * 2);
         ctx.fillStyle = botColor; ctx.shadowBlur = isSelected ? 20 : (isMoved ? 0 : 10); ctx.shadowColor = botColor;
         ctx.fill(); ctx.shadowBlur = 0;
         ctx.strokeStyle = isMoved ? '#333333' : '#ffffff'; ctx.lineWidth = isSelected ? 2 : 1; ctx.stroke();
-        ctx.fillStyle = isSelected ? '#000000' : '#ffffff'; ctx.font = 'bold 10px monospace';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(bot.level.toString(), v.x + 14, v.y - 14); 
+        ctx.fillStyle = isSelected ? '#000000' : '#ffffff'; ctx.font = `bold ${10 * currentZoom}px monospace`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(bot.level.toString(), v.x + offset, v.y - offset); 
       }
     });
 
-  }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos, activeCard, currentPlayer]);
+  }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos, activeCard, currentPlayer, mapId]); // 🥷 mapIdを追加
 
-const handleCanvasClick = async (e) => {
-
+  const handleCanvasClick = async (e) => {
     if (gameStatus && gameStatus.state === "playing" && !hasRolledDice && actionMode !== 'HACKER') {
       alert("[ ERROR ] アクションを行う前に、必ずサイコロを振ってください！"); return;
     }
 
     const rect = canvasRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
+    const clickX = e.clientX - rect.left; 
+    const clickY = e.clientY - rect.top;
+
+    // 🥷 当たり判定の範囲もズームに合わせて縮小する
+    const hexHitRadius = 40 * currentZoom;
+    const vertexHitRadius = 15 * currentZoom;
 
     if (actionMode === 'HACKER') {
-      const clickedHex = hexCenters.find(h => Math.hypot(h.x - clickX, h.y - clickY) < 40);
+      const clickedHex = hexCenters.find(h => Math.hypot(h.x - clickX, h.y - clickY) < hexHitRadius);
       if (clickedHex) {
         if (clickedHex.sector === 'DARK') { alert("[ ERROR ] DARK領域には配置できません。"); return; }
         try {
@@ -207,7 +219,7 @@ const handleCanvasClick = async (e) => {
 
     if (actionMode === 'USE_CARD' && activeCard) {
       if (activeCard.type === 'DATA_HACK') {
-        const clickedHex = hexCenters.find(h => Math.hypot(h.x - clickX, h.y - clickY) < 40);
+        const clickedHex = hexCenters.find(h => Math.hypot(h.x - clickX, h.y - clickY) < hexHitRadius);
         if (clickedHex) {
           const newNumStr = prompt("新しい数字(2〜12)を入力してください:");
           const newNum = parseInt(newNumStr, 10);
@@ -225,7 +237,7 @@ const handleCanvasClick = async (e) => {
         }
       } 
       else if (activeCard.type === 'DDOS') {
-        const clickedEdge = edgesCoords.find(edge => Math.hypot(edge.midX - clickX, edge.midY - clickY) < 15);
+        const clickedEdge = edgesCoords.find(edge => Math.hypot(edge.midX - clickX, edge.midY - clickY) < vertexHitRadius);
         if (clickedEdge) {
           try {
             const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: currentPlayer, card_id: activeCard.id, target_id: clickedEdge.id }) });
@@ -239,7 +251,7 @@ const handleCanvasClick = async (e) => {
           return;
         }
       } else {
-        const clickedVertex = verticesCoords.find(v => Math.hypot(v.x - clickX, v.y - clickY) < 15);
+        const clickedVertex = verticesCoords.find(v => Math.hypot(v.x - clickX, v.y - clickY) < vertexHitRadius);
         if (clickedVertex) {
           try {
             const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: currentPlayer, card_id: activeCard.id, target_id: clickedVertex.id }) });
@@ -258,15 +270,13 @@ const handleCanvasClick = async (e) => {
       return; 
     }
 
-    const clickedVertex = verticesCoords.find(v => Math.hypot(v.x - clickX, v.y - clickY) < 15);
-    const clickedEdge = !clickedVertex ? edgesCoords.find(edge => Math.hypot(edge.midX - clickX, edge.midY - clickY) < 15) : null;
+    const clickedVertex = verticesCoords.find(v => Math.hypot(v.x - clickX, v.y - clickY) < vertexHitRadius);
+    const clickedEdge = !clickedVertex ? edgesCoords.find(edge => Math.hypot(edge.midX - clickX, edge.midY - clickY) < vertexHitRadius) : null;
 
     if (clickedVertex) {
       if (actionMode === 'BUILD') {
         let upgradeTo = "DATA_CENTER";
         if (buildings[clickedVertex.id] && buildings[clickedVertex.id].player === currentPlayer && buildings[clickedVertex.id].type === "LOCAL_HUB") {
-          
-          // === 修正：サーバーが判定した「海沿いリスト」に入っているかを確認する ===
           const isCoastal = coastalVertices.includes(clickedVertex.id);
 
           if (isCoastal) {
@@ -370,10 +380,21 @@ const handleCanvasClick = async (e) => {
     }
   };
 
-  return (
+return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {loading ? <div style={{ color: '#00ffcc', margin: '100px 0' }}>&gt; CONTACTING SERVER...</div> : <canvas ref={canvasRef} width={1000} height={800} onClick={handleCanvasClick} style={{ border: '1px solid #33ffcc', cursor: 'crosshair', backgroundColor: '#000', borderRadius: '8px' }} />}
+      {loading ? (
+        <div style={{ color: '#00ffcc', margin: '100px 0' }}>&gt; CONTACTING SERVER...</div>
+      ) : (
+        <canvas 
+          ref={canvasRef} 
+          width={1000} 
+          height={800} 
+          onClick={handleCanvasClick} 
+          style={{ border: '1px solid #33ffcc', cursor: 'crosshair', backgroundColor: '#000', borderRadius: '8px' }} 
+        />
+      )}
     </div>
   );
 };
+
 export default HexMap;
