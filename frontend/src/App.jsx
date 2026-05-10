@@ -104,7 +104,8 @@ function App() {
 
   // ① COMターンの自動実行監視カメラ
   useEffect(() => {
-    if (gameStatus.state === "playing" && gameStatus.current_player !== "Player1") {
+    // 🥷 playing か setup の時で、かつ自分のターンじゃない時に自動起動！
+    if ((gameStatus.state === "playing" || gameStatus.state === "setup") && gameStatus.current_player !== "Player1") {
       const runComTurn = async () => {
         await new Promise(resolve => setTimeout(resolve, 1500));
         try {
@@ -117,6 +118,11 @@ function App() {
           if (data.status === "success") {
             setGameStatus(data.game_status);
             setDice(data.dice);
+
+            // 🥷 バックエンドから届いた最新の配置データを即座に画面に反映させる！
+            if (data.buildings) setBuildings(data.buildings);
+            if (data.roads) setRoads(data.roads);
+
             console.log("COMの行動:", data.action_logs);
           }
         } catch (error) {
@@ -125,7 +131,7 @@ function App() {
       };
       runComTurn();
     }
-  }, [gameStatus.current_player, gameStatus.state]);
+  }, [gameStatus.current_player, gameStatus.state, gameStatus.setup_turn]);
 
   // ② タイマー同期 ＆ 0秒時の自動スキップ監視カメラ
   useEffect(() => {

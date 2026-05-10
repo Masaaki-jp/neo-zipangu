@@ -228,14 +228,19 @@ def com_execute(req: ComExecuteRequest):
     if current_type == "human":
         raise HTTPException(status_code=400, detail="PLAYER_IS_HUMAN")
         
-    if state.game_status["state"] != "playing":
-        raise HTTPException(status_code=400, detail="COM_ONLY_ACTIVE_IN_PLAYING_STATE")
+    # 🥷 修正： playing だけでなく setup の時もCOMを許可する（古い != "playing" は消去！）
+    if state.game_status["state"] not in ["playing", "setup"]:
+        raise HTTPException(status_code=400, detail="COM_ONLY_ACTIVE_IN_PLAYING_OR_SETUP_STATE")
 
-    # AIの種類に応じて処理を委譲
-    if current_type == "com_speeder":
+    # AIの種類とフェーズに応じて処理を委譲
+    if state.game_status["state"] == "setup":
+        from com_ai import com_setup # 🥷 先ほど作ったファイル
+        result = com_setup.execute_setup_turn(req.player, state, constants)
+    elif current_type == "com_speeder":
+        from com_ai import com_speeder
         result = com_speeder.execute_turn(req.player, state, game_logic, constants)
     else:
-        # 他のAIが指定されていた場合のフェイルセーフ（今回はspeeder固定）
+        from com_ai import com_speeder
         result = com_speeder.execute_turn(req.player, state, game_logic, constants)
         
     # スコア計算（勝利判定）
@@ -265,7 +270,9 @@ def com_execute(req: ComExecuteRequest):
         "inventory": state.inventory,
         "score": score,
         "board": state.current_board,
-        "bots": state.bots
+        "bots": state.bots,
+        "buildings": state.buildings,  # 🥷 これを追加！（最新の建物を渡す）
+        "roads": state.roads           # 🥷 これを追加！（最新の道を渡す）
     }
 
 @app.post("/api/draw_card")

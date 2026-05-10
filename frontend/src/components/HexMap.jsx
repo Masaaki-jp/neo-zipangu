@@ -30,7 +30,10 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
     } catch (error) { console.error("API Error:", error); setLoading(false); }
   };
 
-  useEffect(() => { fetchBoard(); }, []);
+  // 🥷 ターンが進むたびに、最新のマップ状況（COMの建築結果など）を再取得して描画する
+  useEffect(() => { 
+    fetchBoard(); 
+  }, [gameStatus?.current_player, gameStatus?.setup_turn]);
   useEffect(() => { setSelectedBot(null); }, [actionMode]);
 
   useEffect(() => {
