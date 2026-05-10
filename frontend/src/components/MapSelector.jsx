@@ -18,7 +18,6 @@ const MapSelector = ({ onSelectMap, pColor }) => {
         gap: '20px', width: '100%', maxWidth: '1200px'
       }}>
         {STAGE_DATA.map((stage) => {
-          // 🥷 1面（STAGE_01_BEGINNER）以外は「未実装」として判定
           const isImplemented = stage.id === "STAGE_01_BEGINNER";
 
           return (
@@ -28,18 +27,17 @@ const MapSelector = ({ onSelectMap, pColor }) => {
                 if (isImplemented) {
                   onSelectMap(stage.id);
                 } else {
-                  // 🥷 未実装のステージをクリックした時の警告
                   alert("[ ERROR ] この区画は現在未実装です。バックエンドシステムの拡張をお待ちください。");
                 }
               }}
               style={{
                 padding: '20px', backgroundColor: '#111', border: `1px solid ${stage.themeColor}55`,
                 borderRadius: '8px', 
-                cursor: isImplemented ? 'pointer' : 'not-allowed', // マウスカーソルを変更
+                cursor: isImplemented ? 'pointer' : 'not-allowed',
                 transition: '0.3s',
                 display: 'flex', flexDirection: 'column', gap: '10px',
                 position: 'relative', overflow: 'hidden',
-                opacity: isImplemented ? 1 : 0.5 // 🥷 未実装のものは暗くして非アクティブ感を出す
+                opacity: isImplemented ? 1 : 0.6
               }}
               onMouseEnter={(e) => {
                 if (isImplemented) {
@@ -56,12 +54,11 @@ const MapSelector = ({ onSelectMap, pColor }) => {
                 }
               }}
             >
-              {/* 🥷 未実装ラベルを右上に表示 */}
               {!isImplemented && (
                 <div style={{ 
                   position: 'absolute', top: '10px', right: '10px', 
                   backgroundColor: '#ff0055', color: '#fff', fontSize: '0.7rem', 
-                  padding: '3px 8px', borderRadius: '3px', fontWeight: 'bold' 
+                  padding: '3px 8px', borderRadius: '3px', fontWeight: 'bold', zIndex: 10
                 }}>
                   未実装
                 </div>
@@ -71,15 +68,21 @@ const MapSelector = ({ onSelectMap, pColor }) => {
                 LEVEL: {stage.difficulty}
               </div>
               <h3 style={{ margin: 0, color: '#fff' }}>{stage.name}</h3>
-              <div style={{ fontSize: '0.8rem', color: '#888', lineHeight: '1.4' }}>
+              <div style={{ fontSize: '0.8rem', color: '#888', lineHeight: '1.4', flexGrow: 1 }}>
                 {stage.description}
               </div>
+
+              {/* 🥷 修正：パラメータ表示エリアに TARGET を追加 */}
               <div style={{ 
-                marginTop: 'auto', display: 'flex', gap: '10px', 
-                fontSize: '0.7rem', color: '#555', fontWeight: 'bold' 
+                marginTop: '15px', display: 'flex', gap: '15px', 
+                fontSize: '0.75rem', color: '#666', fontWeight: 'bold',
+                borderTop: '1px solid #222', paddingTop: '10px'
               }}>
-                <span>SIZE: {stage.totalHexes}</span>
-                {stage.darkHexes > 0 && <span>DARK: {stage.darkHexes}</span>}
+                <span style={{ color: '#aaa' }}>SIZE: <span style={{ color: '#fff' }}>{stage.totalHexes}</span></span>
+                {stage.darkHexes > 0 && (
+                  <span style={{ color: '#aaa' }}>DARK: <span style={{ color: '#ff0055' }}>{stage.darkHexes}</span></span>
+                )}
+                <span style={{ color: stage.themeColor }}>TARGET: <span style={{ color: '#fff' }}>{stage.targetScore}</span></span>
               </div>
             </div>
           );
