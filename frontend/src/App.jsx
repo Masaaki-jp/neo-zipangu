@@ -3,13 +3,15 @@ import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
 import ControlPanel from './components/ControlPanel';
 import CardHand from './components/CardHand';
+import MapSelector from './components/MapSelector'; // 🥷 追加
 
 const MAX_STOCKS = { LOCAL_HUB: 5, DATA_CENTER: 4, GATEWAY: 3, MEGA_HQ: 2 };
 const PLAYERS = ["Player1", "Player2", "Player3", "Player4"];
 const PLAYER_COLORS = { Player1: '#ff0033', Player2: '#0088ff', Player3: '#ffcc00', Player4: '#00ff44' };
 
 function App() {
-  const [gameStatus, setGameStatus] = useState({ state: "init_roll", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 }); 
+  // 🥷 初期値を "map_selection" に変更
+  const [gameStatus, setGameStatus] = useState({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 }); 
   const [initRolls, setInitRolls] = useState({});
   const [dice, setDice] = useState(null);
   const [isRolling, setIsRolling] = useState(false);
@@ -26,8 +28,6 @@ function App() {
   const [eventLog, setEventLog] = useState(null); 
   const [timeLeft, setTimeLeft] = useState(60);
   const [hasRolledDice, setHasRolledDice] = useState(false);
-
-// 🥷 追加：ターンごとの行動履歴をまるごと記憶する配列
   const [turnLogs, setTurnLogs] = useState([]);
 
   const currentPlayer = gameStatus.current_player || "Player1";
@@ -100,13 +100,8 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-// ==============================================================
-  // 🥷 監視カメラ（useEffect）群：ここから一箇所にまとめます
-  // ==============================================================
-
-// ① COMターンの自動実行監視カメラ
+  // ① COMターンの自動実行監視カメラ
   useEffect(() => {
-    // 🥷 playing か setup の時で、かつ自分のターンじゃない時に自動起動！
     if ((gameStatus.state === "playing" || gameStatus.state === "setup") && gameStatus.current_player !== "Player1") {
       const runComTurn = async () => {
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -121,9 +116,6 @@ function App() {
             setGameStatus(data.game_status);
             setDice(data.dice);
             
-            // 🥷 修正：エラーの原因だった setBuildings と setRoads を削除しました！
-
-            // 🥷 超安全・デバッグ付きの保存処理
             setTurnLogs(prev => {
               const currentLogs = Array.isArray(prev) ? prev : []; 
               const newLog = { 
@@ -155,7 +147,6 @@ function App() {
       const diff = Math.max(0, Math.floor(gameStatus.turn_end_time - now));
       setTimeLeft(diff);
 
-      // 0秒になったら、冗長なfetchは書かずに上の handleEndTurn を直接呼ぶ！
       if (diff === 0 && gameStatus.current_player === "Player1") {
         clearInterval(timerId); 
         console.log("タイムアウト！強制ターンエンドを実行します。");
@@ -168,33 +159,27 @@ function App() {
 
   // ③ ターン切り替え時の画面リセット（清掃係）監視カメラ
   useEffect(() => {
-    // 順番が切り替わった瞬間に前の人のサイコロの表示を消す
     setDice(null);
   }, [gameStatus.current_player]);
 
+  // 🥷 マップ選択時の処理を追加
+  const handleSelectMap = (mapId) => {
+    console.log(`[ SYSTEM ] MAP SELECTED: ${mapId}`);
+    setGameStatus(prev => ({ ...prev, state: "init_roll" }));
+  };
+
   // ④ イニシアチブ・ロール（順番決め）のCOM自動実行カメラ
   useEffect(() => {
-    // 順番決めフェーズでなければ何もしない
     if (gameStatus.state === "init_roll") {
-      
-      // COM（Player2〜4）のうち、まだサイコロを振っていない人を1人見つける
       const nextCom = PLAYERS.find(p => p !== "Player1" && !initRolls[p]);
-      
       if (nextCom) {
-        // 0.8秒のディレイを入れてサイコロを振る（カチャ…カチャ…という演出）
         const timer = setTimeout(() => {
           handleInitRoll(nextCom);
         }, 800);
-        
-        // 掃除係
         return () => clearTimeout(timer);
       }
     }
   }, [gameStatus.state, initRolls]);
-
-  // ==============================================================
-  // 🥷 監視カメラ群：ここまで
-  // ==============================================================
 
   const handleRollDice = async () => {
     if (isRolling || hasRolledDice) return;
@@ -235,7 +220,7 @@ function App() {
     try { await fetch('/api/reset', { method: 'POST' }); window.location.reload(); } catch (err) { console.error(err); }
   };
 
-  // 🥷 緊急脱出：初期画面（順番決め）に戻る
+// 🥷 緊急脱出：タイトル（マップ選択）に戻る
   const handleExitToTitle = async () => {
     const confirmExit = window.confirm("タイトル画面に戻りますか？現在の進行状況は破棄されます。");
     if (!confirmExit) return;
@@ -244,8 +229,8 @@ function App() {
       // 1. バックエンドの状態をリセット
       const res = await fetch('/api/reset', { method: 'POST' });
       if (res.ok) {
-        // 2. フロントエンドの全ての状態を初期値にリセット
-        setGameStatus({ state: "init_roll", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 });
+        // 2. 🥷 修正：フロントエンドの状態を "map_selection" に戻す！
+        setGameStatus({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 });
         setInitRolls({});
         setDice(null);
         setInventory(null);
@@ -254,7 +239,7 @@ function App() {
         setHasRolledDice(false);
         setEventLog(null);
         
-        console.log("イジェクト成功：初期画面に戻りました。");
+        console.log("イジェクト成功：マップ選択画面に戻りました。");
       }
     } catch (err) {
       console.error("緊急脱出に失敗:", err);
@@ -312,142 +297,91 @@ function App() {
   };
   const currentBCounts = bCounts();
 
-  if (gameStatus.state === "init_roll") {
-    return (
-      <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: '#00ffcc', fontFamily: '"Courier New", Courier, monospace', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <h1 style={{ fontSize: '3rem', textShadow: '0 0 15px #00ffcc', marginBottom: '40px' }}>&gt; SYSTEM BOOT: INITIATIVE SEQUENCE</h1>
-        <div style={{ display: 'flex', gap: '20px' }}>
-          {PLAYERS.map(p => {
-            const hasRolled = initRolls[p] !== undefined;
-            return (
-              <div key={p} style={{ width: '200px', padding: '20px', border: `2px solid ${PLAYER_COLORS[p]}`, borderRadius: '10px', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.8)', boxShadow: hasRolled ? `0 0 20px ${PLAYER_COLORS[p]}55` : 'none' }}>
-                <h2 style={{ color: PLAYER_COLORS[p], margin: '0 0 15px 0' }}>{p}</h2>
-                {hasRolled ? (
-                  <div><div style={{ fontSize: '1.2rem', color: '#aaa' }}>[{initRolls[p].dice[0]}] + [{initRolls[p].dice[1]}]</div><div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff', margin: '10px 0' }}>{initRolls[p].total}</div></div>
-                ) : (
-                  <button onClick={() => handleInitRoll(p)} style={{ padding: '15px', width: '100%', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: PLAYER_COLORS[p], color: '#000', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>ROLL DICE</button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
 
+  // ======== レンダリング（画面描画）========
   return (
     <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: pColor, fontFamily: '"Courier New", Courier, monospace', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
       
-      {gameStatus.state === "finished" && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-          <h1 style={{ color: '#ffcc00', fontSize: '4rem', textShadow: '0 0 30px #ffcc00', margin: '0 0 20px 0', animation: 'blink 1.5s infinite' }}>{gameStatus.winner === currentPlayer ? "[ VICTORY: MARKET DOMINATION ]" : "[ DEFEAT: BANKRUPTCY ]"}</h1>
-          {gameStatus.reason === "ANNIHILATION" ? <p style={{ color: '#ff0055', fontSize: '1.5rem', marginBottom: '10px' }}>敵対企業が全滅し、ゲームが強制終了しました！</p> : <p style={{ color: '#ffffff', fontSize: '1.5rem', marginBottom: '10px' }}>総企業価値 <strong style={{color: '#00ffcc', fontSize: '2rem'}}>{(score.total * 10000).toLocaleString()}</strong> シェア到達による決着！</p>}
-          <p style={{ color: '#aaaaaa', fontSize: '1.2rem' }}>WINNER: <strong style={{color: PLAYER_COLORS[gameStatus.winner], textShadow: `0 0 10px ${PLAYER_COLORS[gameStatus.winner]}`}}>{gameStatus.winner}</strong></p>
-          <button onClick={handleResetSystem} style={{ marginTop: '40px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
+      {/* 🥷 1. マップ選択画面 */}
+      {gameStatus.state === "map_selection" && (
+        <MapSelector onSelectMap={handleSelectMap} pColor={pColor} />
+      )}
+
+      {/* 2. 順番決め画面 */}
+      {gameStatus.state === "init_roll" && (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <h1 style={{ fontSize: '3rem', textShadow: '0 0 15px #00ffcc', marginBottom: '40px' }}>&gt; SYSTEM BOOT: INITIATIVE SEQUENCE</h1>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            {PLAYERS.map(p => {
+              const hasRolled = initRolls[p] !== undefined;
+              return (
+                <div key={p} style={{ width: '200px', padding: '20px', border: `2px solid ${PLAYER_COLORS[p]}`, borderRadius: '10px', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.8)', boxShadow: hasRolled ? `0 0 20px ${PLAYER_COLORS[p]}55` : 'none' }}>
+                  <h2 style={{ color: PLAYER_COLORS[p], margin: '0 0 15px 0' }}>{p}</h2>
+                  {hasRolled ? (
+                    <div><div style={{ fontSize: '1.2rem', color: '#aaa' }}>[{initRolls[p].dice[0]}] + [{initRolls[p].dice[1]}]</div><div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff', margin: '10px 0' }}>{initRolls[p].total}</div></div>
+                  ) : (
+                    <button onClick={() => handleInitRoll(p)} style={{ padding: '15px', width: '100%', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: PLAYER_COLORS[p], color: '#000', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>ROLL DICE</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      <PlayerStatus 
-        currentPlayer={currentPlayer}
-        pColor={pColor}
-        timeLeft={timeLeft}
-        gameStatus={gameStatus}
-        score={score}
-        handleEndTurn={handleEndTurn}
-        inventory={inventory}
-        tradeRates={tradeRates}
-        currentBCounts={currentBCounts}
-        MAX_STOCKS={MAX_STOCKS}
-      />
+      {/* 3. ゲーム本編 (setup / playing / finished) */}
+      {(gameStatus.state === "setup" || gameStatus.state === "playing" || gameStatus.state === "finished") && (
+        <>
+          {gameStatus.state === "finished" && (
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+              <h1 style={{ color: '#ffcc00', fontSize: '4rem', textShadow: '0 0 30px #ffcc00', margin: '0 0 20px 0', animation: 'blink 1.5s infinite' }}>{gameStatus.winner === currentPlayer ? "[ VICTORY: MARKET DOMINATION ]" : "[ DEFEAT: BANKRUPTCY ]"}</h1>
+              {gameStatus.reason === "ANNIHILATION" ? <p style={{ color: '#ff0055', fontSize: '1.5rem', marginBottom: '10px' }}>敵対企業が全滅し、ゲームが強制終了しました！</p> : <p style={{ color: '#ffffff', fontSize: '1.5rem', marginBottom: '10px' }}>総企業価値 <strong style={{color: '#00ffcc', fontSize: '2rem'}}>{(score.total * 10000).toLocaleString()}</strong> シェア到達による決着！</p>}
+              <p style={{ color: '#aaaaaa', fontSize: '1.2rem' }}>WINNER: <strong style={{color: PLAYER_COLORS[gameStatus.winner], textShadow: `0 0 10px ${PLAYER_COLORS[gameStatus.winner]}`}}>{gameStatus.winner}</strong></p>
+              <button onClick={handleResetSystem} style={{ marginTop: '40px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
+            </div>
+          )}
 
-      {/* 🥷 修正：position: 'relative' を追加して、シールドの基準点にする */}
-      <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative' }}>
-        
-        {/* 🥷 追加：敵のターン中、画面の中央エリア全てを覆う物理シールド */}
-        {gameStatus.current_player !== "Player1" && (
-          <div 
-            onClick={(e) => {
-              e.stopPropagation(); // クリックが下のマップに貫通するのを防ぐ
-              alert("[ ERROR ] 現在は敵対企業のターンです。待機してください。");
-            }}
-            style={{ 
-              position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 50 
-            }} 
+          <PlayerStatus 
+            currentPlayer={currentPlayer} pColor={pColor} timeLeft={timeLeft} gameStatus={gameStatus} 
+            score={score} handleEndTurn={handleEndTurn} inventory={inventory} tradeRates={tradeRates} 
+            currentBCounts={currentBCounts} MAX_STOCKS={MAX_STOCKS} 
           />
-        )}
 
-        {gameStatus.state === "setup" && (
+          <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative' }}>
+            {gameStatus.current_player !== "Player1" && (
+              <div onClick={(e) => { e.stopPropagation(); alert("[ ERROR ] 現在は敵対企業のターンです。待機してください。"); }}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 50 }} 
+              />
+            )}
 
-          <div style={{ width: '800px', padding: '15px', marginBottom: '15px', backgroundColor: pColor + '33', border: `2px solid ${pColor}`, borderRadius: '5px', textAlign: 'center' }}>
-            <h2 style={{ margin: 0, color: '#fff', textShadow: `0 0 10px ${pColor}` }}>【 初期配置フェーズ (TURN {gameStatus.setup_turn + 1}/8) 】</h2>
-            <p style={{ margin: '10px 0 0 0', color: '#ccc', fontWeight: 'bold' }}>拠点(DC)を1つと、それに繋がる道(ROAD)を1本、無料で配置してください。<br/>配置が終わったら右上の [ END TURN ] を押して次の企業へ回します。</p>
-          </div>
-        )}
+            {gameStatus.state === "setup" && (
+              <div style={{ width: '800px', padding: '15px', marginBottom: '15px', backgroundColor: pColor + '33', border: `2px solid ${pColor}`, borderRadius: '5px', textAlign: 'center' }}>
+                <h2 style={{ margin: 0, color: '#fff', textShadow: `0 0 10px ${pColor}` }}>【 初期配置フェーズ (TURN {gameStatus.setup_turn + 1}/8) 】</h2>
+                <p style={{ margin: '10px 0 0 0', color: '#ccc', fontWeight: 'bold' }}>拠点(DC)を1つと、それに繋がる道(ROAD)を1本、無料で配置してください。<br/>配置が終わったら右上の [ END TURN ] を押して次の企業へ回します。</p>
+              </div>
+            )}
 
-        <ControlPanel 
-          gameStatus={gameStatus}
-          pColor={pColor}
-          actionMode={actionMode}
-          setActionMode={setActionMode}
-          activeCard={activeCard}
-          setActiveCard={setActiveCard}
-          hasRolledDice={hasRolledDice}
-          isTradeOpen={isTradeOpen}
-          setIsTradeOpen={setIsTradeOpen}
-          handleDrawCard={handleDrawCard}
-          offerRes={offerRes}
-          setOfferRes={setOfferRes}
-          receiveRes={receiveRes}
-          setReceiveRes={setReceiveRes}
-          tradeRates={tradeRates}
-          handleTrade={handleTrade}
-          isRolling={isRolling}
-          handleRollDice={handleRollDice}
-          handleHackResources={handleHackResources}
-          dice={dice}
-          eventLog={eventLog}
-          turnLogs={turnLogs} // 🥷 追加：コントロールパネルに履歴データを渡す
-        />
+            <ControlPanel 
+              gameStatus={gameStatus} pColor={pColor} actionMode={actionMode} setActionMode={setActionMode} 
+              activeCard={activeCard} setActiveCard={setActiveCard} hasRolledDice={hasRolledDice} 
+              isTradeOpen={isTradeOpen} setIsTradeOpen={setIsTradeOpen} handleDrawCard={handleDrawCard} 
+              offerRes={offerRes} setOfferRes={setOfferRes} receiveRes={receiveRes} setReceiveRes={setReceiveRes} 
+              tradeRates={tradeRates} handleTrade={handleTrade} isRolling={isRolling} handleRollDice={handleRollDice} 
+              handleHackResources={handleHackResources} dice={dice} eventLog={eventLog} turnLogs={turnLogs} 
+            />
 
-        <HexMap currentPlayer={currentPlayer} activeNumber={dice ? dice.total : null} actionMode={actionMode} onStateUpdate={handleStateUpdate} refreshData={fetchData} onModeChange={setActionMode} activeCard={activeCard} setEventLog={setEventLog} hasRolledDice={hasRolledDice} gameStatus={gameStatus} />
-        
-        <CardHand cards={cards} actionMode={actionMode} handleUseCard={handleUseCard} />
-
-      </main>
-      <style>{`@keyframes blink { 50% { opacity: 0.5; } }`}</style>
-      <footer style={{ 
-        padding: '1rem', 
-        borderTop: `1px dotted ${pColor}`, 
-        textAlign: 'center', 
-        fontSize: '0.8rem', 
-        opacity: 0.8,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: '20px'
-      　}}>
-        <span>&gt; SYSTEM SECURE. SURVIVAL DX.</span>
-        
-        {/* 🥷 緊急脱出ボタン */}
-        <button 
-          onClick={handleExitToTitle}
-          style={{
-            backgroundColor: 'transparent',
-            color: '#ff0055', // 警告色（赤）
-            border: '1px solid #ff0055',
-            padding: '2px 10px',
-            cursor: 'pointer',
-            fontSize: '0.7rem',
-            fontWeight: 'bold',
-            borderRadius: '3px',
-            transition: '0.3s'
-          }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#ff005522'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-        >
-          [ EXIT TO TITLE ]
-        </button>
-      </footer>
+            <HexMap currentPlayer={currentPlayer} activeNumber={dice ? dice.total : null} actionMode={actionMode} onStateUpdate={handleStateUpdate} refreshData={fetchData} onModeChange={setActionMode} activeCard={activeCard} setEventLog={setEventLog} hasRolledDice={hasRolledDice} gameStatus={gameStatus} />
+            
+            <CardHand cards={cards} actionMode={actionMode} handleUseCard={handleUseCard} />
+          </main>
+          
+          <style>{`@keyframes blink { 50% { opacity: 0.5; } }`}</style>
+          <footer style={{ padding: '1rem', borderTop: `1px dotted ${pColor}`, textAlign: 'center', fontSize: '0.8rem', opacity: 0.8, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
+            <span>&gt; SYSTEM SECURE. SURVIVAL DX.</span>
+            <button onClick={handleExitToTitle} style={{ backgroundColor: 'transparent', color: '#ff0055', border: '1px solid #ff0055', padding: '2px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '3px', transition: '0.3s' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#ff005522'} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>[ EXIT TO TITLE ]</button>
+          </footer>
+        </>
+      )}
     </div>
   );
 }
