@@ -146,6 +146,7 @@ def get_or_generate_board():
             placed_np_hubs += 1
 
     return {
+        "map_id": getattr(state, "current_map_id", "STAGE_01_BEGINNER"), # 🥷 この1行を追加！
         "board": state.current_board, "buildings": state.buildings, "roads": state.roads, 
         "bots": state.bots, "hacker_position": state.hacker_position, "cards": state.cards, 
         "game_status": state.game_status, "inventory": state.inventory, "trade_rates": state.trade_rates, 
