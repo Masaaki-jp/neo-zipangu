@@ -17,7 +17,8 @@ export const SECTORS = {
   HARD: { name: 'HARD', color: '#ff0055' },
   POLYMER: { name: 'POLYMER', color: '#00ff44' }, 
   NUCLEAR: { name: 'NUCLEAR', color: '#bfff00' },
-  DARK: { name: 'DARK', color: '#444444' }
+  DARK: { name: 'DARK', color: '#444444' },
+  OCEAN: { name: 'OCEAN', color: '#0055aa' } // 🥷 この1行を追加！
 };
 
 // 🥷 建物の描画スタイル定義（拡張対応版）

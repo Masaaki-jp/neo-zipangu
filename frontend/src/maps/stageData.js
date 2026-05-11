@@ -42,14 +42,19 @@ export const STAGE_DATA = [
     description: "4つの島が連なる28マスの広域マップ。島をまたぐネットワーク構築が必須となるため、ゴールは120万シェアに設定されている。",
     themeColor: "#ccff00"
   },
-  {
+ {
     id: "STAGE_04_ZIPANGU",
     name: "4面: じぱんぐ島",
-    totalHexes: 27,
-    targetScore: 120,
-    difficulty: "HARD",
-    description: "細長い列島27マス。分断のリスクが高いため、ネットワーク維持が困難。120万シェア達成には、本州の覇権を握る必要がある。",
-    themeColor: "#ff00ff"
+    totalHexes: 32,
+    targetScore: 200,
+    // 🥷 九州から北海道まで収まるように、縦に長い1400pxの画用紙を用意
+    canvasWidth: 1200,
+    canvasHeight: 1400,
+    viewMode: "scroll",
+    zoom: 1.0, 
+    difficulty: "EXTREME",
+    description: "四つの島からなる黄金の国。北東の巨大な島『蝦夷（HOKKAIDO）』は全域が未開拓のDARK領域。物理ネットワークが分断されたこの地を、VPNと港で制覇せよ。",
+    themeColor: "#ffcc00"
   },
   {
     id: "STAGE_05_PARADISE",

@@ -75,36 +75,38 @@ def health_check(): return {"status": "operational"}
 def get_or_generate_board():
     if len(state.current_board) == 0:
         import map_layouts
-        
-        # 🥷 記憶したマップIDを使って、設計図（カタログ）を呼び出す
         map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
-        # デフォルトは1面とする安全設計
         map_blueprint = map_layouts.MAP_CATALOG.get(map_id, map_layouts.MAP_CATALOG["STAGE_01_BEGINNER"])
         
         layout = map_blueprint["layout"]
         fixed_darks = map_blueprint.get("fixed_darks", [])
+        fixed_oceans = map_blueprint.get("fixed_oceans", []) # 🥷 カタログから読み込み
         exclusion_radius = map_blueprint.get("coastal_exclusion_radius", 0.0)
-        
+
         total_hexes = len(layout)
         
-        # マップの広さに合わせて資源（セクター）を動的に分配（DARKマス以外）
-        non_dark_count = total_hexes - len(fixed_darks)
+        # 🥷 資源を割り当てるべき「普通のマス」の数を計算
+        # DARKでもOCEANでもないマスだけがシャッフル対象
+        normal_hex_count = len(layout) - len(fixed_darks) - len(fixed_oceans)
+        
         base_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
-        sectors = [base_types[i % 5] for i in range(non_dark_count)]
+        sectors = [base_types[i % 5] for i in range(normal_hex_count)]
         random.shuffle(sectors)
         
         base_nums = [2,3,4,5,6,8,9,10,11,12]
-        # シャッフル用の数字リストも、DARKマスの分だけ減らしておく
-        numbers = [random.choice(base_nums) for _ in range(non_dark_count)]
+        numbers = [random.choice(base_nums) for _ in range(normal_hex_count)]
         random.shuffle(numbers)
-        
+
         vertex_counts = {}
         
         for q, r in layout:
-            # 🥷 カタログでDARK指定されている座標ならDARKにする
             if (q, r) in fixed_darks:
                 sector_type = "DARK"
                 num = None
+            elif (q, r) in fixed_oceans:
+                # 🥷 OCEANマスの生成
+                sector_type = "OCEAN"
+                num = None # 数字は持たせない
             else:
                 sector_type = sectors.pop()
                 num = numbers.pop()
