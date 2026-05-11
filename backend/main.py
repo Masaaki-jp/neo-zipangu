@@ -76,28 +76,43 @@ def get_or_generate_board():
     if len(state.current_board) == 0:
         import map_layouts
         
-        # 🥷 記憶したマップIDを使って、設計図（座標リスト）を呼び出す
+        # 🥷 記憶したマップIDを使って、設計図（カタログ）を呼び出す
         map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
-        layout = map_layouts.get_map_layout(map_id)
+        # デフォルトは1面とする安全設計
+        map_blueprint = map_layouts.MAP_CATALOG.get(map_id, map_layouts.MAP_CATALOG["STAGE_01_BEGINNER"])
+        
+        layout = map_blueprint["layout"]
+        fixed_darks = map_blueprint.get("fixed_darks", [])
+        exclusion_radius = map_blueprint.get("coastal_exclusion_radius", 0.0)
+        
         total_hexes = len(layout)
         
-        # マップの広さに合わせて資源（セクター）を動的に分配
+        # マップの広さに合わせて資源（セクター）を動的に分配（DARKマス以外）
+        non_dark_count = total_hexes - len(fixed_darks)
         base_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
-        sectors = [base_types[i % 5] for i in range(total_hexes)]
+        sectors = [base_types[i % 5] for i in range(non_dark_count)]
         random.shuffle(sectors)
         
         base_nums = [2,3,4,5,6,8,9,10,11,12]
-        numbers = [random.choice(base_nums) for _ in range(total_hexes)]
+        # シャッフル用の数字リストも、DARKマスの分だけ減らしておく
+        numbers = [random.choice(base_nums) for _ in range(non_dark_count)]
         random.shuffle(numbers)
         
         vertex_counts = {}
         
         for q, r in layout:
-            sector_type = sectors.pop()
+            # 🥷 カタログでDARK指定されている座標ならDARKにする
+            if (q, r) in fixed_darks:
+                sector_type = "DARK"
+                num = None
+            else:
+                sector_type = sectors.pop()
+                num = numbers.pop()
+
             state.current_board.append({
                 "q": q, "r": r, "s": -q - r, 
                 "sector": sector_type, 
-                "number": numbers.pop()
+                "number": num
             })
             
             cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (q + r / 2)
@@ -112,12 +127,11 @@ def get_or_generate_board():
         # 🥷 港の候補地（海岸線）を計算
         for v_id, count in vertex_counts.items():
             if count <= 2:
-                # 2面の「内海（火口）には港を作れない」ルールの完全再現
                 vx, vy = map(int, v_id.split(','))
                 dist_from_center = math.hypot(vx - CENTER_X, vy - CENTER_Y)
                 
-                # 中心（火口）から近すぎる頂点は港候補から除外する！
-                if map_id == "STAGE_02_VOLCANO" and dist_from_center < (HEX_SIZE * 1.5):
+                # 🥷 マップごとの「港禁止エリア」設定を適用（2面なら1.5、他は0）
+                if exclusion_radius > 0 and dist_from_center < (HEX_SIZE * exclusion_radius):
                     continue 
                     
                 state.coastal_vertices.add(v_id)
@@ -128,6 +142,7 @@ def get_or_generate_board():
         attempts = 0
         while placed_np_hubs < npc_count and attempts < 1000:
             attempts += 1
+            # 🥷 DARKマスにはボット拠点を配置しない
             target_hex = random.choice([h for h in state.current_board if h["sector"] != "DARK"])
             cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (target_hex["q"] + target_hex["r"] / 2)
             cy = CENTER_Y + HEX_SIZE * (3 / 2) * target_hex["r"]
@@ -146,7 +161,7 @@ def get_or_generate_board():
             placed_np_hubs += 1
 
     return {
-        "map_id": getattr(state, "current_map_id", "STAGE_01_BEGINNER"), # 🥷 この1行を追加！
+        "map_id": getattr(state, "current_map_id", "STAGE_01_BEGINNER"),
         "board": state.current_board, "buildings": state.buildings, "roads": state.roads, 
         "bots": state.bots, "hacker_position": state.hacker_position, "cards": state.cards, 
         "game_status": state.game_status, "inventory": state.inventory, "trade_rates": state.trade_rates, 
