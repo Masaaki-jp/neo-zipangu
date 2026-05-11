@@ -7,7 +7,10 @@ export const STAGE_DATA = [
     totalHexes: 19,
     darkHexes: 0,
     targetScore: 100, // 100万シェア
-    zoom: 1.0, // 🥷 追加：標準サイズ
+    canvasWidth: 1000,  // 🥷 追加：標準の幅
+    canvasHeight: 800,  // 🥷 追加：標準の高さ
+    viewMode: "fixed", // 🥷 追加：画面内にピッタリ収める
+    zoom: 1.0, // 🥷 追加：1面はそのままの大きさで！
     difficulty: "NORMAL",
     description: "別名「たたかいの島」。19マスの最小構成。対角線配置は即・窒息を意味する。100万シェアへの到達スピードを競う純粋な実力派マップ。",
     themeColor: "#00ffcc"
@@ -18,7 +21,10 @@ export const STAGE_DATA = [
     totalHexes: 24,
     darkHexes: 0,
     targetScore: 100,
-    zoom: 0.95, // 🥷 追加：少しだけ縮小
+    canvasWidth: 1000,  // 🥷 追加：標準の幅
+    canvasHeight: 800,  // 🥷 追加：標準の高さ
+    viewMode: "fixed", // 🥷 追加：画面内にピッタリ収める
+    zoom: 0.85, // 🥷 追加：2面もそのままの大きさで！
     difficulty: "HARD",
     description: "内海に港を作れない制約があるが、広さは標準的。100万シェアへの最短ルートは、外周ゲートウェイの早期確保にある。",
     themeColor: "#ff3333"
@@ -28,7 +34,10 @@ export const STAGE_DATA = [
     name: "3面: けいこく",
     totalHexes: 28,
     targetScore: 160, // マス増に伴いゴール引き上げ
-    zoom: 0.75, // 🥷 追加：上下に広いため、強めに縮小（これで枠内に完璧に収まります）
+    canvasWidth: 1100,  // 1000から1100に拡張
+    canvasHeight: 1100, // 800から1100に拡張
+    viewMode: "scroll", // 🥷 追加：ステージが大きいのでスクロールで対応
+    zoom: 0.9, // 🥷 追加：3面は少し縮小して表示
     difficulty: "NORMAL",
     description: "4つの島が連なる28マスの広域マップ。島をまたぐネットワーク構築が必須となるため、ゴールは120万シェアに設定されている。",
     themeColor: "#ccff00"
