@@ -357,18 +357,59 @@ const handleEndTurn = async (isForcedTimeout = false) => {
 
       {/* 2. 順番決め画面 */}
       {gameStatus.state === "init_roll" && (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <h1 style={{ fontSize: '3rem', textShadow: '0 0 15px #00ffcc', marginBottom: '40px' }}>&gt; SYSTEM BOOT: INITIATIVE SEQUENCE</h1>
-          <div style={{ display: 'flex', gap: '20px' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
+          <h1 style={{ 
+            fontSize: 'clamp(1.5rem, 4vw, 3rem)', 
+            textShadow: '0 0 15px #00ffcc', 
+            marginBottom: '40px', 
+            textAlign: 'center' 
+          }}>
+            &gt; SYSTEM BOOT: INITIATIVE SEQUENCE
+          </h1>
+          
+          {/* 🥷 親の箱：縦並び（column）に変更し、中央に揃える */}
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            gap: '20px', 
+            width: '100%', 
+          }}>
             {PLAYERS.map(p => {
               const hasRolled = initRolls[p] !== undefined;
               return (
-                <div key={p} style={{ width: '200px', padding: '20px', border: `2px solid ${PLAYER_COLORS[p]}`, borderRadius: '10px', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.8)', boxShadow: hasRolled ? `0 0 20px ${PLAYER_COLORS[p]}55` : 'none' }}>
+                <div key={p} style={{ 
+                  width: '100%', 
+                  maxWidth: '400px',
+                  padding: '20px', 
+                  border: `2px solid ${PLAYER_COLORS[p]}`, 
+                  borderRadius: '10px', 
+                  textAlign: 'center', 
+                  backgroundColor: 'rgba(0,0,0,0.8)', 
+                  boxShadow: hasRolled ? `0 0 20px ${PLAYER_COLORS[p]}55` : 'none',
+                  boxSizing: 'border-box' 
+                }}>
                   <h2 style={{ color: PLAYER_COLORS[p], margin: '0 0 15px 0' }}>{p}</h2>
                   {hasRolled ? (
-                    <div><div style={{ fontSize: '1.2rem', color: '#aaa' }}>[{initRolls[p].dice[0]}] + [{initRolls[p].dice[1]}]</div><div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff', margin: '10px 0' }}>{initRolls[p].total}</div></div>
+                    /* 🥷 修正：数式と合計値を1行（横並び）でスタイリッシュに表示 */
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'baseline', // 文字の下端を揃える魔法
+                      gap: '12px',            // 数式と答えの間の絶妙な隙間
+                      margin: '10px 0' 
+                    }}>
+                      <span style={{ fontSize: '1.5rem', color: '#aaa', fontFamily: 'monospace' }}>
+                        [{initRolls[p].dice[0]}] + [{initRolls[p].dice[1]}] =
+                      </span>
+                      <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff' }}>
+                        {initRolls[p].total}
+                      </span>
+                    </div>
                   ) : (
-                    <button onClick={() => handleInitRoll(p)} style={{ padding: '15px', width: '100%', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: PLAYER_COLORS[p], color: '#000', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>ROLL DICE</button>
+                    <button onClick={() => handleInitRoll(p)} style={{ padding: '15px', width: '100%', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: PLAYER_COLORS[p], color: '#000', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>
+                      ROLL DICE
+                    </button>
                   )}
                 </div>
               );
