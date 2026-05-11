@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useState } from 'react';
 import { PLAYER_COLORS, SECTORS, BUILDING_STYLES } from '../styles';
 import { STAGE_DATA } from '../maps/stageData';
 
-// 🥷 座標を狂わせないため、マスのサイズは絶対に「60」で固定する
 const HEX_SIZE = 60; 
 
 const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refreshData, onModeChange, activeCard, setEventLog, hasRolledDice, gameStatus }) => {
@@ -19,6 +18,13 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   const [loading, setLoading] = useState(true);
   const [selectedBot, setSelectedBot] = useState(null);
   const [mapId, setMapId] = useState("STAGE_01_BEGINNER");
+
+  // 🥷 順番が命！必ず mapId が定義された【後】に、マップ設定を読み込む
+  const stageConfig = STAGE_DATA.find(s => s.id === mapId) || STAGE_DATA[0];
+  const canvasWidth = stageConfig.canvasWidth || 1000;
+  const canvasHeight = stageConfig.canvasHeight || 800;
+  const viewMode = stageConfig.viewMode || "fixed";
+  const currentZoom = stageConfig.zoom || 1.0;
 
   const fetchBoard = async () => {
     try {
@@ -39,10 +45,6 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   
   useEffect(() => { setSelectedBot(null); }, [actionMode]);
 
-  // カタログからズーム値を取得（見た目の縮小にのみ使用する）
-  const stageConfig = STAGE_DATA.find(s => s.id === mapId) || STAGE_DATA[0];
-  const currentZoom = stageConfig.zoom || 1.0;
-
   useEffect(() => {
     if (loading || boardData.length === 0) return;
     const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
@@ -59,7 +61,6 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const angle_rad = (Math.PI / 180) * (60 * i - 30);
-        // 🥷 座標計算は必ずHEX_SIZE（60）を使用する
         const x = cx + HEX_SIZE * Math.cos(angle_rad); const y = cy + HEX_SIZE * Math.sin(angle_rad);
         const vId = `${Math.round(x)},${Math.round(y)}`;
         hexVertices.push(vId); 
@@ -187,7 +188,7 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       }
     });
 
-  }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos, activeCard, currentPlayer, mapId]);
+  }, [boardData, loading, activeNumber, buildings, roads, bots, actionMode, selectedBot, hackerPos, activeCard, currentPlayer, canvasWidth, canvasHeight]);
 
   const handleCanvasClick = async (e) => {
     if (gameStatus && gameStatus.state === "playing" && !hasRolledDice && actionMode !== 'HACKER') {
@@ -195,9 +196,8 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
     }
 
     const rect = canvasRef.current.getBoundingClientRect();
-    // 🥷 画面が縮小されていても、絶対に狂わないクリック座標計算
-    const scaleX = 1000 / rect.width;
-    const scaleY = 800 / rect.height;
+    const scaleX = canvasWidth / rect.width;
+    const scaleY = canvasHeight / rect.height;
     const clickX = (e.clientX - rect.left) * scaleX; 
     const clickY = (e.clientY - rect.top) * scaleY;
 
@@ -374,28 +374,37 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
     }
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
+return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
       {loading ? (
         <div style={{ color: '#00ffcc', margin: '100px 0' }}>&gt; CONTACTING SERVER...</div>
       ) : (
         <div style={{
-          width: `${1000 * currentZoom}px`,
-          height: `${800 * currentZoom}px`,
-          position: 'relative'
+          width: '100%',
+          maxWidth: '1000px', // 外枠の最大幅
+          height: viewMode === "scroll" ? '80vh' : 'auto', 
+          overflow: viewMode === "scroll" ? 'auto' : 'hidden', 
+          border: '1px solid #33ffcc',
+          borderRadius: '8px',
+          backgroundColor: '#000',
+          position: 'relative',
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: viewMode === "scroll" ? 'flex-start' : 'center', // スクロール時は左上基準、固定時は中央
+          alignItems: 'flex-start'
         }}>
           <canvas 
             ref={canvasRef} 
-            width={1000} 
-            height={800} 
+            width={canvasWidth}   // 🥷 内部解像度（1000など）
+            height={canvasHeight} // 🥷 内部解像度（800や1100など）
             onClick={handleCanvasClick} 
             style={{ 
-              border: '1px solid #33ffcc', 
               cursor: 'crosshair', 
-              backgroundColor: '#000', 
-              borderRadius: '8px',
-              transform: `scale(${currentZoom})`,
-              transformOrigin: 'top left'
+              display: 'block',
+              width: `${canvasWidth * currentZoom}px`,   // 🥷 単純な掛け算のサイズ
+              height: `${canvasHeight * currentZoom}px`, // 🥷 単純な掛け算のサイズ
+              flexShrink: 0, // 🥷 これが最重要！ブラウザが勝手に縦横比を潰すのを「禁止」する
+              margin: viewMode === "scroll" ? '0' : '0 auto'
             }} 
           />
         </div>
