@@ -18,7 +18,7 @@ export const STAGE_DATA = [
   {
     id: "STAGE_02_VOLCANO",
     name: "2面: 火山島",
-    totalHexes: 24,
+    totalHexes: 30,
     darkHexes: 0,
     targetScore: 100,
     canvasWidth: 1000,  // 🥷 追加：標準の幅
