@@ -46,9 +46,16 @@ SHIKOKU_COORDS = [(-4, 8), (-5, 8), (-4, 9)]
 HONSHU_COORDS = [(-2, 4), (-1, 4), (-2, 5), (-3, 5), (-3, 6), (-2, 6), (-1, 3), (-2, 3), (0, 3), (0, 2), (1, 2), (1, 1), (2, 1)]
 HOKKAIDO_COORDS = [(4, -1), (5, -1), (4, -2), (5, -2), (6, -2), (5, -3), (6, -3)]
 
-# 足し合わせて1つの島データにする
-STAGE_04_ZIPANGU = KYUSHU_COORDS + SHIKOKU_COORDS + HONSHU_COORDS + HOKKAIDO_COORDS
+# 🥷 じぱんぐ島：島を繋ぐ「海底ルート」の座標を新規定義
+# 九州-四国間、四国-本州間、本州-北海道間を繋ぐ最低限の座標
+OCEAN_BRIDGES = [
+    (-6, 8),           # 九州-四国
+    (-3, 7), (-3, 8),  # 四国-本州
+    (3, 0), (2, 0)     # 本州-北海道
+]
 
+# 足し合わせて1つの島データにする
+STAGE_04_ZIPANGU = KYUSHU_COORDS + SHIKOKU_COORDS + HONSHU_COORDS + HOKKAIDO_COORDS + OCEAN_BRIDGES
 
 # ==========================================
 # 🗺️ MAP CATALOG (マップの完全設計図)
@@ -58,25 +65,29 @@ STAGE_04_ZIPANGU = KYUSHU_COORDS + SHIKOKU_COORDS + HONSHU_COORDS + HOKKAIDO_COO
 MAP_CATALOG = {
     "STAGE_01_BEGINNER": {
         "layout": STAGE_01_BEGINNER,
-        "fixed_darks": [],          
+        "fixed_darks": [],   
+        "fixed_oceans": [], # 🥷 既存ステージは空にする       
         "random_dark_ratio": 0.0,
         "coastal_exclusion_radius": 0.0  # 制限なし
     },
     "STAGE_02_VOLCANO": {
         "layout": STAGE_02_VOLCANO,
         "fixed_darks": [],
+        "fixed_oceans": [], # 🥷 既存ステージは空にする
         "random_dark_ratio": 0.0,
         "coastal_exclusion_radius": 3.0  # 🥷 1.5 から 3.0 に拡大！これで内海は完全に建築不可になります
     },
     "STAGE_03_CANYON": {
         "layout": STAGE_03_CANYON,
         "fixed_darks": [],
+        "fixed_oceans": [], # 🥷 既存ステージは空にする
         "random_dark_ratio": 0.0,
         "coastal_exclusion_radius": 0.0
     },
     "STAGE_04_ZIPANGU": {
         "layout": STAGE_04_ZIPANGU,
         "fixed_darks": HOKKAIDO_COORDS,  # 🥷 北海道の未開拓地指定
+        "fixed_oceans": OCEAN_BRIDGES, # 🥷 じぱんぐ島だけ橋の座標を指定！
         "random_dark_ratio": 0.0,
         "coastal_exclusion_radius": 0.0
     }

@@ -20,7 +20,8 @@ const MapSelector = ({ onSelectMap, pColor }) => {
         {STAGE_DATA.map((stage) => {
           const isImplemented = stage.id === "STAGE_01_BEGINNER" || 
                                 stage.id === "STAGE_02_VOLCANO" ||
-                                stage.id === "STAGE_03_CANYON";
+                                stage.id === "STAGE_03_CANYON" ||
+                                stage.id === "STAGE_04_ZIPANGU"; // 🥷 4面まで実装済み！5面以降は未実装のままキープ
           return (
             <div 
               key={stage.id}
