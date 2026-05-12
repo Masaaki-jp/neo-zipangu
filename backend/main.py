@@ -397,6 +397,20 @@ def build_hub(req: BuildRequest):
     try: new_x, new_y = map(int, req.vertex_id.split(',')); 
     except ValueError: raise HTTPException(status_code=400, detail="INVALID")
 
+# 🚫 ======= 追加：DARKとOCEANの周囲への建築を禁止する防御壁 =======
+    for hex_data in state.current_board:
+        if hex_data["sector"] in ["DARK", "OCEAN"]:
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
+            cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
+            # 置こうとしている頂点が、DARK/OCEANマスの中心から約60（HEX_SIZE）の距離にあったらNG
+            if math.hypot(cx - new_x, cy - new_y) < HEX_SIZE + 5:
+                # 特に setup（初期配置）の時は絶対に許さない
+                if is_free_phase:
+                    raise HTTPException(status_code=400, detail="未開拓エリア（DARK）や海（OCEAN）には初期配置できません。")
+                # ※必要に応じて、通常プレイ時（is_free_phase == False）でも
+                # DARKに直接拠点を作れないようにする場合は、ここで弾きます。
+                # 現状は setup の時だけエラーにするならこのままでOKです。
+
     is_coastal = req.vertex_id in state.coastal_vertices
 
     if req.vertex_id in state.buildings:

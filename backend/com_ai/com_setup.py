@@ -1,8 +1,22 @@
-# backend/com_ai/com_setup.py
 import math
 import random
 
 def execute_setup_turn(player, state, constants):
+    # 0. 🥷 事前準備：DARKとOCEANに触れる頂点を「進入禁止リスト」に登録する
+    forbidden_vertices = set()
+    for hex_data in state.current_board:
+        # マスの種類を取得（データの持ち方に合わせて調整）
+        hex_type = hex_data.get("sector", "")
+        
+        if hex_type in ["DARK", "OCEAN"]:
+            cx = constants.CENTER_X + constants.HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
+            cy = constants.CENTER_Y + constants.HEX_SIZE * (3 / 2) * hex_data["r"]
+            for i in range(6):
+                angle_rad = math.radians(60 * i - 30)
+                vx = round(cx + constants.HEX_SIZE * math.cos(angle_rad))
+                vy = round(cy + constants.HEX_SIZE * math.sin(angle_rad))
+                forbidden_vertices.add(f"{vx},{vy}")
+
     # 1. 🥷 空いている「安全な交差点」を全検索する
     valid_vertices = []
     for hex_data in state.current_board:
@@ -13,6 +27,10 @@ def execute_setup_turn(player, state, constants):
             vx = round(cx + constants.HEX_SIZE * math.cos(angle_rad))
             vy = round(cy + constants.HEX_SIZE * math.sin(angle_rad))
             v_id = f"{vx},{vy}"
+            
+            # 🚫 追加：DARKかOCEANに少しでも触れている頂点は完全除外
+            if v_id in forbidden_vertices:
+                continue
             
             # 既に誰かの拠点があればスキップ
             if v_id in state.buildings:
