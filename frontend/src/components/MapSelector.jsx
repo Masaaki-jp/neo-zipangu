@@ -1,7 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react'; // 🥷 修正1：useStateをインポート！
 import { STAGE_DATA } from '../maps/stageData';
+import MapBuilder from './MapBuilder'; // 🥷 修正2：パスを直したインポート
 
 const MapSelector = ({ onSelectMap, pColor }) => {
+  // 🥷 修正3：ツール表示の切り替え用ステートを追加
+  const [showBuilder, setShowBuilder] = useState(false);
+
+  // 🥷 修正4：ツール画面がONならツールを描画（早期リターン）
+  if (showBuilder) {
+    return <MapBuilder onBack={() => setShowBuilder(false)} />;
+  }
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -15,13 +24,14 @@ const MapSelector = ({ onSelectMap, pColor }) => {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-        gap: '20px', width: '100%', maxWidth: '1200px'
+        gap: '20px', width: '100%', maxWidth: '1200px',
+        marginBottom: '4rem' // 🥷 下部のボタンとの間に余白を確保
       }}>
         {STAGE_DATA.map((stage) => {
           const isImplemented = stage.id === "STAGE_01_BEGINNER" || 
                                 stage.id === "STAGE_02_VOLCANO" ||
                                 stage.id === "STAGE_03_CANYON" ||
-                                stage.id === "STAGE_04_ZIPANGU"; // 🥷 4面まで実装済み！5面以降は未実装のままキープ
+                                stage.id === "STAGE_04_ZIPANGU";
           return (
             <div 
               key={stage.id}
@@ -74,7 +84,6 @@ const MapSelector = ({ onSelectMap, pColor }) => {
                 {stage.description}
               </div>
 
-              {/* 🥷 修正：パラメータ表示エリアに TARGET を追加 */}
               <div style={{ 
                 marginTop: '15px', display: 'flex', gap: '15px', 
                 fontSize: '0.75rem', color: '#666', fontWeight: 'bold',
@@ -90,6 +99,32 @@ const MapSelector = ({ onSelectMap, pColor }) => {
           );
         })}
       </div>
+
+      {/* 🥷 修正5：開発用ボタンを画面の一番下に配置（隠しコマンド風） */}
+      <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
+        <button 
+          onClick={() => setShowBuilder(true)}
+          style={{
+            padding: '8px 16px', backgroundColor: 'transparent', color: '#444',
+            border: '1px solid #333', borderRadius: '4px', cursor: 'pointer',
+            fontSize: '0.7rem', fontWeight: 'bold', transition: '0.3s',
+            letterSpacing: '1px'
+          }}
+          onMouseEnter={(e) => { 
+            e.currentTarget.style.color = '#00ffcc';
+            e.currentTarget.style.borderColor = '#00ffcc';
+            e.currentTarget.style.boxShadow = '0 0 10px #00ffcc44';
+          }}
+          onMouseLeave={(e) => { 
+            e.currentTarget.style.color = '#444';
+            e.currentTarget.style.borderColor = '#333';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        >
+          [ DEV_TOOLS ] CUSTOM_MAP_BUILDER.exe
+        </button>
+      </div>
+
     </div>
   );
 };
