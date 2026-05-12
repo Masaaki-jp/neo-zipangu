@@ -48,7 +48,38 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   useEffect(() => {
     if (loading || boardData.length === 0) return;
     const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
-    const centerX = 500; const centerY = 400; 
+    
+    // 🥷 === ここから：オートフォーカス（真の重心計算）処理 ===
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    // 1. 全マスのピクセル座標を計算し、マップの「端から端」を割り出す
+    boardData.forEach(hex => {
+      // (0,0) を基準とした純粋なピクセル距離
+      const rawX = HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2);
+      const rawY = HEX_SIZE * (3 / 2) * hex.r;
+      if (rawX < minX) minX = rawX;
+      if (rawX > maxX) maxX = rawX;
+      if (rawY < minY) minY = rawY;
+      if (rawY > maxY) maxY = rawY;
+    });
+
+    // 念のためのフェイルセーフ
+    if (minX === Infinity) { minX = 0; maxX = 0; minY = 0; maxY = 0; }
+
+    // 2. マップ全体の「真の中心（重心）」
+    const boxCenterX = (minX + maxX) / 2;
+    const boxCenterY = (minY + maxY) / 2;
+
+    // 3. stageData.js の設定も反映できるように読み込む
+    const offsetX = stageConfig.offsetX || 0;
+    const offsetY = stageConfig.offsetY || 0;
+
+    // 4. キャンバスのど真ん中から、マップの重心を引くことで「完璧な中央座標」を算出
+    const centerX = (canvasWidth / 2) - boxCenterX + offsetX; 
+    const centerY = (canvasHeight / 2) - boxCenterY + offsetY;
+    // 🥷 === ここまで ===
+
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const tempVertices = new Map(); const tempEdges = new Map(); const tempCenters = [];
