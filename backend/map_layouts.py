@@ -60,6 +60,23 @@ OCEAN_BRIDGES = [(11, 2), (-1, 6), (-1, 7), (1, 8)]
 # 足し合わせて「じぱんぐ島」の全レイアウトを作成
 STAGE_04_ZIPANGU = KYUSHU_COORDS + SHIKOKU_COORDS + HONSHU_COORDS + HOKKAIDO_COORDS + OCEAN_BRIDGES
 
+# 🥷 第五区画：パラダイス (合計28マス / 中央の巨大湖)
+
+STAGE_05_LAND = [
+    (-1, 0), (2, 0), (-4, 3), (-3, 3), (-2, 3), (-3, 2), (-2, 2), (-2, 1), (-1, 3), 
+    (0, 3), (1, 3), (2, 3), (1, 2), (2, 1), (2, 2), (0, -1), (1, -1), (2, -1), (2, -2), 
+    (1, -2), (2, -3)
+]
+STAGE_05_OCEANS = [
+    (0, 0), (1, 0), (0, 1), (-1, 1), (-1, 2), (0, 2), (1, 1)
+]
+
+# 足し合わせてステージ5の全レイアウトを作成
+STAGE_05_PARADISE = STAGE_05_LAND + STAGE_05_OCEANS
+
+# 足し合わせてステージ5の全レイアウトを作成
+STAGE_05_PARADISE = STAGE_05_LAND + STAGE_05_OCEANS
+
 # ==========================================
 # 🗺️ MAP CATALOG (マップの完全設計図)
 # ここにマップ固有のルール（未開拓地の指定など）を集約する
@@ -92,6 +109,14 @@ MAP_CATALOG = {
         "fixed_darks": HOKKAIDO_COORDS,  # 🥷 北海道の未開拓地指定
         "fixed_oceans": OCEAN_BRIDGES, # 🥷 じぱんぐ島だけ橋の座標を指定！
         "random_dark_ratio": 0.0,
+        "coastal_exclusion_radius": 1.5
+    },
+    "STAGE_05_PARADISE": {
+        "name": "ステージ5：パラダイス",
+        "winning_score": 120,  # 28マス規模なので120前後に設定
+        "layout": STAGE_05_PARADISE,
+        "fixed_darks": [],     # 今回はDARKマスなし
+        "fixed_oceans": STAGE_05_OCEANS,
         "coastal_exclusion_radius": 1.5
     }
 }
