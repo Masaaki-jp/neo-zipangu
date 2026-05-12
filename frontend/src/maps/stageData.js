@@ -61,7 +61,7 @@ export const STAGE_DATA = [
     name: "5面: 南の楽園",
     totalHexes: 28,
     targetScore: 130, // 遊びやすいので少し高めに
-    viewMode: "scroll", // 🥷 追加：画面内にピッタリ収める
+    viewMode: "fixed", // 🥷 追加：画面内にピッタリ収める
     zoom: 1.1, // 
     difficulty: "EASY",
     description: "28マスの広大な楽園。資源が豊かに出るため展開が早い。サバイバルを忘れ、130万シェアの超巨大企業を目指せ。",
