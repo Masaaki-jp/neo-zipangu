@@ -20,7 +20,7 @@ export const STAGE_DATA = [
     name: "2面: 火山島",
     totalHexes: 30,
     darkHexes: 0,
-    targetScore: 100,
+    targetScore: 150,
     canvasWidth: 1000,  // 🥷 追加：標準の幅
     canvasHeight: 800,  // 🥷 追加：標準の高さ
     viewMode: "fixed", // 🥷 追加：画面内にピッタリ収める
@@ -45,13 +45,13 @@ export const STAGE_DATA = [
  {
     id: "STAGE_04_ZIPANGU",
     name: "4面: じぱんぐ島",
-    totalHexes: 32,
-    targetScore: 200,
+    totalHexes: 48,
+    targetScore: 170,
     // 🥷 九州から北海道まで収まるように、縦に長い1400pxの画用紙を用意
-    canvasWidth: 1200,
-    canvasHeight: 1400,
+    canvasWidth: 2400,
+    canvasHeight: 1600,
     viewMode: "scroll",
-    zoom: 1.0, 
+    zoom: 0.9, 
     difficulty: "EXTREME",
     description: "四つの島からなる黄金の国。北東の巨大な島『蝦夷（HOKKAIDO）』は全域が未開拓のDARK領域。物理ネットワークが分断されたこの地を、VPNと港で制覇せよ。",
     themeColor: "#ffcc00"
