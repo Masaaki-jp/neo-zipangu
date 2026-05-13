@@ -92,12 +92,24 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const angle_rad = (Math.PI / 180) * (60 * i - 30);
-        const x = cx + HEX_SIZE * Math.cos(angle_rad); const y = cy + HEX_SIZE * Math.sin(angle_rad);
-        const vId = `${Math.round(x)},${Math.round(y)}`;
+        
+        // 🥷 1. 描画用の実際のピクセル座標（動的カメラでズレた座標）
+        const x = cx + HEX_SIZE * Math.cos(angle_rad); 
+        const y = cy + HEX_SIZE * Math.sin(angle_rad);
+
+        // 🥷 2. バックエンドと照合するための「論理ID」（常に 500,400 基準で計算して一致させる！）
+        const logicCx = 500 + HEX_SIZE * Math.sqrt(3) * (q + r / 2);
+        const logicCy = 400 + HEX_SIZE * (3 / 2) * r;
+        const logicX = logicCx + HEX_SIZE * Math.cos(angle_rad);
+        const logicY = logicCy + HEX_SIZE * Math.sin(angle_rad);
+        const vId = `${Math.round(logicX)},${Math.round(logicY)}`;
+
         hexVertices.push(vId); 
 
+        // 辞書に登録する際、IDは「論理ID」、xとyは「描画座標」を持たせる
         if (!tempVertices.has(vId)) tempVertices.set(vId, { id: vId, x, y });
 
+        // ...(以下はそのまま変更なし)
         const currentPoint = { id: vId, x, y };
         if (i === 0) { ctx.moveTo(x, y); firstPoint = currentPoint; } 
         else {
