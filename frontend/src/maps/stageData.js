@@ -68,14 +68,16 @@ export const STAGE_DATA = [
     themeColor: "#00bfff"
   },
   {
-    id: "STAGE_06_OASIS",
-    name: "6面: オアシス",
+    id: "STAGE_06_ARCHIPELAGO",
+    name: "6面: 分断海域",
     totalHexes: 33,
-    darkHexes: 14,
-    targetScore: 100, // 通常マスが少ないため、あえて100万に戻す
-    difficulty: "EXPERT",
-    description: "33マス中、通常地は19のみ。未開地（DARK）の開拓なしでは、100万シェアへの到達すら危うい過酷な砂漠。",
-    themeColor: "#ffdd00"
+    canvasWidth: 1200,  // 横に広いマップなのでキャンバスを大きめに確保
+    canvasHeight: 900,
+    viewMode: "fixed", // はみ出す場合はスクロールできるようにする
+    zoom: 1.0,
+    difficulty: "Nomal",
+    description: "28マスの広大な楽園。資源が豊かに出るため展開が早い。サバイバルを忘れ、130万シェアの超巨大企業を目指せ。",
+    themeColor: "#0015ff"
   },
   {
     id: "STAGE_07_NORTH",
