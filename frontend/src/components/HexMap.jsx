@@ -412,12 +412,6 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
         }
       }
     } else if (clickedEdge && actionMode === 'BUILD') {
-      // 🥷 修正3: 海上のEdge（道）には建築できないように弾く
-      const isOceanOnly = clickedEdge.sectors && clickedEdge.sectors.every(s => s === 'OCEAN');
-      if (isOceanOnly) {
-        alert("[ ERROR ] 海上に道は引けません！");
-        return;
-      }
 
       try {
         const res = await fetch('/api/build_road', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ edge_id: clickedEdge.id, player: currentPlayer }) });

@@ -1,122 +1,112 @@
 # ==========================================
-# Neo-Zipangu Map Blueprints (設計図)
+# 🗺️ Neo-Zipangu Map Layouts Configuration
 # ==========================================
 
-# 🥷 第壱区画：はじまりの島 (19マス)
-STAGE_01_BEGINNER = [
-    (0, -2), (1, -2), (2, -2),
-    (-1, -1), (0, -1), (1, -1), (2, -1),
-    (-2, 0), (-1, 0), (0, 0), (1, 0), (2, 0),
-    (-2, 1), (-1, 1), (0, 1), (1, 1),
-    (-2, 2), (-1, 2), (0, 2)
+# --- STAGE 01: BEGINNER (はじまりの島) ---
+STAGE_01_LAYOUT = [
+    (0, -2), (1, -2), (2, -2), (-1, -1), (0, -1), (1, -1), (2, -1),
+    (-2, 0), (-1, 0), (0, 0), (1, 0), (2, 0), (-2, 1), (-1, 1), (0, 1),
+    (1, 1), (-2, 2), (-1, 2), (0, 2)
 ]
 
-# 🥷 第弐区画：火山島 (完全対称版・30マス)
-STAGE_02_VOLCANO = [
-    # 上部
-    (0, -3), (1, -3), (2, -3), (3, -3),
-    (-1, -2), (0, -2), (1, -2), (2, -2), (3, -2),
-    # 中央上部（穴）
-    (-2, -1), (-1, -1), (2, -1), (3, -1),
-    # 中央（穴）
-    (-3, 0), (-2, 0), (2, 0), (3, 0),
-    # 中央下部（穴）
-    (-3, 1), (-2, 1), (1, 1), (2, 1),
-    # 下部
-    (-3, 2), (-2, 2), (-1, 2), (0, 2), (1, 2),
+# --- STAGE 02: VOLCANO (火山島) ---
+STAGE_02_LAYOUT = [
+    (0, -3), (1, -3), (2, -3), (3, -3), (-1, -2), (0, -2), (1, -2), (2, -2), (3, -2),
+    (-2, -1), (-1, -1), (2, -1), (3, -1), (-3, 0), (-2, 0), (2, 0), (3, 0),
+    (-3, 1), (-2, 1), (1, 1), (2, 1), (-3, 2), (-2, 2), (-1, 2), (0, 2), (1, 2),
     (-3, 3), (-2, 3), (-1, 3), (0, 3)
 ]
 
-# 🥷 第参区画：けいこく (28マス・4つの島・Y軸ズレ修正版)
-STAGE_03_CANYON = [
-    # 北西の島
-    (0, -2), (1, -3), (1, -2), (0, -1), (-1, -1), (-1, -2), (0, -3),
-    # 東の島
-    (3, 1), (4, 0), (4, 1), (3, 2), (2, 2), (2, 1), (3, 0),
-    # 南東の島
-    (0, 4), (1, 3), (1, 4), (0, 5), (-1, 5), (-1, 4), (0, 3),
-    # 西の島
-    (-3, 1), (-2, 0), (-2, 1), (-3, 2), (-4, 2), (-4, 1), (-3, 0)
+# --- STAGE 03: CANYON (けいこく) ---
+STAGE_03_LAYOUT = [
+    (0, -2), (1, -3), (1, -2), (0, -1), (-1, -1), (-1, -2), (0, -3), # 北西
+    (3, 1), (4, 0), (4, 1), (3, 2), (2, 2), (2, 1), (3, 0),          # 東
+    (0, 4), (1, 3), (1, 4), (0, 5), (-1, 5), (-1, 4), (0, 3),        # 南東
+    (-3, 1), (-2, 0), (-2, 1), (-3, 2), (-4, 2), (-4, 1), (-3, 0)    # 西
 ]
 
-# 🥷 第四区画：じぱんぐ島 (左上原点への完全補正版)
-# 全マスに一律 (q+7, r+7) の補正をかけ、マイナス座標による見切れを解消
-
-KYUSHU_COORDS = [] 
-SHIKOKU_COORDS = []
-HONSHU_COORDS = [
+# --- STAGE 04: ZIPANGU (じぱんぐ島) ---
+STAGE_04_HOKKAIDO = [(13, -1), (14, -1), (12, 0), (13, 0), (14, 0), (12, 1), (13, 1)]
+STAGE_04_OCEANS = [(11, 2), (-1, 6), (-1, 7), (1, 8)]
+STAGE_04_HONSHU = [
     (11, 3), (10, 3), (10, 4), (9, 4), (9, 5), (8, 5), (8, 6), (7, 5), (8, 4), (7, 6), 
     (6, 6), (6, 5), (5, 5), (4, 5), (5, 6), (4, 6), (3, 6), (3, 5), (2, 5), (7, 7), 
     (4, 7), (3, 7), (0, 8), (-1, 8), (1, 5), (-3, 8), (-4, 9), (-2, 9), (-1, 9), (-2, 7), 
     (2, 6), (1, 6), (0, 6), (2, 8), (3, 8), (-3, 7), (-4, 8)
 ]
+STAGE_04_LAYOUT = STAGE_04_HONSHU + STAGE_04_HOKKAIDO + STAGE_04_OCEANS
 
-# 北海道
-HOKKAIDO_COORDS = [(13, -1), (14, -1), (12, 0), (13, 0), (14, 0), (12, 1), (13, 1)]
-
-# 海底ルート
-OCEAN_BRIDGES = [(11, 2), (-1, 6), (-1, 7), (1, 8)]
-
-# 足し合わせて「じぱんぐ島」の全レイアウトを作成
-STAGE_04_ZIPANGU = KYUSHU_COORDS + SHIKOKU_COORDS + HONSHU_COORDS + HOKKAIDO_COORDS + OCEAN_BRIDGES
-
-# 🥷 第五区画：パラダイス (合計28マス / 中央の巨大湖)
-
+# --- STAGE 05: PARADISE (パラダイス) ---
+STAGE_05_OCEANS = [(0, 0), (1, 0), (0, 1), (-1, 1), (-1, 2), (0, 2), (1, 1)]
 STAGE_05_LAND = [
     (-1, 0), (2, 0), (-4, 3), (-3, 3), (-2, 3), (-3, 2), (-2, 2), (-2, 1), (-1, 3), 
     (0, 3), (1, 3), (2, 3), (1, 2), (2, 1), (2, 2), (0, -1), (1, -1), (2, -1), (2, -2), 
     (1, -2), (2, -3)
 ]
-STAGE_05_OCEANS = [
-    (0, 0), (1, 0), (0, 1), (-1, 1), (-1, 2), (0, 2), (1, 1)
+STAGE_05_LAYOUT = STAGE_05_LAND + STAGE_05_OCEANS
+
+# --- STAGE 06: ARCHIPELAGO (分断海域) ---
+STAGE_06_OCEANS = [(0, -2), (2, -2), (2, -4)]
+STAGE_06_LAND = [
+    (0, -1), (-1, 0), (-1, 1), (0, 0), (1, -1), (1, 0), (0, 1), (-1, -1), (-2, 0), 
+    (-2, 1), (-2, 2), (-1, 2), (0, 2), (1, 1), (2, 0), (2, -1), (0, -3), (-1, -3), 
+    (-1, -4), (0, -4), (1, -4), (0, -5), (1, -5), (3, -3), (3, -4), (4, -3), (5, -4), 
+    (4, -4), (4, -5), (5, -5)
 ]
+STAGE_06_LAYOUT = STAGE_06_LAND + STAGE_06_OCEANS
 
-# 足し合わせてステージ5の全レイアウトを作成
-STAGE_05_PARADISE = STAGE_05_LAND + STAGE_05_OCEANS
-
-# 足し合わせてステージ5の全レイアウトを作成
-STAGE_05_PARADISE = STAGE_05_LAND + STAGE_05_OCEANS
 
 # ==========================================
-# 🗺️ MAP CATALOG (マップの完全設計図)
-# ここにマップ固有のルール（未開拓地の指定など）を集約する
+# 🗃️ MAP CATALOG (統合管理データ)
 # ==========================================
 
 MAP_CATALOG = {
     "STAGE_01_BEGINNER": {
-        "layout": STAGE_01_BEGINNER,
-        "fixed_darks": [],   
-        "fixed_oceans": [], # 🥷 既存ステージは空にする       
-        "random_dark_ratio": 0.0,
-        "coastal_exclusion_radius": 0.0  # 制限なし
+        "name": "1面: はじまりの島",
+        "winning_score": 100,
+        "layout": STAGE_01_LAYOUT,
+        "fixed_darks": [],
+        "fixed_oceans": [],
+        "coastal_exclusion_radius": 0.0
     },
     "STAGE_02_VOLCANO": {
-        "layout": STAGE_02_VOLCANO,
+        "name": "2面: 火山島",
+        "winning_score": 110,
+        "layout": STAGE_02_LAYOUT,
         "fixed_darks": [],
-        "fixed_oceans": [], # 🥷 既存ステージは空にする
-        "random_dark_ratio": 0.0,
-        "coastal_exclusion_radius": 3.0  # 🥷 1.5 から 3.0 に拡大！これで内海は完全に建築不可になります
+        "fixed_oceans": [],
+        "coastal_exclusion_radius": 3.0
     },
     "STAGE_03_CANYON": {
-        "layout": STAGE_03_CANYON,
+        "name": "3面: けいこく",
+        "winning_score": 110,
+        "layout": STAGE_03_LAYOUT,
         "fixed_darks": [],
-        "fixed_oceans": [], # 🥷 既存ステージは空にする
-        "random_dark_ratio": 0.0,
+        "fixed_oceans": [],
         "coastal_exclusion_radius": 0.0
     },
     "STAGE_04_ZIPANGU": {
-        "layout": STAGE_04_ZIPANGU,
-        "fixed_darks": HOKKAIDO_COORDS,  # 🥷 北海道の未開拓地指定
-        "fixed_oceans": OCEAN_BRIDGES, # 🥷 じぱんぐ島だけ橋の座標を指定！
-        "random_dark_ratio": 0.0,
+        "name": "4面: じぱんぐ島",
+        "winning_score": 140,
+        "layout": STAGE_04_LAYOUT,
+        "fixed_darks": STAGE_04_HOKKAIDO,
+        "fixed_oceans": STAGE_04_OCEANS,
         "coastal_exclusion_radius": 1.5
     },
     "STAGE_05_PARADISE": {
-        "name": "ステージ5：パラダイス",
-        "winning_score": 120,  # 28マス規模なので120前後に設定
-        "layout": STAGE_05_PARADISE,
-        "fixed_darks": [],     # 今回はDARKマスなし
+        "name": "5面: 南の楽園",
+        "winning_score": 130,
+        "layout": STAGE_05_LAYOUT,
+        "fixed_darks": [],
         "fixed_oceans": STAGE_05_OCEANS,
         "coastal_exclusion_radius": 1.5
+    },
+    "STAGE_06_ARCHIPELAGO": {
+        "name": "6面: 分断海域",
+        "winning_score": 150,
+        "layout": STAGE_06_LAYOUT,
+        "fixed_darks": [],
+        "fixed_oceans": STAGE_06_OCEANS,
+        "coastal_exclusion_radius": 0.0
     }
 }
