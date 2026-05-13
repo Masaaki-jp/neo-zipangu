@@ -118,7 +118,7 @@ CUSTOM_OCEANS = [${ocean.join(', ')}]
           <span style={{ color: '#00ffcc', marginLeft: '10px' }}>TOTAL: <span style={{ fontSize: '1.2rem', color: '#fff' }}>{totalHexes}</span></span>
         </div>
 
-        <button onClick={() => window.confirm("⚠️ マップを全消去しますか？") && setBoardData([])} style={{ backgroundColor: 'transparent', color: '#ff0055', border: '1px solid #ff0055', padding: '8px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '3px', marginLeft: '15px' }}>
+        <button onClick={() => window.confirm("⚠️ マップを全消去しますか？") && setHexes({})} style={{ backgroundColor: 'transparent', color: '#ff0055', border: '1px solid #ff0055', padding: '8px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '3px', marginLeft: '15px' }}>　　　　　
           ✖ RESET
         </button>
 
