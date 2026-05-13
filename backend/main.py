@@ -81,20 +81,25 @@ def get_or_generate_board():
         layout = map_blueprint["layout"]
         fixed_darks = map_blueprint.get("fixed_darks", [])
         fixed_oceans = map_blueprint.get("fixed_oceans", []) # 🥷 カタログから読み込み
+        fixed_sectors = map_blueprint.get("fixed_sectors", {}) # 🥷 追加：固定資源辞書の読み込み
         exclusion_radius = map_blueprint.get("coastal_exclusion_radius", 0.0)
 
         total_hexes = len(layout)
         
-        # 🥷 資源を割り当てるべき「普通のマス」の数を計算
-        # DARKでもOCEANでもないマスだけがシャッフル対象
-        normal_hex_count = len(layout) - len(fixed_darks) - len(fixed_oceans)
+        # 🥷 資源マス（DARK/OCEAN以外）の総数
+        resource_hex_count = len(layout) - len(fixed_darks) - len(fixed_oceans)
         
+        # 🥷 そのうち、地目すら決まっていない「完全ランダム」なマスの数
+        normal_hex_count = resource_hex_count - len(fixed_sectors)
+        
+        # 完全ランダムなマス用の地目リストを作成してシャッフル
         base_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
         sectors = [base_types[i % 5] for i in range(normal_hex_count)]
         random.shuffle(sectors)
         
+        # 🥷 数字(ナンバー)は、固定資源マスの分も含めて「資源マスの総数」だけ生成する
         base_nums = [2,3,4,5,6,8,9,10,11,12]
-        numbers = [random.choice(base_nums) for _ in range(normal_hex_count)]
+        numbers = [random.choice(base_nums) for _ in range(resource_hex_count)]
         random.shuffle(numbers)
 
         vertex_sectors = {} 
@@ -106,6 +111,10 @@ def get_or_generate_board():
             elif (q, r) in fixed_oceans:
                 sector_type = "OCEAN"
                 num = None
+            elif (q, r) in fixed_sectors:
+                # 🥷 追加：カタログで地目が固定されている場合はそれを最優先！
+                sector_type = fixed_sectors[(q, r)]
+                num = numbers.pop() # 数字だけはランダムなものを割り当てる
             else:
                 sector_type = sectors.pop()
                 num = numbers.pop()
