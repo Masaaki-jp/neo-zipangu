@@ -238,7 +238,27 @@ const handleEndTurn = async (isForcedTimeout = false) => {
         setDice(data); 
         setHasRolledDice(true); 
         handleStateUpdate(data.inventory, data.trade_rates, null, data.score, null, data.game_status); 
-        if (data.event_type) { setEventLog(data.event_log); if (data.event_type === "HACKER") setActionMode('HACKER'); }
+        
+        if (data.event_type) { 
+          setEventLog(data.event_log); 
+          if (data.event_type === "HACKER") setActionMode('HACKER'); 
+
+          // 🥷 ==========================================
+          // 追加：大地震（EARTHQUAKE）イベントの警告と画面更新
+          // ==========================================
+          if (data.event_type === "EARTHQUAKE") {
+            // 1. プレイヤーに地殻変動を警告する大迫力アラート
+            alert(`⚠️ DANGER ⚠️\n\n${data.event_log}`);
+            
+            // 2. HexMapに「盤面を再読み込みせよ！」と命令する
+            // ※ App.jsx 内で HexMap に refreshData={...} として渡している関数（データを再取得する関数）があれば、
+            // その関数名（例： fetchData(); や refreshData(); など）のコメントアウトを外して実行してください。
+            
+            // fetchData(); 
+          }
+          // ==========================================
+
+        }
         setIsRolling(false); 
       }, 500);
     } catch (error) { console.error(error); setIsRolling(false); }

@@ -611,19 +611,40 @@ def roll_dice():
     enforce_time_limit()
     if state.game_status["state"] == "setup": raise HTTPException(status_code=400, detail="CANNOT_ROLL_IN_SETUP")
     dice1, dice2 = random.randint(1, 6), random.randint(1, 6); total = dice1 + dice2; event_log = None; event_type = None
+    
     if dice1 == dice2:
         if dice1 == 1:
-            if random.random() < 0.5:
+            # 🥷 1のゾロ目が出た場合の確率分岐 (r は 0.0 〜 1.0 のランダム値)
+            r = random.random()
+            
+            if r < 0.2: # 🥷 20%の超低確率で「大地震」発生！
+                target_hexes = [h for h in state.current_board if h["sector"] not in ["DARK", "OCEAN"] and h.get("number") is not None]
+                numbers = [h["number"] for h in target_hexes]
+                random.shuffle(numbers)
+                for h in target_hexes: h["number"] = numbers.pop()
+                event_type = "EARTHQUAKE"
+                event_log = "⚠️【大地震（EARTHQUAKE）】地殻変動発生！全マスの資源ナンバーがシャッフルされました！"
+            
+            elif r < 0.6: # 40%の確率で「飢饉」
                 for p in state.inventory:
                     for res in state.inventory[p]: state.inventory[p][res] = 0.0
-                event_type = "FAMINE"; event_log = "【大暴落（飢饉）】すべての資源が 0 になりました！"
-            else:
+                event_type = "FAMINE"
+                event_log = "【大暴落（飢饉）】すべての資源が 0 になりました！"
+                
+            else: # 残り40%の確率で「好景気」
                 for p in state.inventory:
                     for res in state.inventory[p]: state.inventory[p][res] += 10.0
-                event_type = "BOOM"; event_log = "【好景気（助成金）】すべての資源が +10.0 されました！"
-        else: event_type = "HACKER"; event_log = "【ランサムウェア集団出現】マップを開拓済みのセクターをクリックして、ハッカーを配置してください！"
+                event_type = "BOOM"
+                event_log = "【好景気（助成金）】すべての資源が +10.0 されました！"
+                
+        else: 
+            event_type = "HACKER"
+            event_log = "【ランサムウェア集団出現】マップを開拓済みのセクターをクリックして、ハッカーを配置してください！"
+            
     yields = calculate_yields(total, state.current_board, state.hacker_position, state.buildings, state.inventory, CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS)
-    return {"dice1": dice1, "dice2": dice2, "total": total, "yields": yields, "inventory": state.inventory, "trade_rates": state.trade_rates, "score": get_score(state.game_status["current_player"], state.buildings, state.cards, state.roads, state.bots), "event_type": event_type, "event_log": event_log, "hacker_position": state.hacker_position, "game_status": state.game_status}
+    
+    # 🥷 戻り値の最後に "board": state.current_board を追加！（フロントにシャッフル結果を伝えるため）
+    return {"dice1": dice1, "dice2": dice2, "total": total, "yields": yields, "inventory": state.inventory, "trade_rates": state.trade_rates, "score": get_score(state.game_status["current_player"], state.buildings, state.cards, state.roads, state.bots), "event_type": event_type, "event_log": event_log, "hacker_position": state.hacker_position, "game_status": state.game_status, "board": state.current_board}
 
 @app.post("/api/reset")
 def reset_game(req: ResetRequest = None):
