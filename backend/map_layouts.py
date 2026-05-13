@@ -55,6 +55,44 @@ STAGE_06_LAND = [
 ]
 STAGE_06_LAYOUT = STAGE_06_LAND + STAGE_06_OCEANS
 
+# --- STAGE 07: NORTH (北の大地) ---
+STAGE_07_LAYOUT = [
+    (0, 0), (-1, 0), (0, -1), (-1, 1), (0, 1), (1, -1), (1, 0), (-1, 3), 
+    (-2, 3), (-3, 3), (-3, 1), (-3, 0), (-2, -1), (-1, -2), (0, -3), (1, -3), 
+    (2, -3), (3, -3), (0, 3), (1, 2), (-3, 2), (3, -4), (2, -4), (1, -4), 
+    (-1, -3), (-2, -2), (-3, -1), (-4, 1), (-4, 2), (-4, 3), (3, -2), (2, 0), 
+    (2, 1), (1, 1)
+]
+
+# --- STAGE 08: BUTTERFLY (バタフライ / 固定資源マップ) ---
+STAGE_08_LAYOUT = [
+    (0, 0), (-1, 0), (-3, 2), (-4, 2), (-3, 1), (-2, 0), (-2, 1), (-2, -1), 
+    (-1, -1), (-1, -2), (1, 0), (1, 1), (1, 2), (2, 2), (2, 1), (2, 0), 
+    (2, -1), (3, -1), (3, -2), (-1, -3), (-2, -2), (-3, -1), (4, -3), 
+    (4, -2), (4, -1)
+]
+
+# 🥷 資源を完全固定する辞書（バタフライの羽ごとに地目を分ける）
+STAGE_08_FIXED_SECTORS = {
+    # 🦋 中央 (1マス)
+    (0, 0): "POWER",
+
+    # 🦋 北西の羽 (6マス)
+    (-1, 0): "POLYMER", (-2, 0): "POLYMER", (-2, 1): "POLYMER",
+    (-3, 1): "POLYMER", (-3, 2): "POLYMER", (-4, 2): "POLYMER",
+
+    # 🦋 南西の羽 (6マス)
+    (-1, -1): "DATA", (-1, -2): "DATA", (-1, -3): "DATA",
+    (-2, -1): "DATA", (-2, -2): "DATA", (-3, -1): "DATA",
+
+    # 🦋 北東の羽 (6マス)
+    (1, 0): "HARD", (1, 1): "HARD", (1, 2): "HARD",
+    (2, 0): "HARD", (2, 1): "HARD", (2, 2): "HARD",
+
+    # 🦋 南東の羽 (6マス)
+    (2, -1): "SILICON", (3, -1): "SILICON", (3, -2): "SILICON",
+    (4, -1): "SILICON", (4, -2): "SILICON", (4, -3): "SILICON"
+}
 
 # ==========================================
 # 🗃️ MAP CATALOG (統合管理データ)
@@ -107,6 +145,23 @@ MAP_CATALOG = {
         "layout": STAGE_06_LAYOUT,
         "fixed_darks": [],
         "fixed_oceans": STAGE_06_OCEANS,
+        "coastal_exclusion_radius": 0.0
+    },
+    "STAGE_07_NORTH": {
+        "name": "7面: 北の大地",
+        "winning_score": 120,
+        "layout": STAGE_07_LAYOUT,
+        "fixed_darks": [],
+        "fixed_oceans": [],
+        "coastal_exclusion_radius": 0.0
+    },
+    "STAGE_08_BUTTERFLY": {
+        "name": "8面: バタフライ",
+        "winning_score": 100,
+        "layout": STAGE_08_LAYOUT,
+        "fixed_darks": [],
+        "fixed_oceans": [],
+        "fixed_sectors": STAGE_08_FIXED_SECTORS, # 🥷 ここで固定資源を読み込ませる！
         "coastal_exclusion_radius": 0.0
     }
 }

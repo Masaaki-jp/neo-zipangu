@@ -83,10 +83,11 @@ export const STAGE_DATA = [
   {
     id: "STAGE_07_NORTH",
     name: "7面: 北の大地",
-    totalHexes: 31,
-    targetScore: 120,
+    totalHexes: 34,
+    targetScore: 150,
+    zoom: 1.0,
     difficulty: "EASY",
-    description: "31マスの快適な一本道。ブリッジを使いこなし、120万シェアをスマートに稼ぎ出す「DX」なおすすめマップ。",
+    description: "34マスの快適な一本道。ブリッジを使いこなし、120万シェアをスマートに稼ぎ出す「DX」なおすすめマップ。",
     themeColor: "#ffffff"
   },
   {
@@ -94,6 +95,7 @@ export const STAGE_DATA = [
     name: "8面: バタフライ",
     totalHexes: 25,
     targetScore: 100,
+    zoom:0.95,
     difficulty: "NORMAL",
     description: "25マスと手狭だが3面隣接が容易。100万シェアを目指す内陸部の陣取り合戦は、一瞬の油断も許されない。",
     themeColor: "#aa00ff"
