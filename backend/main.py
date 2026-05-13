@@ -97,16 +97,15 @@ def get_or_generate_board():
         numbers = [random.choice(base_nums) for _ in range(normal_hex_count)]
         random.shuffle(numbers)
 
-        vertex_counts = {}
+        vertex_sectors = {} 
         
         for q, r in layout:
             if (q, r) in fixed_darks:
                 sector_type = "DARK"
                 num = None
             elif (q, r) in fixed_oceans:
-                # 🥷 OCEANマスの生成
                 sector_type = "OCEAN"
-                num = None # 数字は持たせない
+                num = None
             else:
                 sector_type = sectors.pop()
                 num = numbers.pop()
@@ -124,15 +123,26 @@ def get_or_generate_board():
                 vx = round(cx + HEX_SIZE * math.cos(angle_rad))
                 vy = round(cy + HEX_SIZE * math.sin(angle_rad))
                 v_id = f"{vx},{vy}"
-                vertex_counts[v_id] = vertex_counts.get(v_id, 0) + 1
+                if v_id not in vertex_sectors:
+                    vertex_sectors[v_id] = []
+                vertex_sectors[v_id].append(sector_type)
                 
         # 🥷 港の候補地（海岸線）を計算
-        for v_id, count in vertex_counts.items():
-            if count <= 2:
+        for v_id, touching_sectors in vertex_sectors.items():
+            # 条件1: 頂点に接するマスが2つ以下（従来通りのマップ外枠）
+            is_outer_edge = len(touching_sectors) <= 2
+            
+            # 条件2: 接しているマスに OCEAN が含まれている（内海対応）
+            has_ocean = "OCEAN" in touching_sectors
+            
+            # ただし、接しているすべてのマスが OCEAN の場合は深海なので港は作れない
+            is_only_ocean = all(s == "OCEAN" for s in touching_sectors)
+            
+            if (is_outer_edge or has_ocean) and not is_only_ocean:
                 vx, vy = map(int, v_id.split(','))
                 dist_from_center = math.hypot(vx - CENTER_X, vy - CENTER_Y)
                 
-                # 🥷 マップごとの「港禁止エリア」設定を適用（2面なら1.5、他は0）
+                # 🥷 マップごとの「港禁止エリア」設定を適用
                 if exclusion_radius > 0 and dist_from_center < (HEX_SIZE * exclusion_radius):
                     continue 
                     

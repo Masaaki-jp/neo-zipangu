@@ -19,7 +19,6 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
   const [selectedBot, setSelectedBot] = useState(null);
   const [mapId, setMapId] = useState("STAGE_01_BEGINNER");
 
-  // 🥷 順番が命！必ず mapId が定義された【後】に、マップ設定を読み込む
   const stageConfig = STAGE_DATA.find(s => s.id === mapId) || STAGE_DATA[0];
   const canvasWidth = stageConfig.canvasWidth || 1000;
   const canvasHeight = stageConfig.canvasHeight || 800;
@@ -49,13 +48,10 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
     if (loading || boardData.length === 0) return;
     const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
     
-    // 🥷 === ここから：オートフォーカス（真の重心計算）処理 ===
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
 
-    // 1. 全マスのピクセル座標を計算し、マップの「端から端」を割り出す
     boardData.forEach(hex => {
-      // (0,0) を基準とした純粋なピクセル距離
       const rawX = HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2);
       const rawY = HEX_SIZE * (3 / 2) * hex.r;
       if (rawX < minX) minX = rawX;
@@ -64,27 +60,23 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       if (rawY > maxY) maxY = rawY;
     });
 
-    // 念のためのフェイルセーフ
     if (minX === Infinity) { minX = 0; maxX = 0; minY = 0; maxY = 0; }
 
-    // 2. マップ全体の「真の中心（重心）」
     const boxCenterX = (minX + maxX) / 2;
     const boxCenterY = (minY + maxY) / 2;
 
-    // 3. stageData.js の設定も反映できるように読み込む
     const offsetX = stageConfig.offsetX || 0;
     const offsetY = stageConfig.offsetY || 0;
 
-    // 4. キャンバスのど真ん中から、マップの重心を引くことで「完璧な中央座標」を算出
     const centerX = (canvasWidth / 2) - boxCenterX + offsetX; 
     const centerY = (canvasHeight / 2) - boxCenterY + offsetY;
-    // 🥷 === ここまで ===
 
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const tempVertices = new Map(); const tempEdges = new Map(); const tempCenters = [];
 
-    const drawHex = (cx, cy, sector, number, q, r) => {
+    // 🥷 修正1: hexSector（海か陸か）を受け取るように変更
+    const drawHex = (cx, cy, sector, number, q, r, hexSector) => {
       const isHighlight = activeNumber && number === activeNumber;
       let prevPoint = null; let firstPoint = null;
       const hexVertices = []; 
@@ -93,11 +85,9 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       for (let i = 0; i < 6; i++) {
         const angle_rad = (Math.PI / 180) * (60 * i - 30);
         
-        // 🥷 1. 描画用の実際のピクセル座標（動的カメラでズレた座標）
         const x = cx + HEX_SIZE * Math.cos(angle_rad); 
         const y = cy + HEX_SIZE * Math.sin(angle_rad);
 
-        // 🥷 2. バックエンドと照合するための「論理ID」（常に 500,400 基準で計算して一致させる！）
         const logicCx = 500 + HEX_SIZE * Math.sqrt(3) * (q + r / 2);
         const logicCy = 400 + HEX_SIZE * (3 / 2) * r;
         const logicX = logicCx + HEX_SIZE * Math.cos(angle_rad);
@@ -106,23 +96,38 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
 
         hexVertices.push(vId); 
 
-        // 辞書に登録する際、IDは「論理ID」、xとyは「描画座標」を持たせる
-        if (!tempVertices.has(vId)) tempVertices.set(vId, { id: vId, x, y });
+        // 🥷 修正1: 頂点（Vertex）に接しているセクターの種類を記憶
+        if (!tempVertices.has(vId)) {
+          tempVertices.set(vId, { id: vId, x, y, sectors: [hexSector] });
+        } else {
+          if (!tempVertices.get(vId).sectors.includes(hexSector)) tempVertices.get(vId).sectors.push(hexSector);
+        }
 
-        // ...(以下はそのまま変更なし)
         const currentPoint = { id: vId, x, y };
         if (i === 0) { ctx.moveTo(x, y); firstPoint = currentPoint; } 
         else {
           ctx.lineTo(x, y);
           const edgeId = [prevPoint.id, currentPoint.id].sort().join('_');
           const midX = (prevPoint.x + currentPoint.x) / 2; const midY = (prevPoint.y + currentPoint.y) / 2;
-          if (!tempEdges.has(edgeId)) tempEdges.set(edgeId, { id: edgeId, v1: prevPoint, v2: currentPoint, midX, midY });
+          
+          // 🥷 修正1: 辺（Edge）に接しているセクターの種類を記憶
+          if (!tempEdges.has(edgeId)) {
+            tempEdges.set(edgeId, { id: edgeId, v1: prevPoint, v2: currentPoint, midX, midY, sectors: [hexSector] });
+          } else {
+            if (!tempEdges.get(edgeId).sectors.includes(hexSector)) tempEdges.get(edgeId).sectors.push(hexSector);
+          }
         }
         prevPoint = currentPoint;
         if (i === 5) {
           const edgeId = [currentPoint.id, firstPoint.id].sort().join('_');
           const midX = (currentPoint.x + firstPoint.x) / 2; const midY = (currentPoint.y + firstPoint.y) / 2;
-          if (!tempEdges.has(edgeId)) tempEdges.set(edgeId, { id: edgeId, v1: currentPoint, v2: firstPoint, midX, midY });
+          
+          // 🥷 修正1: 最後の辺にもセクターの種類を記憶
+          if (!tempEdges.has(edgeId)) {
+            tempEdges.set(edgeId, { id: edgeId, v1: currentPoint, v2: firstPoint, midX, midY, sectors: [hexSector] });
+          } else {
+            if (!tempEdges.get(edgeId).sectors.includes(hexSector)) tempEdges.get(edgeId).sectors.push(hexSector);
+          }
         }
       }
       ctx.closePath();
@@ -174,7 +179,9 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
       const x = centerX + HEX_SIZE * Math.sqrt(3) * (hex.q + hex.r / 2);
       const y = centerY + HEX_SIZE * (3 / 2) * hex.r;
       tempCenters.push({ id: `${hex.q},${hex.r}`, x, y, sector: hex.sector });
-      drawHex(x, y, SECTORS[hex.sector] || SECTORS.DARK, hex.number, hex.q, hex.r);
+      
+      // 🥷 修正1: hex.sector も引数として渡す
+      drawHex(x, y, SECTORS[hex.sector] || SECTORS.DARK, hex.number, hex.q, hex.r, hex.sector);
     });
 
     setVerticesCoords(Array.from(tempVertices.values())); setEdgesCoords(Array.from(tempEdges.values())); setHexCenters(tempCenters);
@@ -210,7 +217,9 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
           ctx.strokeStyle = '#ffffff'; ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
         }
       } else {
-        if (actionMode === 'BUILD' || (actionMode === 'USE_CARD' && activeCard?.type === 'VPN')) {
+        // 🥷 修正2: 「海のみ」の頂点には建築候補の白丸を描画しない
+        const isOceanOnly = v.sectors && v.sectors.every(s => s === 'OCEAN');
+        if (!isOceanOnly && (actionMode === 'BUILD' || (actionMode === 'USE_CARD' && activeCard?.type === 'VPN'))) {
           ctx.beginPath(); ctx.arc(v.x, v.y, 4, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
         }
@@ -314,9 +323,19 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
 
     if (clickedVertex) {
       if (actionMode === 'BUILD') {
+        // 🥷 修正3: 「海のみ」の頂点をクリックした場合はエラーで弾く
+        const isOceanOnly = clickedVertex.sectors && clickedVertex.sectors.every(s => s === 'OCEAN');
+        if (isOceanOnly) {
+          alert("[ ERROR ] 深海に拠点は建築できません！");
+          return;
+        }
+
         let upgradeTo = "DATA_CENTER";
         if (buildings[clickedVertex.id] && buildings[clickedVertex.id].player === currentPlayer && buildings[clickedVertex.id].type === "LOCAL_HUB") {
-          const isCoastal = coastalVertices.includes(clickedVertex.id);
+          // 🥷 修正3: 海岸線の判定（OCEANとそれ以外が混在しているか）
+          const isCoastalFrontend = clickedVertex.sectors && clickedVertex.sectors.includes('OCEAN') && clickedVertex.sectors.some(s => s !== 'OCEAN');
+          const isCoastal = isCoastalFrontend || coastalVertices.includes(clickedVertex.id);
+
           if (isCoastal) {
             const wantsDataCenter = window.confirm("『データセンター(小城)』にアップグレードしますか？\n\n※[キャンセル] を押すと次の選択肢が出ます。");
             if (wantsDataCenter) { upgradeTo = "DATA_CENTER"; } 
@@ -393,6 +412,13 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
         }
       }
     } else if (clickedEdge && actionMode === 'BUILD') {
+      // 🥷 修正3: 海上のEdge（道）には建築できないように弾く
+      const isOceanOnly = clickedEdge.sectors && clickedEdge.sectors.every(s => s === 'OCEAN');
+      if (isOceanOnly) {
+        alert("[ ERROR ] 海上に道は引けません！");
+        return;
+      }
+
       try {
         const res = await fetch('/api/build_road', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ edge_id: clickedEdge.id, player: currentPlayer }) });
         if (res.ok) {
@@ -424,7 +450,7 @@ return (
       ) : (
         <div style={{
           width: '100%',
-          maxWidth: '1000px', // 外枠の最大幅
+          maxWidth: '1000px', 
           height: viewMode === "scroll" ? '80vh' : 'auto', 
           overflow: viewMode === "scroll" ? 'auto' : 'hidden', 
           border: '1px solid #33ffcc',
@@ -433,20 +459,20 @@ return (
           position: 'relative',
           margin: '0 auto',
           display: 'flex',
-          justifyContent: viewMode === "scroll" ? 'flex-start' : 'center', // スクロール時は左上基準、固定時は中央
+          justifyContent: viewMode === "scroll" ? 'flex-start' : 'center',
           alignItems: 'flex-start'
         }}>
           <canvas 
             ref={canvasRef} 
-            width={canvasWidth}   // 🥷 内部解像度（1000など）
-            height={canvasHeight} // 🥷 内部解像度（800や1100など）
+            width={canvasWidth}   
+            height={canvasHeight} 
             onClick={handleCanvasClick} 
             style={{ 
               cursor: 'crosshair', 
               display: 'block',
-              width: `${canvasWidth * currentZoom}px`,   // 🥷 単純な掛け算のサイズ
-              height: `${canvasHeight * currentZoom}px`, // 🥷 単純な掛け算のサイズ
-              flexShrink: 0, // 🥷 これが最重要！ブラウザが勝手に縦横比を潰すのを「禁止」する
+              width: `${canvasWidth * currentZoom}px`,   
+              height: `${canvasHeight * currentZoom}px`, 
+              flexShrink: 0, 
               margin: viewMode === "scroll" ? '0' : '0 auto'
             }} 
           />
