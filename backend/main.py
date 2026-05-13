@@ -284,6 +284,25 @@ def end_turn(req: BuildRequest):
             next_idx = (state.game_status["current_turn_index"] + 1) % 4
             state.game_status["current_turn_index"] = next_idx
             state.game_status["current_player"] = state.game_status["turn_order"][next_idx]
+            # 🥷 ==========================================
+            # 追加：4ターンに1回（1巡完了時）の相場変動（シーズンイベント）
+            # ==========================================
+            if next_idx == 0:
+                import random
+                # 対象の5大資源
+                res_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
+                chosen_res = random.choice(res_types)
+                
+                # -30% 〜 +30% (-0.3 〜 0.3) の間で10%刻みで変動（0%は除外）
+                rates = [-0.3, -0.2, -0.1, 0.1, 0.2, 0.3]
+                chosen_rate = random.choice(rates)
+                
+                # 状態として保存（次の4ターン中、ずっとこのバフ/デバフが効く）
+                state.game_status["season_event"] = {
+                    "resource": chosen_res,
+                    "rate": chosen_rate
+                }
+            # ==========================================
 
     # （次の人のためのタイマーセット）
     if state.game_status["state"] != "finished":
@@ -650,7 +669,7 @@ def roll_dice():
             event_type = "HACKER"
             event_log = "【ランサムウェア集団出現】マップを開拓済みのセクターをクリックして、ハッカーを配置してください！"
             
-    yields = calculate_yields(total, state.current_board, state.hacker_position, state.buildings, state.inventory, CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS)
+    yields = calculate_yields(total, state.current_board, state.hacker_position, state.buildings, state.inventory, CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS, state.game_status.get("season_event"))
     
     # 🥷 戻り値の最後に "board": state.current_board を追加！（フロントにシャッフル結果を伝えるため）
     return {"dice1": dice1, "dice2": dice2, "total": total, "yields": yields, "inventory": state.inventory, "trade_rates": state.trade_rates, "score": get_score(state.game_status["current_player"], state.buildings, state.cards, state.roads, state.bots), "event_type": event_type, "event_log": event_log, "hacker_position": state.hacker_position, "game_status": state.game_status, "board": state.current_board}

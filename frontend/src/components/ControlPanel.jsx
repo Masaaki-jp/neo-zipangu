@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // 🥷 修正：useStateを追加
+import React, { useState } from 'react';
 
 // 取引で使用する資源リスト
 const RESOURCE_TYPES = ["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"];
@@ -27,11 +27,44 @@ const ControlPanel = ({
   eventLog,
   turnLogs 
 }) => {
-  // 🥷 追加：詳細ログを表示するかどうかのスイッチ（初期値はOFF）
+  // 詳細ログを表示するかどうかのスイッチ
   const [showDetailLogs, setShowDetailLogs] = useState(false);
 
   return (
     <>
+      {/* 🥷 修正点1：シーズンイベント（相場変動）の通知パネル */}
+      {gameStatus.season_event && (
+        <div style={{
+          marginBottom: '15px',
+          padding: '10px',
+          backgroundColor: '#050505',
+          border: `1px solid ${gameStatus.season_event.rate > 0 ? '#00ffcc' : '#ff0055'}`,
+          borderRadius: '5px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '15px',
+          boxShadow: `0 0 15px ${gameStatus.season_event.rate > 0 ? '#00ffcc33' : '#ff005533'}`,
+          animation: 'fadein 0.5s ease-out'
+        }}>
+          <span style={{ color: '#aaaaaa', fontWeight: 'bold', letterSpacing: '2px', fontSize: '0.8rem' }}>
+            📡 SEASON MARKET REPORT:
+          </span>
+          <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '1.1rem' }}>
+            {gameStatus.season_event.resource}
+          </span>
+          <span style={{
+            color: gameStatus.season_event.rate > 0 ? '#00ffcc' : '#ff0055',
+            fontWeight: 'bold',
+            fontSize: '1.2rem',
+            textShadow: `0 0 8px ${gameStatus.season_event.rate > 0 ? '#00ffcc' : '#ff0055'}`
+          }}>
+            {gameStatus.season_event.rate > 0 ? '▲ SURGE' : '▼ CRASH'} {Math.abs(Math.round(gameStatus.season_event.rate * 100))}%
+          </span>
+        </div>
+      )}
+
+      {/* モード切替ボタングループ */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', padding: '5px', backgroundColor: '#111', borderRadius: '5px', border: '1px solid #333' }}>
         {actionMode === 'HACKER' ? ( 
           <div style={{ color: '#ff0055', fontWeight: 'bold', padding: '8px 20px', animation: 'blink 1s infinite' }}>[ HACKER DEPLOYMENT MODE ]</div>
@@ -51,6 +84,7 @@ const ControlPanel = ({
         )}
       </div>
 
+      {/* ブラックマーケットパネル */}
       {isTradeOpen && actionMode !== 'HACKER' && actionMode !== 'USE_CARD' && (
         <div style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#221100', border: '1px solid #ffaa00', borderRadius: '5px', display: 'flex', gap: '15px', alignItems: 'center', boxShadow: '0 0 15px rgba(255,170,0,0.2)' }}>
           <span style={{ color: '#ffaa00', fontWeight: 'bold' }}>PAY:</span>
@@ -65,6 +99,7 @@ const ControlPanel = ({
         </div>
       )}
 
+      {/* アクション＆ダイスエリア */}
       <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '130px' }}>
         <div style={{ display: 'flex', gap: '20px' }}>
           <button onClick={handleRollDice} disabled={isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup"} style={{ backgroundColor: 'transparent', color: isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? '#555555' : pColor, border: `2px solid ${isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? '#555555' : pColor}`, padding: '10px 30px', fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'inherit', cursor: isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? 'not-allowed' : 'pointer', boxShadow: isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? 'none' : `0 0 15px ${pColor}55`, borderRadius: '4px' }}>
@@ -74,6 +109,8 @@ const ControlPanel = ({
             [ DEPLOY: HACK RESOURCES ]
           </button>
         </div>
+
+        {/* ダイス結果＆システムログ */}
         <div style={{ marginTop: '15px', textAlign: 'center', minHeight: '60px', width: '100%', maxWidth: '700px' }}>
           {dice && (
             <>
@@ -91,20 +128,16 @@ const ControlPanel = ({
             </div>
           )}
 
-          {/* 🥷 追加＆修正：他プレイヤーの直近ログ（詳細トグル付き） */}
+          {/* 他プレイヤーの直近ログ（詳細トグル付き） */}
           {turnLogs && turnLogs.length > 0 && (
             <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dotted #333', color: '#aaaaaa', fontSize: '0.9rem' }}>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
                 <span style={{ color: '#555' }}>[ PREV TURNS ]</span>
-                
-                {/* スイッチがOFFの時はシンプルな横並び表示 */}
                 {!showDetailLogs && turnLogs.slice(-3).map((log, i) => (
                   <span key={i}>
                     {log.player}: <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>{log.dice}</span>
                   </span>
                 ))}
-                
-                {/* 🥷 切り替えボタン */}
                 <button 
                   onClick={() => setShowDetailLogs(!showDetailLogs)}
                   style={{ backgroundColor: showDetailLogs ? '#333' : '#00ffcc22', color: showDetailLogs ? '#fff' : '#00ffcc', border: `1px solid ${showDetailLogs ? '#555' : '#00ffcc'}`, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', borderRadius: '3px', transition: '0.2s' }}
@@ -113,7 +146,6 @@ const ControlPanel = ({
                </button>
               </div>
 
-              {/* 🥷 スイッチがONの時だけ展開される詳細ログUI */}
               {showDetailLogs && (
                 <div style={{ marginTop: '15px', backgroundColor: '#050505', border: '1px solid #333', borderRadius: '4px', padding: '15px', textAlign: 'left', maxHeight: '180px', overflowY: 'auto', boxShadow: 'inset 0 0 10px #000' }}>
                   {turnLogs.slice(-3).map((log, i) => (
@@ -121,7 +153,6 @@ const ControlPanel = ({
                       <div style={{ color: '#fff', fontWeight: 'bold', marginBottom: '5px' }}>
                         {log.player} <span style={{ color: '#888', fontSize: '0.8rem', fontWeight: 'normal' }}>- DICE: <span style={{ color: '#ffcc00' }}>{log.dice}</span></span>
                       </div>
-                      {/* 詳細な行動ログの配列（details）を一つずつ箇条書きで出力 */}
                       {log.details && log.details.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: '20px', color: '#ccc', fontSize: '0.85rem', lineHeight: '1.4' }}>
                           {log.details.map((detail, idx) => (
@@ -137,7 +168,6 @@ const ControlPanel = ({
               )}
             </div>
           )}
-
         </div>
       </div>
     </>
