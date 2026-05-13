@@ -148,26 +148,45 @@ def get_or_generate_board():
                     
                 state.coastal_vertices.add(v_id)
         
+        # （前回の海岸線判定ループの直後に追加）
+        # 🥷 人間の建築APIでも判定できるように、状態として保存しておく！
+        state.vertex_sectors = vertex_sectors
+
         # ボット拠点の初期配置
         npc_count = math.ceil(total_hexes * 0.08)
         placed_np_hubs = 0
         attempts = 0
         while placed_np_hubs < npc_count and attempts < 1000:
             attempts += 1
-            # 🥷 DARKマスにはボット拠点を配置しない
-            target_hex = random.choice([h for h in state.current_board if h["sector"] != "DARK"])
+            
+            # 🥷 ターゲットはLANDマス（DARK, OCEAN以外）から選ぶことで、深海を避ける
+            valid_hexes = [h for h in state.current_board if h["sector"] not in ["DARK", "OCEAN"]]
+            if not valid_hexes:
+                break
+            target_hex = random.choice(valid_hexes)
+            
             cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (target_hex["q"] + target_hex["r"] / 2)
             cy = CENTER_Y + HEX_SIZE * (3 / 2) * target_hex["r"]
             angle_rad = math.radians(random.choice([30, 90, 150, 210, 270, 330]))
             npc_x = round(cx + HEX_SIZE * math.cos(angle_rad))
             npc_y = round(cy + HEX_SIZE * math.sin(angle_rad))
             npc_vertex = f"{npc_x},{npc_y}"
+            
             if npc_vertex in state.buildings: continue
+            
+            # 🥷 厳格なルール判定（DARK隣接NG、深海NG、海岸線はOK！）
+            touching_sectors = vertex_sectors.get(npc_vertex, [])
+            if "DARK" in touching_sectors:
+                continue # DARKマスに1ミリでも触れていたらNG
+            if all(s == "OCEAN" for s in touching_sectors):
+                continue # すべてがOCEAN（深海）ならNG
+            
             too_close = False
             for ex_id in state.buildings.keys():
                 ex_x, ex_y = map(int, ex_id.split(','))
                 if math.hypot(npc_x - ex_x, npc_y - ex_y) < (HEX_SIZE + 5): too_close = True; break
             if too_close: continue
+            
             state.buildings[npc_vertex] = {"player": "NPC_CORP", "type": "DATA_CENTER"}
             state.bots[npc_vertex] = {"player": "NPC_CORP", "level": random.randint(1, 3), "has_moved": False}
             placed_np_hubs += 1
@@ -407,19 +426,20 @@ def build_hub(req: BuildRequest):
     try: new_x, new_y = map(int, req.vertex_id.split(',')); 
     except ValueError: raise HTTPException(status_code=400, detail="INVALID")
 
-# 🚫 ======= 追加：DARKとOCEANの周囲への建築を禁止する防御壁 =======
-    for hex_data in state.current_board:
-        if hex_data["sector"] in ["DARK", "OCEAN"]:
-            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
-            cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
-            # 置こうとしている頂点が、DARK/OCEANマスの中心から約60（HEX_SIZE）の距離にあったらNG
-            if math.hypot(cx - new_x, cy - new_y) < HEX_SIZE + 5:
-                # 特に setup（初期配置）の時は絶対に許さない
-                if is_free_phase:
-                    raise HTTPException(status_code=400, detail="未開拓エリア（DARK）や海（OCEAN）には初期配置できません。")
-                # ※必要に応じて、通常プレイ時（is_free_phase == False）でも
-                # DARKに直接拠点を作れないようにする場合は、ここで弾きます。
-                # 現状は setup の時だけエラーにするならこのままでOKです。
+    # 🥷 ========================================================
+    # NEW：セクター判定（DARKと深海を弾き、海岸線は許可するスマート防御壁）
+    # ========================================================
+    touching_sectors = getattr(state, "vertex_sectors", {}).get(req.vertex_id, [])
+
+    # 判定1: DARKマスに1ミリでも触れていたら絶対に建築させない
+    if "DARK" in touching_sectors:
+        raise HTTPException(status_code=400, detail="DARK領域には建築できません！")
+
+    # 判定2: 接しているマスが「すべてOCEAN」だったら深海なのでNG
+    # ※逆に言えば「OCEANとLANDが混ざっている海岸線」ならこの罠をすり抜ける！
+    if touching_sectors and all(s == "OCEAN" for s in touching_sectors):
+        raise HTTPException(status_code=400, detail="深海には建築できません！海岸線を狙ってください。")
+    # ========================================================
 
     is_coastal = req.vertex_id in state.coastal_vertices
 
