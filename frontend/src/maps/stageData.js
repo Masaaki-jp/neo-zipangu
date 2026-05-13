@@ -71,6 +71,7 @@ export const STAGE_DATA = [
     id: "STAGE_06_ARCHIPELAGO",
     name: "6面: 分断海域",
     totalHexes: 33,
+    targetScore: 150,
     canvasWidth: 1200,  // 横に広いマップなのでキャンバスを大きめに確保
     canvasHeight: 900,
     viewMode: "fixed", // はみ出す場合はスクロールできるようにする
