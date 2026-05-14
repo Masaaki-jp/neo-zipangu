@@ -269,6 +269,15 @@ def end_turn(req: BuildRequest):
             state.game_status["state"] = "playing"
             state.game_status["current_turn_index"] = 0
             state.game_status["current_player"] = state.game_status["turn_order"][0]
+
+            # 🥷 追加：ゲーム開始（ラウンド1）用の初期相場を決定
+            import random
+            res_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
+            state.game_status["season_event"] = {
+                "resource": random.choice(res_types),
+                "rate": random.choice([-0.3, -0.2, -0.1, 0.1, 0.2, 0.3])
+            }
+
         else:
             idx = st if st < 4 else 7 - st
             state.game_status["current_turn_index"] = idx
@@ -349,6 +358,18 @@ def com_execute(req: ComExecuteRequest):
         state.game_status["state"] = "finished"
         state.game_status["winner"] = req.player
         state.game_status["reason"] = "100M_SHARES"
+
+    # ==========================================
+    # NPCの処理が終わり、次のターンが「インデックス0（最初のプレイヤー）」に戻っていたら相場変動！
+    # ==========================================
+    if state.game_status["state"] == "playing" and state.game_status.get("current_turn_index") == 0:
+        import random
+        res_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
+        state.game_status["season_event"] = {
+            "resource": random.choice(res_types),
+            "rate": random.choice([-0.3, -0.2, -0.1, 0.1, 0.2, 0.3])
+        }
+    # ==========================================
 
 # 🥷 修正：次のプレイヤーのための締切時刻を生成する
     from countdown import calculate_deadline
