@@ -285,10 +285,17 @@ def end_turn(req: BuildRequest):
             
     elif state.game_status["state"] == "playing":
         score = get_score(req.player, state.buildings, state.cards, state.roads, state.bots)
-        if score["total"] >= 100:
+        
+        # 🥷 修正：map_layouts から現在のマップの winning_score を取得する！
+        import map_layouts
+        current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
+        target_score = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
+        
+        if score["total"] >= target_score:
             state.game_status["state"] = "finished"
             state.game_status["winner"] = req.player
-            state.game_status["reason"] = "100M_SHARES"
+            state.game_status["reason"] = f"{target_score}M_SHARES"
+    
         else:
             next_idx = (state.game_status["current_turn_index"] + 1) % 4
             state.game_status["current_turn_index"] = next_idx
@@ -351,13 +358,19 @@ def com_execute(req: ComExecuteRequest):
     else:
         from com_ai import com_speeder
         result = com_speeder.execute_turn(req.player, state, game_logic, constants)
-        
+            
     # スコア計算（勝利判定）
     score = get_score(req.player, state.buildings, state.cards, state.roads, state.bots)
-    if score["total"] >= 100:
+    
+    # 🥷 修正：こちらも同様に現在のマップの winning_score を取得！
+    import map_layouts
+    current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
+    target_score = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
+    
+    if score["total"] >= target_score:
         state.game_status["state"] = "finished"
         state.game_status["winner"] = req.player
-        state.game_status["reason"] = "100M_SHARES"
+        state.game_status["reason"] = f"{target_score}M_SHARES"
 
     # ==========================================
     # NPCの処理が終わり、次のターンが「インデックス0（最初のプレイヤー）」に戻っていたら相場変動！
