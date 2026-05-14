@@ -200,6 +200,11 @@ def get_or_generate_board():
             state.bots[npc_vertex] = {"player": "NPC_CORP", "level": random.randint(1, 3), "has_moved": False}
             placed_np_hubs += 1
 
+    # 🥷 追加：常に最新の目標スコアを game_status に入れてフロントに送る
+    import map_layouts
+    current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
+    state.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
+
     return {
         "map_id": getattr(state, "current_map_id", "STAGE_01_BEGINNER"),
         "board": state.current_board, "buildings": state.buildings, "roads": state.roads, 
