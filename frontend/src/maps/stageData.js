@@ -103,10 +103,13 @@ export const STAGE_DATA = [
   {
     id: "STAGE_09_MELODY",
     name: "9面: メロディ島",
-    totalHexes: 28,
-    targetScore: 110, // 3面隣接が難しいため、少し低めの110万
+    totalHexes: 32,
+    viewMode:"scroll",
+    zoom:0.9,
+    targetScore: 120,
+    canvasHeight: 1000,
     difficulty: "HARD",
-    description: "28マスあるが好立地が極端に少ない。110万シェアへの道のりは険しく、交渉力が試されるテクニカルステージ。",
+    description: "32マスあるが好立地が極端に少ない。110万シェアへの道のりは険しく、交渉力が試されるテクニカルステージ。",
     themeColor: "#ff8800"
   },
   {
