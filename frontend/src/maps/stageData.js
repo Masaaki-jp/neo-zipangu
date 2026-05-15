@@ -126,14 +126,15 @@ export const STAGE_DATA = [
     themeColor: "#8b0000"
   },
   {
-    id: "STAGE_11_TREASURE",
-    name: "11面: 宝の島",
-    totalHexes: 39,
-    darkHexes: 7,
-    targetScore: 150, // 最大級の広さ
-    difficulty: "NORMAL",
-    description: "39マスの最大マップ。全員が未開地へ挑める平等な大地。150万シェアという前人未到の覇権を目指せ。",
-    themeColor: "#ffd700"
+    id: "STAGE_11_NUCLEAR",
+    name: "11面: 核汚染領域",
+    totalHexes: 37,
+    viewMode: "fixed",
+    zoom: 1.0, // 🥷 広大なため、全体を見渡せるようズームアウト
+    targetScore: 160,
+    difficulty: "HELL",
+    description: "全資源地帯が『核』で構成された禁忌の地。一歩間違えれば致命的な汚染がインフラを焼き切る。",
+    themeColor: "#00ff00" // 🥷 核エネルギーを象徴するネオングリーン
   },
   {
     id: "STAGE_12_SKY",
