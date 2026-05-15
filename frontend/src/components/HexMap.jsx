@@ -170,7 +170,11 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
         ctx.fillStyle = isHighlight ? '#ffffff' : '#050505'; ctx.fill(); 
         ctx.lineWidth = 1; ctx.strokeStyle = sector.color; ctx.stroke();
         ctx.fillStyle = isHighlight ? '#000000' : '#ffffff'; ctx.font = 'bold 16px monospace';
-        if (!isHighlight && (number === 6 || number === 8)) ctx.fillStyle = '#ff0055';
+        // 🥷 6と8は赤、7はゴールド！
+        if (!isHighlight) {
+            if (number === 6 || number === 8) ctx.fillStyle = '#ff0055';
+            if (number === 7) ctx.fillStyle = '#ffcc00'; 
+        }
         ctx.fillText(number.toString(), cx, cy + 10);
       }
     };

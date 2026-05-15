@@ -15,17 +15,14 @@ def execute_turn(player_id: str, state, logic, constants):
     total = dice1 + dice2
     action_logs.append(f"[COM] サイコロ: {dice1} + {dice2} = {total}")
 
-    yields = []
-    if total != 7:
-        yields = logic.calculate_yields(
-            total, state.current_board, state.hacker_position, 
-            state.buildings, state.inventory, constants.CENTER_X, 
-            constants.CENTER_Y, constants.HEX_SIZE, constants.BUILDING_YIELDS
-        )
-        if yields:
-            action_logs.append(f"[COM] 資源を回収しました。")
-    else:
-        action_logs.append(f"[COM] 7が出ました（ハッカー移動は現在待機中）。")
+    yields = logic.calculate_yields(
+        total, state.current_board, state.hacker_position, 
+        state.buildings, state.inventory, constants.CENTER_X, 
+        constants.CENTER_Y, constants.HEX_SIZE, constants.BUILDING_YIELDS,
+        state.game_status.get("season_event") # 🥷 ここにシーズンイベントの引数も追加しておくと完璧です！
+    )
+    if yields:
+        action_logs.append(f"[COM] 資源を回収しました。")
 
     # ========================================================
     # 🥷 2. 建築ルーチン (知能Lv.1 & Lv.2) 
