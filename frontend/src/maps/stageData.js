@@ -140,9 +140,12 @@ export const STAGE_DATA = [
     id: "STAGE_12_SKY",
     name: "12面: 天空の島",
     totalHexes: 37,
-    darkHexes: 9,
+    darkHexes: 19,
     targetScore: 140,
-    difficulty: "NORMAL",
+    canvasHeight: 950,
+    viewMode:"fixed",
+    zoom:1.0,
+    difficulty: "EXPERT",
     description: "37マスの完成された空中庭園。140万シェアを巡るバランスが究極に調整されており、あらゆる戦略が通用する集大成。",
     themeColor: "#00ffff"
   }

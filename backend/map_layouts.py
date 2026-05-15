@@ -138,8 +138,21 @@ STAGE_11_LAYOUT = STAGE_11_LANDS + STAGE_11_DARKS + STAGE_11_OCEANS
 # 🥷 陸地の全18マスを強制的に「NUCLEAR」に指定する
 STAGE_11_FIXED_SECTORS = {coord: "NUCLEAR" for coord in STAGE_11_LANDS}
 
+# --- STAGE 12: SKY (天空の群島) ---
+STAGE_12_LANDS = [
+    (2, -4), (1, -3), (2, -3), (3, -2), (4, -2), (3, -1), 
+    (-1, -2), (-2, -2), (-2, -1), (-3, 1), (-4, 2), (-3, 2), 
+    (-2, 3), (-2, 4), (-1, 3), (1, 2), (2, 1), (2, 2)
+]
+STAGE_12_DARKS = [
+    (1, -1), (0, 0), (-1, 0), (-1, 1), (1, 1), (0, -2), (1, -2), 
+    (2, -2), (-2, 0), (-1, -1), (0, -1), (-2, 1), (-2, 2), (0, 2), 
+    (-1, 2), (0, 1), (1, 0), (2, -1), (2, 0)
+]
+STAGE_12_OCEANS = []
 
-# ==============================
+STAGE_12_LAYOUT = STAGE_12_LANDS + STAGE_12_DARKS + STAGE_12_OCEANS
+
 
 # ==========================================
 # 🗃️ MAP CATALOG (統合管理データ)
@@ -234,6 +247,14 @@ MAP_CATALOG = {
         "fixed_darks": STAGE_11_DARKS,
         "fixed_oceans": STAGE_11_OCEANS,
         "fixed_sectors": STAGE_11_FIXED_SECTORS, # 🥷 ここですべてのLANDをNUCLEAR化
+        "coastal_exclusion_radius": 0.0
+    },
+    "STAGE_12_SKY": {
+        "name": "12面: 天空の群島",
+        "winning_score": 130, # 🥷 分断された陸地をつなぐコストを考慮して調整
+        "layout": STAGE_12_LAYOUT,
+        "fixed_darks": STAGE_12_DARKS,
+        "fixed_oceans": STAGE_12_OCEANS,
         "coastal_exclusion_radius": 0.0
     }
 }
