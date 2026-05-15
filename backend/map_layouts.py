@@ -94,6 +94,20 @@ STAGE_08_FIXED_SECTORS = {
     (4, -1): "SILICON", (4, -2): "SILICON", (4, -3): "SILICON"
 }
 
+STAGE_09_LANDS = [
+    (-4, 2), (-3, 2), (-5, 3), (-4, 3), (-3, 3), (-5, 4), (-4, 4), (-2, 2), 
+    (-1, 1), (0, 0), (1, -1), (2, -1), (1, 0), (1, 1), (-4, 0), (-3, 0), 
+    (-4, -1), (-3, -1), (-2, -1), (-3, -2), (-2, -2), (-1, -2), (0, -3), (1, -4), 
+    (2, -5), (3, -5), (2, -4), (2, -3)
+]
+STAGE_09_DARKS = []
+STAGE_09_OCEANS = [(2, -2), (-4, 1), (-3, 1), (1, -2)]
+
+STAGE_09_LAYOUT = STAGE_09_LANDS + STAGE_09_OCEANS
+
+
+# ==============================
+
 # ==========================================
 # 🗃️ MAP CATALOG (統合管理データ)
 # ==========================================
@@ -162,6 +176,14 @@ MAP_CATALOG = {
         "fixed_darks": [],
         "fixed_oceans": [],
         "fixed_sectors": STAGE_08_FIXED_SECTORS, # 🥷 ここで固定資源を読み込ませる！
+        "coastal_exclusion_radius": 0.0
+    },
+     "STAGE_09_MELODY": {
+        "name": "9面: メロディ",
+        "winning_score": 100,
+        "layout": STAGE_09_LAYOUT,
+        "fixed_darks": [],
+        "fixed_oceans": STAGE_09_OCEANS,
         "coastal_exclusion_radius": 0.0
     }
 }
