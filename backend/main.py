@@ -98,8 +98,8 @@ def get_or_generate_board():
         random.shuffle(sectors)
         
         # 🥷 数字(ナンバー)は、固定資源マスの分も含めて「資源マスの総数」だけ生成する
-        base_nums = [2,3,4,5,6,7,8,9,10,11,12]
-        numbers = [random.choice(base_nums) for _ in range(resource_hex_count)]
+        base_nums = [2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12]
+        numbers = [base_nums[i % len(base_nums)] for i in range(resource_hex_count)]
         random.shuffle(numbers)
 
         vertex_sectors = {} 
