@@ -121,6 +121,23 @@ STAGE_10_OCEANS = [
 # 🥷 今回は DARKS（ダークセクター）が大量にあるので、これも結合します！
 STAGE_10_LAYOUT = STAGE_10_LANDS + STAGE_10_DARKS + STAGE_10_OCEANS
 
+# --- STAGE 11: NUCLEAR_ZONE (禁断の核汚染領域) ---
+STAGE_11_LANDS = [
+    (0, -3), (-1, -2), (-2, -1), (-3, 0), (-3, 1), (-3, 2), (-3, 3), (-2, 3), 
+    (0, 3), (1, 2), (2, 1), (3, 0), (3, -1), (3, -3), (3, -2), (2, -3), (1, -3), (-1, 3)
+]
+STAGE_11_DARKS = [
+    (0, 0), (-1, 0), (0, -1), (1, -1), (1, 0), (0, 1), (-1, 1), (-2, 2), 
+    (-1, 2), (0, 2), (1, 1), (2, 0), (2, -1), (2, -2), (1, -2), (0, -2), 
+    (-1, -1), (-2, 0), (-2, 1)
+]
+STAGE_11_OCEANS = []
+
+STAGE_11_LAYOUT = STAGE_11_LANDS + STAGE_11_DARKS + STAGE_11_OCEANS
+
+# 🥷 陸地の全18マスを強制的に「NUCLEAR」に指定する
+STAGE_11_FIXED_SECTORS = {coord: "NUCLEAR" for coord in STAGE_11_LANDS}
+
 
 # ==============================
 
@@ -208,6 +225,15 @@ MAP_CATALOG = {
         "layout": STAGE_10_LAYOUT,
         "fixed_darks": STAGE_10_DARKS,   # 🥷 ダークセクターを確実に登録！
         "fixed_oceans": STAGE_10_OCEANS, # 🥷 海マスも確実に登録！
+        "coastal_exclusion_radius": 0.0
+    },
+    "STAGE_11_NUCLEAR": {
+        "name": "11面: 核汚染領域",
+        "winning_score": 160, # 🥷 核の高出力を考慮し、目標シェアを160(1.6億)に設定
+        "layout": STAGE_11_LAYOUT,
+        "fixed_darks": STAGE_11_DARKS,
+        "fixed_oceans": STAGE_11_OCEANS,
+        "fixed_sectors": STAGE_11_FIXED_SECTORS, # 🥷 ここですべてのLANDをNUCLEAR化
         "coastal_exclusion_radius": 0.0
     }
 }
