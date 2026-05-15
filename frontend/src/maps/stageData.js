@@ -116,8 +116,11 @@ export const STAGE_DATA = [
     id: "STAGE_10_DEMON",
     name: "10面: 鬼ヶ島",
     totalHexes: 35,
-    darkHexes: 7,
-    targetScore: 140, // 中央を独占した時の爆発力を考慮
+    darkHexes: 22,
+    targetScore: 70, // 中央を独占した時の爆発力を考慮
+    canvasHeight: 1100,
+    zoom:0.9,
+    viewMode:"scroll",
     difficulty: "EXPERT",
     description: "35マスの広域戦。中央の未開地を抑えた者が、140万シェアの王座に最も近付く。忍の心が試される戦場。",
     themeColor: "#8b0000"

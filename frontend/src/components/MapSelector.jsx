@@ -36,7 +36,8 @@ const MapSelector = ({ onSelectMap, pColor }) => {
                                 stage.id === "STAGE_06_ARCHIPELAGO"||
                                 stage.id === "STAGE_07_NORTH"||
                                 stage.id === "STAGE_08_BUTTERFLY"||
-                                stage.id === "STAGE_09_MELODY"
+                                stage.id === "STAGE_09_MELODY"||
+                                stage.id === "STAGE_10_DEMON"
           return (
             <div 
               key={stage.id}

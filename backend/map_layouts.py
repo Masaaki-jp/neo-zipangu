@@ -105,6 +105,22 @@ STAGE_09_OCEANS = [(2, -2), (-4, 1), (-3, 1), (1, -2)]
 
 STAGE_09_LAYOUT = STAGE_09_LANDS + STAGE_09_OCEANS
 
+# --- STAGE 10: DEMON (悪魔の島) ---
+STAGE_10_LANDS = [
+    (0, 0), (0, -1), (1, -1), (-1, 0), (-1, 1), (0, 1), (1, 0)
+]
+STAGE_10_DARKS = [
+    (0, 3), (2, -3), (1, -3), (0, -3), (1, -4), (2, -4), (3, -4), 
+    (3, -5), (2, -5), (-1, 3), (-2, 3), (-3, 3), (-3, 4), (-2, 4), 
+    (-1, 4), (-3, 5), (-2, 5), (3, -3), (4, -5), (-4, 5), (-4, 4), (4, -4)
+]
+STAGE_10_OCEANS = [
+    (0, -2), (0, 2), (-2, 2), (-1, 2), (1, -2), (2, -2)
+]
+
+# 🥷 今回は DARKS（ダークセクター）が大量にあるので、これも結合します！
+STAGE_10_LAYOUT = STAGE_10_LANDS + STAGE_10_DARKS + STAGE_10_OCEANS
+
 
 # ==============================
 
@@ -184,6 +200,14 @@ MAP_CATALOG = {
         "layout": STAGE_09_LAYOUT,
         "fixed_darks": [],
         "fixed_oceans": STAGE_09_OCEANS,
+        "coastal_exclusion_radius": 0.0
+    },
+    "STAGE_10_DEMON": {
+        "name": "10面: DEMON",
+        "winning_score": 70,
+        "layout": STAGE_10_LAYOUT,
+        "fixed_darks": STAGE_10_DARKS,   # 🥷 ダークセクターを確実に登録！
+        "fixed_oceans": STAGE_10_OCEANS, # 🥷 海マスも確実に登録！
         "coastal_exclusion_radius": 0.0
     }
 }
