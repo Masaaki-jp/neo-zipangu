@@ -228,6 +228,16 @@ def init_roll(req: InitRollRequest):
         state.game_status["state"] = "setup"
         state.game_status["setup_turn"] = 0
 
+        # ==========================================
+        # 🥷 追加：ここでCOMの性格（AIタイプ）をランダム決定！
+        # ==========================================
+        com_pool = ["com_speeder", "com_builder"] # 今後増えたらここに足すだけ
+        for p in sorted_players:
+            # 人間以外のプレイヤー（COM）だったら、タイプをランダムに再設定
+            if state.player_types.get(p, "human") != "human":
+                state.player_types[p] = random.choice(com_pool)
+        # ==========================================
+
         # （ゲーム開始時の最初の人のタイマーセット）
         current_p = state.game_status["current_player"]
         if state.player_types.get(current_p, "human") == "human":
@@ -360,6 +370,9 @@ def com_execute(req: ComExecuteRequest):
     elif current_type == "com_speeder":
         from com_ai import com_speeder
         result = com_speeder.execute_turn(req.player, state, game_logic, constants)
+    elif current_type == "com_builder":
+        from com_ai import com_builder
+        result = com_builder.execute_turn(req.player, state, game_logic, constants)
     else:
         from com_ai import com_speeder
         result = com_speeder.execute_turn(req.player, state, game_logic, constants)
