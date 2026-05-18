@@ -22,13 +22,21 @@ def get_score(player: str, buildings: dict, cards: dict, roads: dict, bots: dict
     if any(b.get("level", 0) >= 4 for b in bots.values() if b["player"] == player): titles.append("軍師大名"); bonus_shares += 20
     return {"base": base_shares, "bonus": bonus_shares, "total": base_shares + bonus_shares, "titles": titles}
 
-# 🥷 修正：引数の最後に `season_event: dict = None` を追加しました
-def calculate_yields(total: int, current_board: list, hacker_position: str, buildings: dict, inventory: dict, center_x: int, center_y: int, hex_size: int, building_yields: dict, season_event: dict = None):
+# 🥷 修正：引数の最後に `hacker_vault: dict = None` を追加しました
+def calculate_yields(total: int, current_board: list, hacker_position: str, buildings: dict, inventory: dict, center_x: int, center_y: int, hex_size: int, building_yields: dict, season_event: dict = None, hacker_vault: dict = None):
     yields = []
+    
+    # 金庫が渡されなかった時のための安全策（空の辞書をセット）
+    if hacker_vault is None:
+        hacker_vault = {}
+
     for hex_data in current_board:
         if hex_data["number"] == total:
             hex_id = f"{hex_data['q']},{hex_data['r']}"
-            if hex_id == hacker_position: continue
+            
+            # 🥷 以前の `if hex_id == hacker_position: continue` を削除し、フラグ化
+            is_hacked = (hex_id == hacker_position)
+            
             sector_type = hex_data["sector"]
             
             sector_amounts = {}
@@ -41,15 +49,24 @@ def calculate_yields(total: int, current_board: list, hacker_position: str, buil
                     amt = building_yields.get(b_info["type"], 0.0)
                     sector_amounts[p] = sector_amounts.get(p, 0.0) + amt
                     sector_counts[p] = sector_counts.get(p, 0) + 1
+                    
             for p, amt in sector_amounts.items():
                 if amt > 0 and p in inventory: 
                     # 既存のシナジーボーナス
                     if sector_counts[p] >= 2: amt = amt * 1.5
                     
-                    # 🥷 追加：シーズンイベント（相場変動）の計算！
+                    # シーズンイベント（相場変動）の計算
                     if season_event and season_event.get("resource") == sector_type:
                         amt = amt * (1.0 + season_event.get("rate", 0.0))
                     
-                    yields.append({"player": p, "sector": sector_type})
-                    inventory[p][sector_type] += amt
+                    # 🥷 運命の分岐点：ハッカーがいるかどうか！
+                    if is_hacked:
+                        # プレイヤーには渡さず、ハッカーの金庫（Vault）に貯金する！
+                        hacker_vault[sector_type] = hacker_vault.get(sector_type, 0.0) + amt
+                        # ※ログを出したい場合は yields に {"player": "HACKER", "sector": ...} のように混ぜることも可能です
+                    else:
+                        # 通常通りプレイヤーが獲得
+                        yields.append({"player": p, "sector": sector_type})
+                        inventory[p][sector_type] += amt
+                        
     return yields

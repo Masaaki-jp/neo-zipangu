@@ -689,28 +689,35 @@ def hack_resources(req: InitRollRequest):
 @app.get("/api/dice")
 def roll_dice():
     enforce_time_limit()
-    if state.game_status["state"] == "setup": raise HTTPException(status_code=400, detail="CANNOT_ROLL_IN_SETUP")
-    dice1, dice2 = random.randint(1, 6), random.randint(1, 6); total = dice1 + dice2; event_log = None; event_type = None
+    if state.game_status["state"] == "setup": 
+        raise HTTPException(status_code=400, detail="CANNOT_ROLL_IN_SETUP")
+        
+    dice1, dice2 = random.randint(1, 6), random.randint(1, 6)
+    total = dice1 + dice2
+    event_log = None
+    event_type = None
+    current_player = state.game_status["current_player"]
+
+    # 🥷 事前チェック：stateにhacker_vaultがまだ無い場合の初期化安全策
+    if not hasattr(state, "hacker_vault") or state.hacker_vault is None:
+        state.hacker_vault = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0}
     
     if dice1 == dice2:
         if dice1 == 1:
-            # 🥷 1のゾロ目が出た場合の確率分岐 (r は 0.0 〜 1.0 のランダム値)
+            # 1のゾロ目が出た場合の確率分岐
             r = random.random()
-            
-            if r < 0.2: # 🥷 20%の超低確率で「大地震」発生！
+            if r < 0.2: # 20%の確率で「大地震」
                 target_hexes = [h for h in state.current_board if h["sector"] not in ["DARK", "OCEAN"] and h.get("number") is not None]
                 numbers = [h["number"] for h in target_hexes]
                 random.shuffle(numbers)
                 for h in target_hexes: h["number"] = numbers.pop()
                 event_type = "EARTHQUAKE"
                 event_log = "⚠️【大地震（EARTHQUAKE）】地殻変動発生！全マスの資源ナンバーがシャッフルされました！"
-            
             elif r < 0.6: # 40%の確率で「飢饉」
                 for p in state.inventory:
                     for res in state.inventory[p]: state.inventory[p][res] = 0.0
                 event_type = "FAMINE"
                 event_log = "【大暴落（飢饉）】すべての資源が 0 になりました！"
-                
             else: # 残り40%の確率で「好景気」
                 for p in state.inventory:
                     for res in state.inventory[p]: state.inventory[p][res] += 10.0
@@ -718,13 +725,35 @@ def roll_dice():
                 event_log = "【好景気（助成金）】すべての資源が +10.0 されました！"
                 
         else: 
+            # 🥷 1以外のゾロ目：ハッカーイベント ＆ ジャックポット総取り！
             event_type = "HACKER"
-            event_log = "【ランサムウェア集団出現】マップを開拓済みのセクターをクリックして、ハッカーを配置してください！"
             
-    yields = calculate_yields(total, state.current_board, state.hacker_position, state.buildings, state.inventory, CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS, state.game_status.get("season_event"))
+            # 金庫の中身を現在のプレイヤーのインベントリに全額チャージ！
+            harvested_info = []
+            for res, amt in state.hacker_vault.items():
+                if amt > 0:
+                    state.inventory[current_player][res] += amt
+                    harvested_info.append(f"{res}:+{int(amt)}")
+                    state.hacker_vault[res] = 0.0 # 金庫をリセット
+            
+            jackpot_msg = f"（獲得ボーナス ➔ {' / '.join(harvested_info)}）" if harvested_info else "（金庫は空でした）"
+            event_log = f"🏴‍☠️【ランサムウェア集団出現】ハッカー金庫をハックしました！ {jackpot_msg} マップをクリックして、ハッカーを新天地へ再配置してください！"
+            
+    # 🥷 修正：引数の最後に `hacker_vault=state.hacker_vault` を追加！これで封鎖マスの資源が金庫へ貯まります
+    yields = calculate_yields(
+        total, state.current_board, state.hacker_position, state.buildings, state.inventory, 
+        CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS, 
+        state.game_status.get("season_event"), hacker_vault=state.hacker_vault
+    )
     
-    # 🥷 戻り値の最後に "board": state.current_board を追加！（フロントにシャッフル結果を伝えるため）
-    return {"dice1": dice1, "dice2": dice2, "total": total, "yields": yields, "inventory": state.inventory, "trade_rates": state.trade_rates, "score": get_score(state.game_status["current_player"], state.buildings, state.cards, state.roads, state.bots), "event_type": event_type, "event_log": event_log, "hacker_position": state.hacker_position, "game_status": state.game_status, "board": state.current_board}
+    return {
+        "dice1": dice1, "dice2": dice2, "total": total, "yields": yields, 
+        "inventory": state.inventory, "trade_rates": state.trade_rates, 
+        "score": get_score(current_player, state.buildings, state.cards, state.roads, state.bots), 
+        "event_type": event_type, "event_log": event_log, "hacker_position": state.hacker_position, 
+        "game_status": state.game_status, "board": state.current_board,
+        "hacker_vault": state.hacker_vault # 🥷 フロントでも金庫残高を見られるように追加
+    }
 
 @app.post("/api/reset")
 def reset_game(req: ResetRequest = None):
