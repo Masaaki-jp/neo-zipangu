@@ -19,11 +19,104 @@ def execute_turn(player_id: str, state, logic, constants):
     total = dice1 + dice2
     action_logs.append(f"[COM:BUILDER] サイコロ: {dice1} + {dice2} = {total}")
 
+    # 🥷 金庫の初期化チェック
+    if not hasattr(state, "hacker_vault") or state.hacker_vault is None:
+        state.hacker_vault = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0}
+
+    # ========================================================
+    # 🥷 1.5 ゾロ目イベント＆ハッカーAIロジック
+    # ========================================================
+    if dice1 == dice2:
+        if dice1 == 1:
+            r = random.random()
+            if r < 0.2:
+                target_hexes = [h for h in state.current_board if h["sector"] not in ["DARK", "OCEAN"] and h.get("number") is not None]
+                numbers = [h["number"] for h in target_hexes]
+                random.shuffle(numbers)
+                for h in target_hexes: h["number"] = numbers.pop()
+                action_logs.append("⚠️ [COM: イベント] 【大地震】地殻変動発生！全マスのナンバーがシャッフルされました！")
+            elif r < 0.6:
+                for p in state.inventory:
+                    for res in state.inventory[p]: state.inventory[p][res] = 0.0
+                action_logs.append("⚠️ [COM: イベント] 【大暴落】すべてのプレイヤーの資源が 0 になりました！")
+            else:
+                for p in state.inventory:
+                    for res in state.inventory[p]: state.inventory[p][res] += 10.0
+                action_logs.append("✨ [COM: イベント] 【好景気】すべてのプレイヤーの資源が +10.0 されました！")
+        else:
+            # 💰 ジャックポット回収
+            harvested = []
+            for res, amt in state.hacker_vault.items():
+                if amt > 0:
+                    # state.inventory の該当プレイヤー辞書がない場合の安全策も加味
+                    if player_id not in state.inventory:
+                        state.inventory[player_id] = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0}
+                    state.inventory[player_id][res] += amt
+                    harvested.append(f"{res}:+{int(amt)}")
+                    state.hacker_vault[res] = 0.0
+            
+            if harvested:
+                action_logs.append(f"🏴‍☠️ [COM: ハッカー] ジャックポット！金庫から {' / '.join(harvested)} を回収しました！")
+            else:
+                action_logs.append(f"🏴‍☠️ [COM: ハッカー] ハッカーを起動しましたが、金庫は空でした。")
+
+            # 🎯 ハッカー配置の極悪AI思考（一番ダメージを与えられるマスを探す）
+            valid_hexes = [h for h in state.current_board if h["sector"] not in ["DARK", "OCEAN"] and h.get("number")]
+            best_hex = None
+            best_score = -9999
+            
+            for h in valid_hexes:
+                hx, hy = h["q"], h["r"]
+                hex_id = f"{hx},{hy}"
+                if hex_id == getattr(state, "hacker_position", None): continue
+                
+                cx = constants.CENTER_X + constants.HEX_SIZE * math.sqrt(3) * (hx + hy / 2)
+                cy = constants.CENTER_Y + constants.HEX_SIZE * (3 / 2) * hy
+                
+                score = 0
+                num = h.get("number", 0)
+                
+                # 数字の強さ（期待値）
+                prob = 0
+                if num == 7: prob = 6
+                elif num in [6, 8]: prob = 5
+                elif num in [5, 9]: prob = 4
+                elif num in [4, 10]: prob = 3
+                elif num in [3, 11]: prob = 2
+                elif num in [2, 12]: prob = 1
+                
+                # 誰の拠点が接しているかチェック
+                enemy_buildings = 0
+                my_buildings_count = 0
+                for b_id, b_info in state.buildings.items():
+                    bx, by = map(int, b_id.split(','))
+                    if 50 < math.hypot(cx - bx, cy - by) < 70:
+                        if b_info["player"] == player_id:
+                            my_buildings_count += 1
+                        else:
+                            enemy_buildings += 1
+                
+                # 🥷 自分の拠点が1つでも接しているマスは絶対に選ばない（-100点）
+                if my_buildings_count > 0:
+                    continue  # スコアを減らすのではなく、即座に次のマスの計算へスキップ！
+                else:
+                    # 敵の拠点が多いほど、かつ数字が良いほど高得点！
+                    score += (enemy_buildings * 10) + prob
+                
+                if score > best_score:
+                    best_score = score
+                    best_hex = hex_id
+                    
+            if best_hex:
+                state.hacker_position = best_hex
+                action_logs.append(f"🏴‍☠️ [COM: ハッカー] ターゲット座標 {best_hex} を封鎖しました。")
+
+    # 🥷 hacker_vault 引数を追加して yield 計算
     yields = logic.calculate_yields(
-        total, state.current_board, state.hacker_position, 
+        total, state.current_board, getattr(state, "hacker_position", None), 
         state.buildings, state.inventory, constants.CENTER_X, 
         constants.CENTER_Y, constants.HEX_SIZE, constants.BUILDING_YIELDS,
-        state.game_status.get("season_event")
+        state.game_status.get("season_event"), hacker_vault=state.hacker_vault
     )
     if yields:
         action_logs.append(f"[COM:BUILDER] 資源を回収しました。")
@@ -47,12 +140,9 @@ def execute_turn(player_id: str, state, logic, constants):
         dc_costs = constants.COSTS["DATA_CENTER"]
         
         if local_hubs and my_inv.get("HARD", 0) >= dc_costs["HARD"] and my_inv.get("SILICON", 0) >= dc_costs["SILICON"]:
-            # 強化対象を1つ選ぶ
             target_v = local_hubs[0]
-            # コスト支払い
             my_inv["HARD"] -= dc_costs["HARD"]
             my_inv["SILICON"] -= dc_costs["SILICON"]
-            # アップグレード
             state.buildings[target_v]["type"] = "DATA_CENTER"
             action_logs.append(f"[COM:BUILDER] 既存のHUBを DATA_CENTER へ強化！出力を倍増。")
             action_taken = True
@@ -80,7 +170,6 @@ def execute_turn(player_id: str, state, logic, constants):
                             valid_vertices.append(v_id)
 
             if valid_vertices:
-                # 建築可能な場所があればランダム（または一等地）に建設
                 chosen_vertex = random.choice(valid_vertices)
                 for res, amt in hub_costs.items():
                     my_inv[res] -= amt
@@ -95,7 +184,6 @@ def execute_turn(player_id: str, state, logic, constants):
         road_costs = constants.COSTS["ROAD"]
         can_pay_road = all(my_inv.get(res, 0) >= amt for res, amt in road_costs.items())
         
-        # 有効な辺（道が引ける場所）をリストアップ
         valid_edges = []
         for hex_data in state.current_board:
             cx = constants.CENTER_X + constants.HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
@@ -134,29 +222,23 @@ def execute_turn(player_id: str, state, logic, constants):
         # ----------------------------------------------------
         # 🏅 優先順位 4: トレードを駆使した ROAD の強行
         # ----------------------------------------------------
-        # 道を引く候補地はあるが、資材（POLYMER or SILICON）が足りない場合のみ検討
         if valid_edges and not can_pay_road:
             needed_polymer = max(0, 10.0 - my_inv.get("POLYMER", 0))
             needed_silicon = max(0, 10.0 - my_inv.get("SILICON", 0))
             
-            # トレード材料（余剰資源）の探索
-            # ゴール用の資源（HARD）はDC強化用に30はキープし、それを超えた分をトレードに出す
             tradable_resources = {
                 "POWER": max(0, my_inv.get("POWER", 0)),
                 "DATA": max(0, my_inv.get("DATA", 0)),
-                "HARD": max(0, my_inv.get("HARD", 0) - 30.0) # 🥷 30はゴール用にロック！
+                "HARD": max(0, my_inv.get("HARD", 0) - 30.0)
             }
             
-            # 不足分を補うために必要な交換回数を計算（基本4:1交換とする）
-            # ※本来は港（HUB）の有無を判定すべきですが、まずは基本の4:1で実装
             trade_executed = False
             for target_res, needed_amt in [("POLYMER", needed_polymer), ("SILICON", needed_silicon)]:
                 if needed_amt <= 0:
                     continue
                 
-                # 10個不足なら、4:1トレードが1回必要（10単位で交換と仮定）
                 for source_res, amt in tradable_resources.items():
-                    if amt >= 40.0: # 40個あれば1回交換可能
+                    if amt >= 40.0: 
                         my_inv[source_res] -= 40.0
                         my_inv[target_res] = my_inv.get(target_res, 0) + 10.0
                         tradable_resources[source_res] -= 40.0
@@ -166,7 +248,7 @@ def execute_turn(player_id: str, state, logic, constants):
                         
             if trade_executed:
                 action_taken = True
-                continue # トレードが成立したら、次のループでROAD建設が発火する
+                continue
 
     # ========================================================
     # --- 3. ターンエンド処理 ---
