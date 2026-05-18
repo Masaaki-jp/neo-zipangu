@@ -25,6 +25,7 @@ COSTS = {
     "GATEWAY": {"DATA": 10.0, "SILICON": 20.0}, 
     "MEGA_HQ": {"HARD": 30.0, "POWER": 20.0, "NUCLEAR": 10.0}, 
     "BOT": {"POWER": 10.0, "DATA": 10.0}, 
+    "UPGRADE_BOT": {"POWER": 10.0, "DATA": 10.0, "NUCLEAR": 10.0},
     "MOVE_BOT": {"POWER": 10.0}
 }
 

@@ -13,7 +13,7 @@ from schemas import (
 )
 
 # === 新規追加：AIモジュールのインポート ===
-from com_ai import com_speeder
+from com_ai import com_speeder, com_builder, com_fighter  # 🥷 3人をしっかりインポート！
 
 from constants import (
     HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS, MAX_BUILDINGS, 
@@ -231,7 +231,7 @@ def init_roll(req: InitRollRequest):
         # ==========================================
         # 🥷 追加：ここでCOMの性格（AIタイプ）をランダム決定！
         # ==========================================
-        com_pool = ["com_speeder", "com_builder"] # 今後増えたらここに足すだけ
+        com_pool = ["com_speeder", "com_builder", "com_fighter"] # 今後増えたらここに足すだけ
         for p in sorted_players:
             # 人間以外のプレイヤー（COM）だったら、タイプをランダムに再設定
             if state.player_types.get(p, "human") != "human":
@@ -373,6 +373,9 @@ def com_execute(req: ComExecuteRequest):
     elif current_type == "com_builder":
         from com_ai import com_builder
         result = com_builder.execute_turn(req.player, state, game_logic, constants)
+    elif current_type == "com_fighter": # 🥷 新規追加：戦闘特化AIの呼び出し！
+        from com_ai import com_fighter
+        result = com_fighter.execute_turn(req.player, state, game_logic, constants)
     else:
         from com_ai import com_speeder
         result = com_speeder.execute_turn(req.player, state, game_logic, constants)
@@ -581,16 +584,35 @@ def move_hacker(req: HackerRequest):
 @app.post("/api/deploy_bot")
 def deploy_bot(req: BuildRequest):
     enforce_time_limit()
-    if state.game_status["state"] == "setup": raise HTTPException(status_code=400, detail="CANNOT_DEPLOY_IN_SETUP")
+    if state.game_status["state"] == "setup": 
+        raise HTTPException(status_code=400, detail="CANNOT_DEPLOY_IN_SETUP")
+        
     if req.vertex_id in state.bots and state.bots[req.vertex_id]["player"] == req.player:
-        if state.bots[req.vertex_id]["level"] >= 4: raise HTTPException(status_code=400, detail="MAX_BOT_LEVEL_REACHED")
-        if not pay_cost(req.player, "BOT", COSTS, state.inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+        # 🥷 既存BOTのレベルアップ（強化）処理
+        if state.bots[req.vertex_id]["level"] >= 4: 
+            raise HTTPException(status_code=400, detail="MAX_BOT_LEVEL_REACHED")
+        
+        # 変更: "BOT" ではなく "UPGRADE_BOT" のコスト（NUCLEAR要求）を支払う
+        if not pay_cost(req.player, "UPGRADE_BOT", COSTS, state.inventory): 
+            raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES_FOR_UPGRADE")
+            
         state.bots[req.vertex_id]["level"] += 1
     else:
-        if req.vertex_id not in state.buildings or state.buildings[req.vertex_id]["player"] != req.player: raise HTTPException(status_code=400, detail="MUST_DEPLOY_ON_YOUR_HUB")
-        if not pay_cost(req.player, "BOT", COSTS, state.inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+        # 🥷 新規BOTのスポーン処理（今まで通り POWER & DATA）
+        if req.vertex_id not in state.buildings or state.buildings[req.vertex_id]["player"] != req.player: 
+            raise HTTPException(status_code=400, detail="MUST_DEPLOY_ON_YOUR_HUB")
+            
+        # こちらは変更なし
+        if not pay_cost(req.player, "BOT", COSTS, state.inventory): 
+            raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+            
         state.bots[req.vertex_id] = {"player": req.player, "level": 1, "has_moved": False}
-    return {"status": "success", "bots": state.bots, "inventory": state.inventory, "trade_rates": state.trade_rates, "score": get_score(req.player, state.buildings, state.cards, state.roads, state.bots), "game_status": state.game_status}
+        
+    return {
+        "status": "success", "bots": state.bots, "inventory": state.inventory, 
+        "trade_rates": state.trade_rates, "score": get_score(req.player, state.buildings, state.cards, state.roads, state.bots), 
+        "game_status": state.game_status
+    }
 
 @app.post("/api/move_bot")
 def move_bot(req: MoveRequest):
@@ -777,4 +799,10 @@ def reset_game(req: ResetRequest = None):
         state.trade_rates[p] = {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0}
         state.cards[p] = []
         
+        # 🥷 【ここを修正】実際の型管理である state.player_types に直接ランダム代入します
+        if p == "Player1":
+            state.player_types[p] = "human"
+        else:
+            state.player_types[p] = "com_fighter"
+
     return {"status": "system_reset_complete"}
