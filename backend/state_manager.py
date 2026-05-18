@@ -5,9 +5,9 @@ PLAYERS = ["Player1", "Player2", "Player3", "Player4"]
 
 player_types = {
     "Player1": "human",
-    "Player2": "com_speeder",
-    "Player3": "com_speeder",
-    "Player4": "com_speeder"
+    "Player2": "com_fighter",
+    "Player3": "com_fighter",
+    "Player4": "com_fighter"
 }
 
 # マップ・インフラ関連
