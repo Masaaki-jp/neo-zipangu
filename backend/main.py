@@ -803,6 +803,5 @@ def reset_game(req: ResetRequest = None):
         if p == "Player1":
             state.player_types[p] = "human"
         else:
-            state.player_types[p] = "com_fighter"
-
+            state.player_types[p] = random.choice(["com_speeder", "com_builder", "com_fighter"])
     return {"status": "system_reset_complete"}
