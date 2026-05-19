@@ -4,6 +4,8 @@ from pydantic import BaseModel
 import random
 import math
 
+import game_state
+
 # === モジュールのインポート ===
 from game_logic import pay_cost, get_score, calculate_yields
 import state_manager as state
@@ -205,13 +207,23 @@ def get_or_generate_board():
     current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
     state.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
 
+    #🥷 修正：さきほど game_logic.py に作った「本物の計算関数」を呼び出す
+    import game_logic
+    game_logic.update_all_scores(state.buildings, state.cards, state.roads, state.bots)
+
     return {
         "map_id": getattr(state, "current_map_id", "STAGE_01_BEGINNER"),
         "board": state.current_board, "buildings": state.buildings, "roads": state.roads, 
         "bots": state.bots, "hacker_position": state.hacker_position, "cards": state.cards, 
         "game_status": state.game_status, "inventory": state.inventory, "trade_rates": state.trade_rates, 
         "init_rolls": state.init_rolls, "coastal_vertices": list(state.coastal_vertices),
-        "player_types": getattr(state, "player_types", {})
+        "player_types": getattr(state, "player_types", {}),
+        "scores": {
+            "Player1": game_state.player1_score,
+            "Player2": game_state.player2_score,
+            "Player3": game_state.player3_score,
+            "Player4": game_state.player4_score
+        }
     }
 
 @app.post("/api/init_roll")
@@ -774,13 +786,26 @@ def roll_dice():
         state.game_status.get("season_event"), hacker_vault=state.hacker_vault
     )
     
+    # 🥷 追加：最新のスコアを全員分計算して game_state を更新
+    import game_logic
+    import game_state
+    game_logic.update_all_scores(state.buildings, state.cards, state.roads, state.bots)
+
     return {
         "dice1": dice1, "dice2": dice2, "total": total, "yields": yields, 
         "inventory": state.inventory, "trade_rates": state.trade_rates, 
-        "score": get_score(current_player, state.buildings, state.cards, state.roads, state.bots), 
+        
+        # 🥷 修正："score" を削除し、"scores" として全員分の独立変数を返す
+        "scores": {
+            "Player1": game_state.player1_score,
+            "Player2": game_state.player2_score,
+            "Player3": game_state.player3_score,
+            "Player4": game_state.player4_score
+        },
+        
         "event_type": event_type, "event_log": event_log, "hacker_position": state.hacker_position, 
         "game_status": state.game_status, "board": state.current_board,
-        "hacker_vault": state.hacker_vault # 🥷 フロントでも金庫残高を見られるように追加
+        "hacker_vault": state.hacker_vault 
     }
 
 @app.post("/api/reset")
