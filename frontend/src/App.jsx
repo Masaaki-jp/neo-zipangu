@@ -42,7 +42,9 @@ function App() {
       setInitRolls(boardData.init_rolls || {});
       if (boardData.inventory) setInventory(boardData.inventory[currentPlayer]);
       if (boardData.trade_rates) setTradeRates(boardData.trade_rates[currentPlayer]);
-      if (boardData.score) setScore(boardData.score);
+
+      if (boardData.scores && boardData.scores[currentPlayer]) setScore(boardData.scores[currentPlayer]);
+
       if (boardData.cards) setCards(boardData.cards[currentPlayer] || []);
     } catch (err) { console.error(err); }
   };
@@ -53,7 +55,7 @@ function App() {
     if (newInventory && newInventory[currentPlayer]) setInventory({ ...newInventory[currentPlayer] });
     if (newRates && newRates[currentPlayer]) setTradeRates({ ...newRates[currentPlayer] });
     if (newBuildings) setBuildings({ ...newBuildings });
-    if (newScore) setScore({ ...newScore });
+    if (newScore) setScore({ ...newScore[currentPlayer] });
     if (newCards && newCards[currentPlayer]) setCards([...newCards[currentPlayer]]);
     if (newGameStatus) {
       setGameStatus({ ...newGameStatus });

@@ -1,4 +1,6 @@
 import math
+import game_state  # 🥷 追加：新しく作った状態管理の箱を読み込む
+
 
 def pay_cost(player: str, cost_type: str, costs_def: dict, inventory: dict):
     cost = costs_def[cost_type]
@@ -70,3 +72,10 @@ def calculate_yields(total: int, current_board: list, hacker_position: str, buil
                         inventory[p][sector_type] += amt
                         
     return yields
+
+# 🥷 追加：本物の get_score を使って、全員分のスコアを独立変数に上書きする関数
+def update_all_scores(buildings: dict, cards: dict, roads: dict, bots: dict):
+    game_state.player1_score = get_score("Player1", buildings, cards, roads, bots)
+    game_state.player2_score = get_score("Player2", buildings, cards, roads, bots)
+    game_state.player3_score = get_score("Player3", buildings, cards, roads, bots)
+    game_state.player4_score = get_score("Player4", buildings, cards, roads, bots)
