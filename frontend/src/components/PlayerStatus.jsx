@@ -1,5 +1,15 @@
 import React from 'react';
 
+// 🥷 UI表示専用の絵文字マッピング（バックエンドのデータには一切影響しません）
+const resourceEmojis = {
+  "POWER": "⚡️",
+  "DATA": "💾",
+  "SILICON": "🎛️",
+  "HARD": "🛠️",
+  "POLYMER": "🧪",
+  "NUCLEAR": "☢️"
+};
+
 const PlayerStatus = ({
   currentPlayer,
   pColor,
@@ -56,7 +66,10 @@ const PlayerStatus = ({
             const isTradeable = count >= currentRate;
             return (
               <div key={resource} style={{ padding: '5px 10px', border: `1px solid ${isTradeable ? '#ffcc00' : (count > 0 ? pColor : '#333')}`, borderRadius: '3px', color: count > 0 ? '#ffffff' : '#666', boxShadow: isTradeable ? '0 0 10px rgba(255,204,0,0.5)' : (count > 0 ? `0 0 10px ${pColor}55` : 'none'), transition: 'all 0.3s' }}>
-                <span style={{ fontSize: '0.8rem', marginRight: '8px', color: isTradeable ? '#ffcc00' : (count > 0 ? pColor : '#555') }}>{resource}</span>
+                {/* 🥷 ここで英語の代わりに絵文字を表示！ */}
+                <span style={{ fontSize: '1.2rem', marginRight: '5px', color: isTradeable ? '#ffcc00' : (count > 0 ? pColor : '#555') }}>
+                  {resourceEmojis[resource] || resource}
+                </span>
                 <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{Number(count).toFixed(1)}</span>
                 {currentRate === 10.0 && <span style={{ marginLeft: '5px', color: '#bfff00', fontSize: '0.8rem', textShadow: '0 0 5px #bfff00' }}>★1:1</span>}
               </div>
@@ -65,12 +78,13 @@ const PlayerStatus = ({
         </div>
       )}
 
+      {/* 🥷 STOCK部分のテキストを直接絵文字に書き換え */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', padding: '10px', backgroundColor: '#111', borderBottom: '1px dotted #555', fontSize: '0.9rem' }}>
         <span style={{ color: '#aaaaaa' }}>[ STOCK ]</span>
-        <span style={{ color: currentBCounts.LOCAL_HUB >= MAX_STOCKS.LOCAL_HUB ? '#ff0055' : '#444444' }}>砦(HUB): {currentBCounts.LOCAL_HUB}/{MAX_STOCKS.LOCAL_HUB}</span>
-        <span style={{ color: currentBCounts.DATA_CENTER >= MAX_STOCKS.DATA_CENTER ? '#ff0055' : pColor }}>小城(DC): {currentBCounts.DATA_CENTER}/{MAX_STOCKS.DATA_CENTER}</span>
-        <span style={{ color: currentBCounts.GATEWAY >= MAX_STOCKS.GATEWAY ? '#ff0055' : '#0055ff' }}>港(GW): {currentBCounts.GATEWAY}/{MAX_STOCKS.GATEWAY}</span>
-        <span style={{ color: currentBCounts.MEGA_HQ >= MAX_STOCKS.MEGA_HQ ? '#ff0055' : '#ffcc00' }}>大城(HQ): {currentBCounts.MEGA_HQ}/{MAX_STOCKS.MEGA_HQ}</span>
+        <span style={{ color: currentBCounts.LOCAL_HUB >= MAX_STOCKS.LOCAL_HUB ? '#ff0055' : '#444444' }}>🛖(HUB): {currentBCounts.LOCAL_HUB}/{MAX_STOCKS.LOCAL_HUB}</span>
+        <span style={{ color: currentBCounts.DATA_CENTER >= MAX_STOCKS.DATA_CENTER ? '#ff0055' : pColor }}>🏯(DC): {currentBCounts.DATA_CENTER}/{MAX_STOCKS.DATA_CENTER}</span>
+        <span style={{ color: currentBCounts.GATEWAY >= MAX_STOCKS.GATEWAY ? '#ff0055' : '#0055ff' }}>⚓️(GW): {currentBCounts.GATEWAY}/{MAX_STOCKS.GATEWAY}</span>
+        <span style={{ color: currentBCounts.MEGA_HQ >= MAX_STOCKS.MEGA_HQ ? '#ff0055' : '#ffcc00' }}>🏰(HQ): {currentBCounts.MEGA_HQ}/{MAX_STOCKS.MEGA_HQ}</span>
       </div>
     </>
   );
