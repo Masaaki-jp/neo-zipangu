@@ -13,7 +13,7 @@ from schemas import (
 )
 
 # === 新規追加：AIモジュールのインポート ===
-from com_ai import com_speeder, com_builder, com_fighter  # 🥷 3人をしっかりインポート！
+from com_ai import com_speeder, com_builder, com_fighter, com_gambler  # 
 
 from constants import (
     HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS, MAX_BUILDINGS, 
@@ -231,7 +231,7 @@ def init_roll(req: InitRollRequest):
         # ==========================================
         # 🥷 追加：ここでCOMの性格（AIタイプ）をランダム決定！
         # ==========================================
-        com_pool = ["com_speeder", "com_builder", "com_fighter"] # 今後増えたらここに足すだけ
+        com_pool = ["com_speeder", "com_builder", "com_fighter", "com_gambler"] # 今後増えたらここに足すだけ
         for p in sorted_players:
             # 人間以外のプレイヤー（COM）だったら、タイプをランダムに再設定
             if state.player_types.get(p, "human") != "human":
@@ -376,6 +376,9 @@ def com_execute(req: ComExecuteRequest):
     elif current_type == "com_fighter": # 🥷 新規追加：戦闘特化AIの呼び出し！
         from com_ai import com_fighter
         result = com_fighter.execute_turn(req.player, state, game_logic, constants)
+    elif current_type == "com_gambler":
+        from com_ai import com_gambler
+        result = com_gambler.execute_turn(req.player, state, game_logic, constants)
     else:
         from com_ai import com_speeder
         result = com_speeder.execute_turn(req.player, state, game_logic, constants)
@@ -803,5 +806,6 @@ def reset_game(req: ResetRequest = None):
         if p == "Player1":
             state.player_types[p] = "human"
         else:
-            state.player_types[p] = random.choice(["com_speeder", "com_builder", "com_fighter"])
+
+            state.player_types[p] = random.choice(["com_speeder", "com_builder", "com_fighter", "com_gambler"])
     return {"status": "system_reset_complete"}
