@@ -40,8 +40,24 @@ def build_standard_response(extra_data: dict = None):
     全てのAPIエンドポイントはこの関数を通ってフロントエンドにデータを返します。
     ここで一括してスコアを計算し、フォーマットを完全に統一します。
     """
-    # 1. 追加：スコア計算の直前に、盤面全体のDARKマス開拓スキャンを走らせる！
+    # 1. 常に最新のスコアを計算する前に、盤面全体のDARKマス開拓スキャンを走らせる
     game_logic.check_and_explore_dark_hexes(state.current_board, state.roads, CENTER_X, CENTER_Y, HEX_SIZE)
+
+    # 🥷 1.5. 【追加】開拓によって地目が変わったため、建築判定用キャッシュ（vertex_sectors）を最新の盤面で再構築する！
+    new_vertex_sectors = {}
+    for hex_data in state.current_board:
+        sector_type = hex_data["sector"]
+        cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
+        cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
+        for i in range(6):
+            angle_rad = math.radians(60 * i - 30)
+            vx = round(cx + HEX_SIZE * math.cos(angle_rad))
+            vy = round(cy + HEX_SIZE * math.sin(angle_rad))
+            v_id = f"{vx},{vy}"
+            if v_id not in new_vertex_sectors:
+                new_vertex_sectors[v_id] = []
+            new_vertex_sectors[v_id].append(sector_type)
+    state.vertex_sectors = new_vertex_sectors # 古いDARK判定を消去し、最新状態で上書き！
 
     # 2. 常に最新のスコアを計算して独立変数（game_state）を更新
     game_logic.update_all_scores(state.buildings, state.cards, state.roads, state.bots)
@@ -65,7 +81,7 @@ def build_standard_response(extra_data: dict = None):
         }
     }
     
-    # 3. 各アクション特有のデータ（サイコロの目やログなど）をマージ
+    # 4. 各アクション特有のデータ（サイコロの目やログなど）をマージ
     if extra_data:
         response.update(extra_data)
         
