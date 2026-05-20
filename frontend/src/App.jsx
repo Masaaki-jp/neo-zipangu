@@ -110,7 +110,7 @@ const handleEndTurn = async (isForcedTimeout = false) => {
       if (res.ok) {
         const data = await res.json(); 
         setGameStatus(data.game_status); 
-        setScore(data.score); 
+        setScore(data.scores[currentPlayer]); // 🥷 修正：新しい構造から自分のスコアだけを抜き取る 
         
         setHasRolledDice(false); 
         setDice(null); 
