@@ -1,5 +1,6 @@
 import math
 import game_state  # 🥷 追加：新しく作った状態管理の箱を読み込む
+import random
 
 
 def pay_cost(player: str, cost_type: str, costs_def: dict, inventory: dict):
@@ -79,3 +80,26 @@ def update_all_scores(buildings: dict, cards: dict, roads: dict, bots: dict):
     game_state.player2_score = get_score("Player2", buildings, cards, roads, bots)
     game_state.player3_score = get_score("Player3", buildings, cards, roads, bots)
     game_state.player4_score = get_score("Player4", buildings, cards, roads, bots)
+
+# (既存の update_all_scores などの下に追加)
+def check_and_explore_dark_hexes(current_board: list, roads: dict, center_x: int, center_y: int, hex_size: int):
+    """
+    全道路をスキャンし、DARKマスに接していれば自動で開拓する（COM・人間共通）
+    """
+    for hex_data in current_board:
+        if hex_data["sector"] == "DARK":
+            cx = center_x + hex_size * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
+            cy = center_y + hex_size * (3 / 2) * hex_data["r"]
+            
+            # いずれかの道がこのDARKマスに接しているかチェック
+            for r_id in roads.keys():
+                v1, v2 = r_id.split('_')
+                mid_x = (float(v1.split(',')[0]) + float(v2.split(',')[0])) / 2
+                mid_y = (float(v1.split(',')[1]) + float(v2.split(',')[1])) / 2
+                
+                # 距離判定（道の中点とマスの中心点の距離）
+                if 45 < math.hypot(cx - mid_x, cy - mid_y) < 55:
+                    # 開拓実行！
+                    hex_data["sector"] = random.choice(["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"])
+                    hex_data["number"] = random.choice([2, 3, 4, 5, 6, 8, 9, 10, 11, 12])
+                    break # このマスは開拓完了したので、次のマスへ
