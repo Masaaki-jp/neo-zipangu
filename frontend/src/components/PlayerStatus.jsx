@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // 🥷 useState をインポートに追加！
+import React, { useState } from 'react';
 
 // 🥷 資源の絵文字マッピング
 const resourceEmojis = {
@@ -10,8 +10,7 @@ const resourceEmojis = {
   "NUCLEAR": "☢️"
 };
 
-// 🥷 コスト一覧表（UI表示用）※数字は実際のゲーム仕様に合わせて調整してください
-// 🥷 1行目用：拠点以外のコスト（ネットワーク、軍事、カード）
+// 🥷 コスト一覧表（UI表示用）
 const otherCosts = {
   "🌐(NW):": " 🛠️10 🧪10",
   "🤖(BOT):": "⚡️10 💾10",
@@ -19,7 +18,6 @@ const otherCosts = {
   "❓️(CARD):": "☢️10"
 };
 
-// 🥷 2行目用：拠点のコスト（インフラ建築）
 const baseCosts = {
   "🛖(HUB):": "⚡️10 🎛️10 🛠️10 🧪10",
   "🏯(DC):": "⚡️20 💾30 🎛️20",
@@ -39,8 +37,9 @@ const PlayerStatus = ({
   currentBCounts,
   MAX_STOCKS
 }) => {
-  // 🥷 コストパネルの開閉状態を管理するステート
+  // 🥷 パネルの開閉状態を管理するステート
   const [showCosts, setShowCosts] = useState(false);
+  const [showConditions, setShowConditions] = useState(false); // 🥷 新規追加：条件用
 
   return (
     <>
@@ -96,7 +95,7 @@ const PlayerStatus = ({
         </div>
       )}
 
-      {/* STOCK一覧 ＋ COSTSボタン */}
+      {/* STOCK一覧 ＋ COSTSボタン ＋ CONDITIONSボタン */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '15px', padding: '10px', backgroundColor: '#111', borderBottom: '1px dotted #555', fontSize: '0.9rem' }}>
         <span style={{ color: '#aaaaaa' }}>[ STOCK ]</span>
         <span style={{ color: currentBCounts.LOCAL_HUB >= MAX_STOCKS.LOCAL_HUB ? '#ff0055' : '#444444' }}>🛖(HUB): {currentBCounts.LOCAL_HUB}/{MAX_STOCKS.LOCAL_HUB}</span>
@@ -104,7 +103,7 @@ const PlayerStatus = ({
         <span style={{ color: currentBCounts.GATEWAY >= MAX_STOCKS.GATEWAY ? '#ff0055' : '#0055ff' }}>⚓️(GW): {currentBCounts.GATEWAY}/{MAX_STOCKS.GATEWAY}</span>
         <span style={{ color: currentBCounts.MEGA_HQ >= MAX_STOCKS.MEGA_HQ ? '#ff0055' : '#ffcc00' }}>🏰(HQ): {currentBCounts.MEGA_HQ}/{MAX_STOCKS.MEGA_HQ}</span>
         
-        {/* 🥷 展開ボタン */}
+        {/* COSTS展開ボタン */}
         <span 
           onClick={() => setShowCosts(!showCosts)}
           style={{ 
@@ -114,16 +113,33 @@ const PlayerStatus = ({
             padding: '2px 8px',
             borderRadius: '3px',
             cursor: 'pointer',
-            marginLeft: '10px', // 少し右に離す
+            marginLeft: '10px',
             fontWeight: 'bold',
             transition: 'all 0.2s'
           }}
         >
           {showCosts ? '▼ CLOSE' : '▶ COSTS'}
         </span>
+
+        {/* 🥷 CONDITIONS展開ボタン */}
+        <span 
+          onClick={() => setShowConditions(!showConditions)}
+          style={{ 
+            color: showConditions ? '#0a0a0a' : '#0ff', 
+            backgroundColor: showConditions ? '#0ff' : 'transparent',
+            border: '1px solid #0ff',
+            padding: '2px 8px',
+            borderRadius: '3px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            transition: 'all 0.2s'
+          }}
+        >
+          {showConditions ? '▼ CLOSE' : '▶ CONDITIONS'}
+        </span>
       </div>
 
-      {/* 🥷 COSTSパネル（ボタンが押された時だけ表示される） */}
+      {/* COSTSパネル */}
       {showCosts && (
         <div style={{ 
           display: 'flex', flexDirection: 'column', gap: '10px', 
@@ -131,18 +147,14 @@ const PlayerStatus = ({
           fontSize: '0.85rem', color: '#fff',
           animation: 'fadeIn 0.3s ease-in-out'
         }}>
-          
-          {/* 1行目：拠点以外のコスト */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
             {Object.entries(otherCosts).map(([name, cost]) => (
-              <div key={name} style={{ backgroundColor: '#222', padding: '4px 8px', borderRadius: '4px', border: '1px solid #444' , display: 'flex', alignItems: 'center'　 }}>
+              <div key={name} style={{ backgroundColor: '#222', padding: '4px 8px', borderRadius: '4px', border: '1px solid #444' , display: 'flex', alignItems: 'center' }}>
                 <span style={{ color: '#aaaaaa', marginRight: '8px' }}>{name}</span>
                 <span style={{ fontWeight: 'bold', letterSpacing: '0.05em' }}>{cost}</span>
               </div>
             ))}
           </div>
-
-          {/* 2行目：拠点のコスト */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
             {Object.entries(baseCosts).map(([name, cost]) => (
               <div key={name} style={{ backgroundColor: '#222', padding: '4px 8px', borderRadius: '4px', border: '1px solid #444', display: 'flex', alignItems: 'center' }}>
@@ -151,7 +163,27 @@ const PlayerStatus = ({
               </div>
             ))}
           </div>
+        </div>
+      )}
 
+      {/* 🥷 CONDITIONSパネル（シンプル版） */}
+      {showConditions && (
+        <div style={{ 
+          display: 'flex', flexDirection: 'column', gap: '8px', 
+          padding: '8px', backgroundColor: '#050505', borderBottom: '1px solid #0ff',
+          fontSize: '0.95rem', color: '#fff', textAlign: 'center',
+          animation: 'fadeIn 0.3s ease-in-out'
+        }}>
+          <div style={{ color: '#0ff', fontWeight: 'bold', letterSpacing: '0.1em', fontSize: '0.85rem' }}>
+            [ CONDITIONS : +20M / Title ]
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '20px', fontWeight: 'bold' }}>
+            <span style={{color: '#ff6b6b'}}>💎 = 🔑 × 3</span>
+            <span style={{color: '#4dabf7'}}>🚀 = 🏰 × 2</span>
+            <span style={{color: '#20c997'}}>🐳 = ⚓️ × 3</span>
+            <span style={{color: '#fcc419'}}>🗺️ = 🌐 × 10</span>
+            <span style={{color: '#cc5de8'}}>🎖️ = 🤖Lv4 × 1</span>
+          </div>
         </div>
       )}
     </>
