@@ -40,10 +40,13 @@ def build_standard_response(extra_data: dict = None):
     全てのAPIエンドポイントはこの関数を通ってフロントエンドにデータを返します。
     ここで一括してスコアを計算し、フォーマットを完全に統一します。
     """
-    # 1. 常に最新のスコアを計算して独立変数（game_state）を更新
+    # 1. 追加：スコア計算の直前に、盤面全体のDARKマス開拓スキャンを走らせる！
+    game_logic.check_and_explore_dark_hexes(state.current_board, state.roads, CENTER_X, CENTER_Y, HEX_SIZE)
+
+    # 2. 常に最新のスコアを計算して独立変数（game_state）を更新
     game_logic.update_all_scores(state.buildings, state.cards, state.roads, state.bots)
     
-    # 2. フロントエンドが期待する完全なベースデータを構築
+    # 3. フロントエンドが期待する完全なベースデータを構築
     response = {
         "game_status": state.game_status,
         "inventory": state.inventory,
