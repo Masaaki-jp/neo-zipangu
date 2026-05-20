@@ -31,7 +31,7 @@ COSTS = {
 
 # === カード関連定数 ===
 CARD_DEFS = {
-    "PATENT": {"name": "特許(お宝)", "desc": "所持で+10万シェア"}, 
+    "PATENT": {"name": "特許(🔑)", "desc": "所持で+10万シェア"}, 
     "ZERO_DAY": {"name": "ゼロデイ", "desc": "サイコロの目を指定"},
     "VPN": {"name": "VPN", "desc": "孤立地に砦を建築"}, 
     "DATA_HACK": {"name": "データ改ざん", "desc": "数字を書き換え"},

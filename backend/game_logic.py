@@ -18,11 +18,11 @@ def get_score(player: str, buildings: dict, cards: dict, roads: dict, bots: dict
     base_shares += b_counts["DATA_CENTER"] * 10; base_shares += b_counts["GATEWAY"] * 10; base_shares += b_counts["MEGA_HQ"] * 20
     p_count = sum(1 for c in cards.get(player, []) if c["type"] == "PATENT")
     base_shares += p_count * 10; 
-    if p_count >= 3: titles.append("三種の神器大名"); bonus_shares += 20
-    if b_counts["MEGA_HQ"] >= 2: titles.append("メガテック大名"); bonus_shares += 20
-    if b_counts["GATEWAY"] >= 3: titles.append("GW大名"); bonus_shares += 20
-    if sum(1 for r in roads.values() if r["player"] == player) >= 10: titles.append("道大名"); bonus_shares += 20
-    if any(b.get("level", 0) >= 4 for b in bots.values() if b["player"] == player): titles.append("軍師大名"); bonus_shares += 20
+    if p_count >= 3: titles.append("💎"); bonus_shares += 20
+    if b_counts["MEGA_HQ"] >= 2: titles.append("🚀"); bonus_shares += 20
+    if b_counts["GATEWAY"] >= 3: titles.append("🐳"); bonus_shares += 20
+    if sum(1 for r in roads.values() if r["player"] == player) >= 10: titles.append("🗺️"); bonus_shares += 20
+    if any(b.get("level", 0) >= 4 for b in bots.values() if b["player"] == player): titles.append("🎖️"); bonus_shares += 20
     return {"base": base_shares, "bonus": bonus_shares, "total": base_shares + bonus_shares, "titles": titles}
 
 # 🥷 修正：引数の最後に `hacker_vault: dict = None` を追加しました
