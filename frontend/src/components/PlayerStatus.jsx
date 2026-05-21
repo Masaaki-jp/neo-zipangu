@@ -182,7 +182,7 @@ const PlayerStatus = ({
             <span style={{color: '#4dabf7'}}>🚀 = 🏰 × 2</span>
             <span style={{color: '#20c997'}}>🐳 = ⚓️ × 3</span>
             <span style={{color: '#fcc419'}}>🗺️ = 🌐 × 10</span>
-            <span style={{color: '#cc5de8'}}>🎖️ = 🤖Lv4 × 1</span>
+            <span style={{color: '#cc5de8'}}>🎖️ = WIN × 3</span>
           </div>
         </div>
       )}

@@ -10,7 +10,8 @@ def pay_cost(player: str, cost_type: str, costs_def: dict, inventory: dict):
     for res, amount in cost.items(): inventory[player][res] -= amount
     return True
 
-def get_score(player: str, buildings: dict, cards: dict, roads: dict, bots: dict):
+def get_score(player: str, buildings: dict, cards: dict, roads: dict, bots: dict, combat_wins: dict = None):
+    if combat_wins is None: combat_wins = {}
     base_shares = 0; bonus_shares = 0; titles = []
     b_counts = {"LOCAL_HUB": 0, "DATA_CENTER": 0, "GATEWAY": 0, "MEGA_HQ": 0}
     for b in buildings.values():
@@ -22,7 +23,8 @@ def get_score(player: str, buildings: dict, cards: dict, roads: dict, bots: dict
     if b_counts["MEGA_HQ"] >= 2: titles.append("🚀"); bonus_shares += 20
     if b_counts["GATEWAY"] >= 3: titles.append("🐳"); bonus_shares += 20
     if sum(1 for r in roads.values() if r["player"] == player) >= 10: titles.append("🗺️"); bonus_shares += 20
-    if any(b.get("level", 0) >= 4 for b in bots.values() if b["player"] == player): titles.append("🎖️"); bonus_shares += 20
+    # 🥷 変更：ボットLv4ではなく、「勝利数が3回以上」に変更！
+    if combat_wins.get(player, 0) >= 3: titles.append("🎖️"); bonus_shares += 20
     return {"base": base_shares, "bonus": bonus_shares, "total": base_shares + bonus_shares, "titles": titles}
 
 # 🥷 修正：引数の最後に `hacker_vault: dict = None` を追加しました
@@ -75,11 +77,13 @@ def calculate_yields(total: int, current_board: list, hacker_position: str, buil
     return yields
 
 # 🥷 追加：本物の get_score を使って、全員分のスコアを独立変数に上書きする関数
-def update_all_scores(buildings: dict, cards: dict, roads: dict, bots: dict):
-    game_state.player1_score = get_score("Player1", buildings, cards, roads, bots)
-    game_state.player2_score = get_score("Player2", buildings, cards, roads, bots)
-    game_state.player3_score = get_score("Player3", buildings, cards, roads, bots)
-    game_state.player4_score = get_score("Player4", buildings, cards, roads, bots)
+def update_all_scores(buildings: dict, cards: dict, roads: dict, bots: dict, combat_wins: dict = None):
+    if combat_wins is None: combat_wins = {}
+    import game_state
+    game_state.player1_score = get_score("Player1", buildings, cards, roads, bots, combat_wins)
+    game_state.player2_score = get_score("Player2", buildings, cards, roads, bots, combat_wins)
+    game_state.player3_score = get_score("Player3", buildings, cards, roads, bots, combat_wins)
+    game_state.player4_score = get_score("Player4", buildings, cards, roads, bots, combat_wins)
 
 # (既存の update_all_scores などの下に追加)
 def check_and_explore_dark_hexes(current_board: list, roads: dict, center_x: int, center_y: int, hex_size: int):
