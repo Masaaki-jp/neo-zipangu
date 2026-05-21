@@ -251,7 +251,7 @@ def init_roll(req: InitRollRequest):
         state.game_status["state"] = "setup"
         state.game_status["setup_turn"] = 0
 
-        com_pool = ["com_speeder", "com_builder", "com_fighter", "com_gambler", "com_gemini"] 
+        com_pool = ["com_gemini"] 
         for p in sorted_players:
             if state.player_types.get(p, "human") != "human":
                 state.player_types[p] = random.choice(com_pool)
