@@ -190,7 +190,9 @@ def get_or_generate_board():
         
         state.vertex_sectors = vertex_sectors
 
-        npc_count = math.ceil(total_hexes * 0.08)
+        # 🥷 修正：OCEANやDARKを除いた「純粋な陸マスの数」を基準にする！
+        # （※係数も0.05〜0.06程度に抑えることで、狭いマップでもプレイヤーの配置枠を確保します）
+        npc_count = math.ceil(resource_hex_count * 0.06)
         placed_np_hubs = 0
         attempts = 0
         while placed_np_hubs < npc_count and attempts < 1000:
