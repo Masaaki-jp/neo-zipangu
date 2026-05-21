@@ -60,11 +60,12 @@ def build_standard_response(extra_data: dict = None):
     state.vertex_sectors = new_vertex_sectors # 古いDARK判定を消去し、最新状態で上書き！
 
     # 2. 常に最新のスコアを計算して独立変数（game_state）を更新
-    game_logic.update_all_scores(state.buildings, state.cards, state.roads, state.bots)
-    
+    game_logic.update_all_scores(state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
+
     # 3. フロントエンドが期待する完全なベースデータを構築
     response = {
         "game_status": state.game_status,
+        "combat_wins": getattr(state, "combat_wins", {}), # 🥷 追加：フロントへの返却用
         "inventory": state.inventory,
         "trade_rates": state.trade_rates,
         "board": state.current_board,
@@ -105,7 +106,7 @@ def check_annihilation():
         max_score = -1
         
         for p in state.game_status["turn_order"]:
-            score_data = get_score(p, state.buildings, state.cards, state.roads, state.bots)
+            score_data = get_score(p, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
             if score_data["total"] > max_score:
                 max_score = score_data["total"]
                 best_player = p
@@ -307,7 +308,7 @@ def end_turn(req: BuildRequest):
             
     elif state.game_status["state"] == "playing":
         # 勝敗判定のためのスコア計算
-        score = get_score(req.player, state.buildings, state.cards, state.roads, state.bots)
+        score = get_score(req.player, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
         import map_layouts
         current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
         target_score = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
@@ -367,7 +368,7 @@ def com_execute(req: ComExecuteRequest):
     else:
         result = com_speeder.execute_turn(req.player, state, game_logic, constants)
             
-    score = get_score(req.player, state.buildings, state.cards, state.roads, state.bots)
+    score = get_score(req.player, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
     import map_layouts
     current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
     target_score = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
@@ -593,6 +594,11 @@ def move_bot(req: MoveRequest):
         atk_sum, def_sum = sum(atk_rolls), sum(def_rolls)
         if atk_sum > def_sum:
             combat_log = f"VICTORY! Atk:{atk_sum} vs Def:{def_sum} | 敵拠点を制圧！"
+
+            # 🥷 追加：勝利したらカウントを+1する
+            if not hasattr(state, "combat_wins"): state.combat_wins = {p: 0 for p in ["Player1", "Player2", "Player3", "Player4"]}
+            state.combat_wins[req.player] += 1
+
             if target_bldg: target_bldg["player"] = req.player 
             if target_bot: del state.bots[req.to_vertex] 
             bot_data["has_moved"] = True; state.bots[req.to_vertex] = bot_data; del state.bots[req.from_vertex]
@@ -741,6 +747,10 @@ def reset_game(req: ResetRequest = None):
         state.trade_rates[p] = {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0}
         state.cards[p] = []
         
+        # 🥷 追加：勝利数を0リセット
+        if not hasattr(state, "combat_wins"): state.combat_wins = {}
+        state.combat_wins[p] = 0
+
         if p == "Player1":
             state.player_types[p] = "human"
         else:
