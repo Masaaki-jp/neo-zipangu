@@ -590,8 +590,15 @@ def move_bot(req: MoveRequest):
             elif target_bldg["type"] in ["DATA_CENTER", "GATEWAY"]: def_dice_count += 2
             elif target_bldg["type"] == "MEGA_HQ": def_dice_count += 3
         if target_bot: def_dice_count += target_bot["level"]
-        atk_rolls = [random.randint(1,6) for _ in range(atk_level)]; def_rolls = [random.randint(1,6) for _ in range(max(1, def_dice_count))]
-        atk_sum, def_sum = sum(atk_rolls), sum(def_rolls)
+
+        # 🥷 修正：同点(Draw)の間はサイコロを振り続けるサドンデス・ループ
+        atk_sum = 0
+        def_sum = 0
+        while atk_sum == def_sum:
+            atk_rolls = [random.randint(1,6) for _ in range(atk_level)]
+            def_rolls = [random.randint(1,6) for _ in range(max(1, def_dice_count))]
+            atk_sum, def_sum = sum(atk_rolls), sum(def_rolls)
+        
         if atk_sum > def_sum:
             combat_log = f"VICTORY! Atk:{atk_sum} vs Def:{def_sum} | 敵拠点を制圧！"
 
