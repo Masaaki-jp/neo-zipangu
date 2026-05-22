@@ -447,7 +447,7 @@ const handleEndTurn = async (isForcedTimeout = false) => {
         <>
           {gameStatus.state === "finished" && (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-              <h1 style={{ color: '#ffcc00', fontSize: '4rem', textShadow: '0 0 30px #ffcc00', margin: '0 0 20px 0', animation: 'blink 1.5s infinite' }}>{gameStatus.winner === currentPlayer ? "[ VICTORY: MARKET DOMINATION ]" : "[ DEFEAT: BANKRUPTCY ]"}</h1>
+              <h1 style={{ color: '#ffcc00', fontSize: '4rem', textShadow: '0 0 30px #ffcc00', margin: '0 0 20px 0', animation: 'blink 1.5s infinite' }}>{gameStatus.winner === currentPlayer ? "[ VICTORY: MARKET DOMINATION ]" : "[ DEFEATED ]"}</h1>
               {gameStatus.reason === "ANNIHILATION" ? <p style={{ color: '#ff0055', fontSize: '1.5rem', marginBottom: '10px' }}>敵対企業が全滅し、ゲームが強制終了しました！</p> : <p style={{ color: '#ffffff', fontSize: '1.5rem', marginBottom: '10px' }}>総企業価値 <strong style={{color: '#00ffcc', fontSize: '2rem'}}>{(score.total * 10000).toLocaleString()}</strong> シェア到達による決着！</p>}
               <p style={{ color: '#aaaaaa', fontSize: '1.2rem' }}>WINNER: <strong style={{color: PLAYER_COLORS[gameStatus.winner], textShadow: `0 0 10px ${PLAYER_COLORS[gameStatus.winner]}`}}>{gameStatus.winner}</strong></p>
               <button onClick={handleResetSystem} style={{ marginTop: '40px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
