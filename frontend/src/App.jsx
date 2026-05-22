@@ -5,6 +5,8 @@ import ControlPanel from './components/ControlPanel';
 import CardHand from './components/CardHand';
 import MapSelector from './components/MapSelector'; // 🥷 追加
 
+// 🥷 サイコロの目マッピングを追加
+const diceFaces = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅'};
 const MAX_STOCKS = { LOCAL_HUB: 5, DATA_CENTER: 4, GATEWAY: 3, MEGA_HQ: 2 };
 const PLAYERS = ["Player1", "Player2", "Player3", "Player4"];
 const PLAYER_COLORS = { Player1: '#ff0033', Player2: '#0088ff', Player3: '#ffcc00', Player4: '#00ff44' };
@@ -421,10 +423,10 @@ const handleEndTurn = async (isForcedTimeout = false) => {
                       gap: '12px',            // 数式と答えの間の絶妙な隙間
                       margin: '10px 0' 
                     }}>
-                      <span style={{ fontSize: '1.5rem', color: '#aaa', fontFamily: 'monospace' }}>
-                        [{initRolls[p].dice[0]}] + [{initRolls[p].dice[1]}] =
+                      <span style={{ fontSize: '1.8rem', color: '#fff', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+                        {diceFaces[initRolls[p].dice[0]]} + {diceFaces[initRolls[p].dice[1]]} =
                       </span>
-                      <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff' }}>
+                      <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff', marginLeft: '10px' }}>
                         {initRolls[p].total}
                       </span>
                     </div>
