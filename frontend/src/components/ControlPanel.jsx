@@ -1,5 +1,31 @@
 import React, { useState } from 'react';
 
+// 🥷 サイコロの目マッピング
+const diceFaces = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅'};
+
+// 🥷 ダイス表示用の共通スタイル
+const diceFaceStyle = {
+  fontSize: '2.2rem',
+  fontFamily: 'monospace',
+  display: 'inline-block', // 🥷 枠線を付けるための準備（別途CSSを適用していると仮定）
+  margin: '0 5px',
+  lineHeight: '1',
+  position: 'relative', // 🥷 追加：相対位置モードをオンにする
+  top: '-4px',          // 🥷 追加：上に4ピクセル持ち上げて中心を合わせる
+};
+
+// 🥷 ダイスの目の値に応じて色分けして表示するコンポーネント/関数
+// 🥷 もし画像のように四角い枠を付けたい場合は、別途CSSクラスを定義して適用するなどの工夫が必要です。
+// 🥷 ここでは、単にテキストの色指定による修正案を提示します。
+const DiceDisplay = ({ value }) => {
+  const isOne = value === 1;
+  const style = {
+    ...diceFaceStyle,
+    color: isOne ? '#ff0055' : '#ffffff', // 🥷 1なら赤、それ以外は白
+  };
+  return <span style={style}>{diceFaces[value]}</span>;
+};
+
 // 取引で使用する資源リスト
 const RESOURCE_TYPES = ["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"];
 
@@ -30,9 +56,17 @@ const ControlPanel = ({
   // 詳細ログを表示するかどうかのスイッチ
   const [showDetailLogs, setShowDetailLogs] = useState(false);
 
+  // ログ内の「サイコロ: x + y = z」を検知して絵文字に変換する関数
+  const formatLogText = (text) => {
+    if (typeof text !== 'string') return text;
+    return text.replace(/サイコロ:\s*([1-6])\s*\+\s*([1-6])\s*=\s*(\d+)/g, (match, d1, d2, total) => {
+      return `サイコロ: ${diceFaces[d1]} + ${diceFaces[d2]} = ${total}`;
+    });
+  };
+
   return (
     <>
-      {/* 🥷 修正点1：シーズンイベント（相場変動）の通知パネル */}
+      {/* シーズンイベント（相場変動）の通知パネル */}
       {gameStatus.season_event && (
         <div style={{
           marginBottom: '15px',
@@ -114,9 +148,25 @@ const ControlPanel = ({
         <div style={{ marginTop: '15px', textAlign: 'center', minHeight: '60px', width: '100%', maxWidth: '700px' }}>
           {dice && (
             <>
-              <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>RESULT: [ <span style={{ color: '#ff0055' }}>{dice.dice1}</span> ] + [ <span style={{ color: '#ff0055' }}>{dice.dice2}</span> ] = <span style={{ color: '#ffffff', fontSize: '1.8rem', textShadow: '0 0 10px #ffffff' }}>{dice.total}</span></div>
+              {/* 🥷 修正案：ユーザーの要望を反映 */}
+              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}> {/* 🥷 行全体を白に指定 */}
+                <span style={{ marginRight: '10px' }}>RESULT:</span> {/* 🥷 赤を削除 */}
+                
+                {/* 🥷 ダイス表示をDiceDisplayコンポーネントに変更 */}
+                <DiceDisplay value={dice.dice1} />
+                
+                <span style={{ margin: '0 10px' }}>+</span>
+                
+                <DiceDisplay value={dice.dice2} />
+                
+                <span style={{ margin: '0 10px' }}>=</span>
+                
+                <span style={{ color: '#ffffff', fontSize: '2rem', textShadow: '0 0 10px #ffffff' }}>
+                  {dice.total}
+                </span>
+              </div>
               {eventLog ? (
-                <div style={{ marginTop: '10px', fontSize: '1rem', color: '#ff0055', fontWeight: 'bold', textShadow: '0 0 5px #ff0055', animation: 'blink 1.5s infinite' }}>{eventLog}</div>
+                <div style={{ marginTop: '10px', fontSize: '1rem', color: '#ff0055', fontWeight: 'bold', textShadow: '0 0 5px #ff0055', animation: 'blink 1.5s infinite' }}>{formatLogText(eventLog)}</div>
               ) : (
                 <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#aaaaaa' }}>&gt; SYSTEM LOG: {dice.yields.length > 0 ? <span style={{ color: '#ffcc00' }}>[ RESOURCES ACTIVATED ]</span> : <span style={{ color: '#ff0055' }}>NO SECTORS ACTIVATED.</span>}</div>
               )}
@@ -155,8 +205,9 @@ const ControlPanel = ({
                       </div>
                       {log.details && log.details.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: '20px', color: '#ccc', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                          {/* 🥷 修正点3：ログ履歴のテキストをformatLogTextに通す */}
                           {log.details.map((detail, idx) => (
-                            <li key={idx}>{detail}</li>
+                            <li key={idx}>{formatLogText(detail)}</li>
                           ))}
                         </ul>
                       ) : (
