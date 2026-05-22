@@ -166,9 +166,16 @@ const ControlPanel = ({
                 </span>
               </div>
               {eventLog ? (
-                <div style={{ marginTop: '10px', fontSize: '1rem', color: '#ff0055', fontWeight: 'bold', textShadow: '0 0 5px #ff0055', animation: 'blink 1.5s infinite' }}>{formatLogText(eventLog)}</div>
+                <div style={{ marginTop: '10px', fontSize: '1rem', color: '#ff0055', fontWeight: 'bold', textShadow: '0 0 5px #ff0055', animation: 'blink 1.5s infinite' }}>
+                  {formatLogText(eventLog)}
+                </div>
               ) : (
-                <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#aaaaaa' }}>&gt; SYSTEM LOG: {dice.yields.length > 0 ? <span style={{ color: '#ffcc00' }}>[ RESOURCES ACTIVATED ]</span> : <span style={{ color: '#ff0055' }}>NO SECTORS ACTIVATED.</span>}</div>
+                /* 🥷 資源が湧いた時はマップが光るのでテキストは非表示。何も湧かなかった時（誰もいない数字が出た時）だけ表示する */
+                dice.yields.length === 0 && (
+                  <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#aaaaaa' }}>
+                    &gt; SYSTEM LOG: <span style={{ color: '#ff0055' }}>NO SECTORS ACTIVATED.</span>
+                  </div>
+                )
               )}
             </>
           )}
