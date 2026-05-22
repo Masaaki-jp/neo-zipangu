@@ -7,16 +7,14 @@ const diceFaces = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅'};
 const diceFaceStyle = {
   fontSize: '2.2rem',
   fontFamily: 'monospace',
-  display: 'inline-block', // 🥷 枠線を付けるための準備（別途CSSを適用していると仮定）
+  display: 'inline-block',
   margin: '0 5px',
   lineHeight: '1',
-  position: 'relative', // 🥷 追加：相対位置モードをオンにする
-  top: '-4px',          // 🥷 追加：上に4ピクセル持ち上げて中心を合わせる
+  position: 'relative',
+  top: '-4px', // 🥷 高さ調整
 };
 
-// 🥷 ダイスの目の値に応じて色分けして表示するコンポーネント/関数
-// 🥷 もし画像のように四角い枠を付けたい場合は、別途CSSクラスを定義して適用するなどの工夫が必要です。
-// 🥷 ここでは、単にテキストの色指定による修正案を提示します。
+// 🥷 ダイスの目の値に応じて色分けして表示するコンポーネント
 const DiceDisplay = ({ value }) => {
   const isOne = value === 1;
   const style = {
@@ -25,6 +23,22 @@ const DiceDisplay = ({ value }) => {
   };
   return <span style={style}>{diceFaces[value]}</span>;
 };
+
+// 🥷 1. EXECUTEボタンのスピンアニメーション（🎲🎲）を定義するコンポーネント
+const DiceSpinStyle = () => (
+  <style>{`
+    @keyframes dice-spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .dice-spinnin-icon {
+      display: inline-block;
+      animation: dice-spin 0.2s linear infinite; /* 🥷 超高速回転（0.2秒）でスピンを表現 */
+      margin: 0 3px;
+      font-size: 1.5rem; /* 🥷 ボタンのフォントサイズに合わせる */
+    }
+  `}</style>
+);
 
 // 取引で使用する資源リスト
 const RESOURCE_TYPES = ["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"];
@@ -66,6 +80,8 @@ const ControlPanel = ({
 
   return (
     <>
+      <DiceSpinStyle /> {/* 🥷 2. スタイルの挿入 */}
+      
       {/* シーズンイベント（相場変動）の通知パネル */}
       {gameStatus.season_event && (
         <div style={{
@@ -136,8 +152,37 @@ const ControlPanel = ({
       {/* アクション＆ダイスエリア */}
       <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '130px' }}>
         <div style={{ display: 'flex', gap: '20px' }}>
-          <button onClick={handleRollDice} disabled={isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup"} style={{ backgroundColor: 'transparent', color: isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? '#555555' : pColor, border: `2px solid ${isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? '#555555' : pColor}`, padding: '10px 30px', fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'inherit', cursor: isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? 'not-allowed' : 'pointer', boxShadow: isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? 'none' : `0 0 15px ${pColor}55`, borderRadius: '4px' }}>
-            {hasRolledDice ? '[ DICE ROLLED ]' : isRolling ? '[ EXECUTING... ]' : '[ EXECUTE: ROLL DICE ]'}
+          <button 
+            onClick={handleRollDice} 
+            disabled={isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup"} 
+            style={{ 
+              backgroundColor: 'transparent', 
+              color: isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? '#555555' : pColor, 
+              border: `2px solid ${isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? '#555555' : pColor}`, 
+              padding: '10px 30px', 
+              fontSize: '1.2rem', 
+              fontWeight: 'bold', 
+              fontFamily: 'inherit', 
+              cursor: isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? 'not-allowed' : 'pointer', 
+              boxShadow: isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup" ? 'none' : `0 0 15px ${pColor}55`, 
+              borderRadius: '4px',
+              animation: (isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup") ? 'none' : 'blink 1.5s infinite' 
+            }}
+          >
+            {/* 🥷 3. ボタンのテキスト切り替えロジックを修正 */}
+            {
+              hasRolledDice ? '[ DICE ROLLED ]' : 
+              isRolling ? (
+                // 🥷 isRollingの時、テキストの代わりにアニメーション付きの絵文字要素を表示
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  [ {/* 🥷 片方のディレイを微妙にずらす（0.05s）ことでランダム感を出す */}
+                    <span className="dice-spinnin-icon">🎲</span> 
+                    <span className="dice-spinnin-icon" style={{ animationDelay: '0.05s' }}>🎲</span> 
+                  ]
+                </span>
+              ) : 
+              '[ EXECUTE: ROLL DICE ]'
+            }
           </button>
           <button onClick={handleHackResources} disabled={actionMode === 'HACKER' || actionMode === 'USE_CARD'} style={{ backgroundColor: '#ff005522', color: actionMode === 'HACKER' || actionMode === 'USE_CARD' ? '#555' : '#ff0055', border: `1px dotted ${actionMode === 'HACKER' || actionMode === 'USE_CARD' ? '#555' : '#ff0055'}`, padding: '10px 15px', fontSize: '0.9rem', fontWeight: 'bold', fontFamily: 'inherit', cursor: actionMode === 'HACKER' || actionMode === 'USE_CARD' ? 'not-allowed' : 'pointer', borderRadius: '4px' }}>
             [ DEPLOY: HACK RESOURCES ]
@@ -148,9 +193,9 @@ const ControlPanel = ({
         <div style={{ marginTop: '15px', textAlign: 'center', minHeight: '60px', width: '100%', maxWidth: '700px' }}>
           {dice && (
             <>
-              {/* 🥷 修正案：ユーザーの要望を反映 */}
+              {/* 🥷 修正点：ユーザーの要望を反映 */}
               <div style={{ fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}> {/* 🥷 行全体を白に指定 */}
-                <span style={{ marginRight: '10px' }}>RESULT:</span> {/* 🥷 赤を削除 */}
+                <span style={{ marginRight: '10px' }}>RESULT:</span>
                 
                 {/* 🥷 ダイス表示をDiceDisplayコンポーネントに変更 */}
                 <DiceDisplay value={dice.dice1} />
@@ -166,9 +211,7 @@ const ControlPanel = ({
                 </span>
               </div>
               {eventLog ? (
-                <div style={{ marginTop: '10px', fontSize: '1rem', color: '#ff0055', fontWeight: 'bold', textShadow: '0 0 5px #ff0055', animation: 'blink 1.5s infinite' }}>
-                  {formatLogText(eventLog)}
-                </div>
+                <div style={{ marginTop: '10px', fontSize: '1rem', color: '#ff0055', fontWeight: 'bold', textShadow: '0 0 5px #ff0055', animation: 'blink 1.5s infinite' }}>{formatLogText(eventLog)}</div>
               ) : (
                 /* 🥷 資源が湧いた時はマップが光るのでテキストは非表示。何も湧かなかった時（誰もいない数字が出た時）だけ表示する */
                 dice.yields.length === 0 && (
