@@ -177,7 +177,7 @@ MAP_CATALOG = {
     },
     "STAGE_03_CANYON": {
         "name": "3面: けいこく",
-        "winning_score": 110,
+        "winning_score": 130,
         "layout": STAGE_03_LAYOUT,
         "fixed_darks": [],
         "fixed_oceans": [],
@@ -201,7 +201,7 @@ MAP_CATALOG = {
     },
     "STAGE_06_ARCHIPELAGO": {
         "name": "6面: 分断海域",
-        "winning_score": 150,
+        "winning_score": 130,
         "layout": STAGE_06_LAYOUT,
         "fixed_darks": [],
         "fixed_oceans": STAGE_06_OCEANS,
@@ -209,7 +209,7 @@ MAP_CATALOG = {
     },
     "STAGE_07_NORTH": {
         "name": "7面: 北の大地",
-        "winning_score": 120,
+        "winning_score": 130,
         "layout": STAGE_07_LAYOUT,
         "fixed_darks": [],
         "fixed_oceans": [],
@@ -242,7 +242,7 @@ MAP_CATALOG = {
     },
     "STAGE_11_NUCLEAR": {
         "name": "11面: 核汚染領域",
-        "winning_score": 160, # 🥷 核の高出力を考慮し、目標シェアを160(1.6億)に設定
+        "winning_score": 140, # 🥷 核の高出力を考慮
         "layout": STAGE_11_LAYOUT,
         "fixed_darks": STAGE_11_DARKS,
         "fixed_oceans": STAGE_11_OCEANS,

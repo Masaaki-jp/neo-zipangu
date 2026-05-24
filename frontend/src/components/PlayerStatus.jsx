@@ -70,7 +70,7 @@ const PlayerStatus = ({
             &gt; NEO-ZIPANGU: TERMINAL _
           </h1>
           <div style={{ marginTop: '10px', fontSize: '1.1rem', color: '#ffffff' }}>
-            CORPORATE VALUE: <span style={{ color: '#ff0055' }}>{(score.total * 10000).toLocaleString()}</span> <span style={{ color: '#aaaaaa', fontSize: '0.8em' }}>/ {(gameStatus.target_score * 10000).toLocaleString()}</span> SHARES
+            SCORE: <span style={{color: '#00ffcc'}}>{score?.total || 0}</span> / {gameStatus?.target_score || 100} SCORES
           </div>
           <div style={{ fontSize: '0.9rem', color: '#aaaaaa', marginTop: '5px' }}>
             TITLES: {score.titles.length > 0 ? <span style={{ color: '#bfff00' }}>[ {score.titles.join(' / ')} ]</span> : "NONE"}

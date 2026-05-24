@@ -443,41 +443,38 @@ const handleEndTurn = async (isForcedTimeout = false) => {
       {/* 🥷 3. ゲーム本編 (setup / playing / finished) */}
       {(gameStatus.state === "setup" || gameStatus.state === "playing" || gameStatus.state === "finished") && (
         <>
-          {/* 🥷 終了画面（真っ暗クラッシュ対策の防弾仕様！） */}
+          {/* 🥷 終了画面（真っ暗クラッシュ対策の防弾仕様！ & SCORE表記に変更） */}
           {gameStatus.state === "finished" && (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
               
+              {/* 🥷 シンプルな勝利 / 敗北 タイトル。勝利色はエメラルドグリーンに！ */}
               <h1 style={{ 
-                color: gameStatus.winner === currentPlayer 
-                  ? (gameStatus.reason === "NATURE_VICTORY" ? '#44ff44' : '#ffcc00') 
-                  : '#ff0055', 
+                color: gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055', // エメラルドグリーン
                 fontSize: '4rem', 
-                textShadow: gameStatus.winner === currentPlayer && gameStatus.reason === "NATURE_VICTORY" 
-                  ? '0 0 30px #44ff44' 
-                  : `0 0 30px ${gameStatus.winner === currentPlayer ? '#ffcc00' : '#ff0055'}`, 
+                textShadow: `0 0 30px ${gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055'}`, 
                 margin: '0 0 20px 0', 
                 animation: 'blink 1.5s infinite' 
               }}>
-                {gameStatus.winner === currentPlayer 
-                  ? (gameStatus.reason === "NATURE_VICTORY" ? "🌿 NATURE DOMINATION 🌿" : "[ VICTORY: MARKET DOMINATION ]") 
-                  : (gameStatus.winner ? "[ HOSTILE TAKEOVER ]" : "[ SYSTEM ABORTED ]")}
+                {gameStatus.winner === currentPlayer ? "[ VICTORY ]" : "[ DEFEATED ]"}
               </h1>
 
-              {/* 🥷 決着理由（空っぽでも落ちない処理） */}
+              {/* 🥷 決着理由（SCORE表記に変更。NATURE分岐を削除） */}
               {gameStatus.reason === "ANNIHILATION" ? (
                 <p style={{ color: '#ff0055', fontSize: '1.5rem', marginBottom: '10px' }}>敵対企業が全滅し、ゲームが強制終了しました！</p>
-              ) : gameStatus.reason === "NATURE_VICTORY" ? (
-                <p style={{ color: '#44ff44', fontSize: '1.5rem', marginBottom: '10px' }}>適者生存。辺境の生態系を守り抜き、世界を制した。</p>
               ) : (gameStatus.reason && gameStatus.reason.includes("初期配置を放棄")) ? (
                 <p style={{ color: '#aaaaaa', fontSize: '1.5rem', marginBottom: '10px' }}>初期配置フェーズでのタイムアウトにより、無効試合となりました。</p>
               ) : (
-                <p style={{ color: '#ffffff', fontSize: '1.5rem', marginBottom: '10px' }}>
-                  総企業価値 <strong style={{color: '#00ffcc', fontSize: '2rem'}}>{((score?.total || 0) * 10000).toLocaleString()}</strong> シェア到達による決着！
+                <p style={{ color: '#ffffff', fontSize: '1.5rem', marginBottom: '10px', display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '10px' }}>
+                  <span style={{ color: '#aaaaaa' }}>SCORE:</span>
+                  {/* 🥷 修正：現在のスコア / 目標スコア SCORES の表示。倍率はかけない。 */}
+                  <strong style={{color: '#00ffcc', fontSize: '3rem'}}>{score?.total || 0}</strong> 
+                  <span style={{color: '#ffffff', fontSize: '1.5rem'}}>/ {gameStatus.target_score || '???'} SCORES</span>
+                  <span>到達による決着！</span>
                 </p>
               )}
 
-              {/* 🥷 勝者表示（無効試合のクラッシュ防御） */}
-              <p style={{ color: '#aaaaaa', fontSize: '1.2rem' }}>
+              {/* 🥷 勝者表示 */}
+              <p style={{ color: '#aaaaaa', fontSize: '1.2rem', marginTop: '20px' }}>
                 WINNER: <strong style={{color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff', textShadow: `0 0 10px ${(gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff'}`}}>
                   {gameStatus.winner || "NONE (無効試合)"}
                 </strong>

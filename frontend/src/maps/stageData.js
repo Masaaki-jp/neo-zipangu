@@ -6,7 +6,7 @@ export const STAGE_DATA = [
     name: "1面: はじまりの島",
     totalHexes: 19,
     darkHexes: 0,
-    targetScore: 100, // 100万シェア
+    targetScore: 100,
     canvasWidth: 1000,  // 🥷 追加：標準の幅
     canvasHeight: 800,  // 🥷 追加：標準の高さ
     viewMode: "fixed", // 🥷 追加：画面内にピッタリ収める
@@ -20,7 +20,7 @@ export const STAGE_DATA = [
     name: "2面: 火山島",
     totalHexes: 30,
     darkHexes: 0,
-    targetScore: 150,
+    targetScore: 110,
     canvasWidth: 1000,  // 🥷 追加：標準の幅
     canvasHeight: 800,  // 🥷 追加：標準の高さ
     viewMode: "fixed", // 🥷 追加：画面内にピッタリ収める
@@ -33,7 +33,7 @@ export const STAGE_DATA = [
     id: "STAGE_03_CANYON",
     name: "3面: けいこく",
     totalHexes: 28,
-    targetScore: 160, // マス増に伴いゴール引き上げ
+    targetScore: 130,
     canvasWidth: 1100,  // 1000から1100に拡張
     canvasHeight: 1100, // 800から1100に拡張
     viewMode: "scroll", // 🥷 追加：ステージが大きいのでスクロールで対応
@@ -46,7 +46,7 @@ export const STAGE_DATA = [
     id: "STAGE_04_ZIPANGU",
     name: "4面: じぱんぐ島",
     totalHexes: 48,
-    targetScore: 170,
+    targetScore: 140,
     // 🥷 九州から北海道まで収まるように、縦に長い1400pxの画用紙を用意
     canvasWidth: 2400,
     canvasHeight: 1600,
@@ -71,7 +71,7 @@ export const STAGE_DATA = [
     id: "STAGE_06_ARCHIPELAGO",
     name: "6面: 分断海域",
     totalHexes: 33,
-    targetScore: 150,
+    targetScore: 130,
     canvasWidth: 1200,  // 横に広いマップなのでキャンバスを大きめに確保
     canvasHeight: 900,
     viewMode: "fixed", // はみ出す場合はスクロールできるようにする
@@ -84,7 +84,7 @@ export const STAGE_DATA = [
     id: "STAGE_07_NORTH",
     name: "7面: 北の大地",
     totalHexes: 34,
-    targetScore: 150,
+    targetScore: 130,
     zoom: 1.0,
     difficulty: "EASY",
     description: "34マスの快適な一本道。ブリッジを使いこなし、120万シェアをスマートに稼ぎ出す「DX」なおすすめマップ。",
@@ -106,7 +106,7 @@ export const STAGE_DATA = [
     totalHexes: 32,
     viewMode:"scroll",
     zoom:0.9,
-    targetScore: 120,
+    targetScore: 100,
     canvasHeight: 1000,
     difficulty: "HARD",
     description: "32マスあるが好立地が極端に少ない。110万シェアへの道のりは険しく、交渉力が試されるテクニカルステージ。",
@@ -131,7 +131,7 @@ export const STAGE_DATA = [
     totalHexes: 37,
     viewMode: "fixed",
     zoom: 1.0, // 🥷 広大なため、全体を見渡せるようズームアウト
-    targetScore: 160,
+    targetScore: 140,
     difficulty: "HELL",
     description: "全資源地帯が『核』で構成された禁忌の地。一歩間違えれば致命的な汚染がインフラを焼き切る。",
     themeColor: "#00ff00" // 🥷 核エネルギーを象徴するネオングリーン
@@ -141,7 +141,7 @@ export const STAGE_DATA = [
     name: "12面: 天空の島",
     totalHexes: 37,
     darkHexes: 19,
-    targetScore: 140,
+    targetScore: 130,
     canvasHeight: 950,
     viewMode:"fixed",
     zoom:1.0,
