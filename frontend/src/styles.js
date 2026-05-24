@@ -18,7 +18,8 @@ export const SECTORS = {
   POLYMER: { name: 'POLYMER', color: '#00ff44' }, 
   NUCLEAR: { name: 'NUCLEAR', color: '#bfff00' },
   DARK: { name: 'DARK', color: '#444444' },
-  OCEAN: { name: 'OCEAN', color: '#0055aa' } // 🥷 この1行を追加！
+  OCEAN: { name: 'OCEAN', color: '#0055aa' },// 🥷 この1行を追加！
+  NATURE: { name: 'NATURE', color: '#2E8B57' } // 🥷 この1行を追加！（自然保護区の深い緑）
 };
 
 // 🥷 建物の描画スタイル定義（拡張対応版）

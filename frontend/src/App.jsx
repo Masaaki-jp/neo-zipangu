@@ -370,7 +370,7 @@ const handleEndTurn = async (isForcedTimeout = false) => {
   const currentBCounts = bCounts();
 
 
-  // ======== レンダリング（画面描画）========
+// ======== レンダリング（画面描画）========
   return (
     <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: pColor, fontFamily: '"Courier New", Courier, monospace', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
       
@@ -379,7 +379,7 @@ const handleEndTurn = async (isForcedTimeout = false) => {
         <MapSelector onSelectMap={handleSelectMap} pColor={pColor} />
       )}
 
-      {/* 2. 順番決め画面 */}
+      {/* 🥷 2. 順番決め画面 */}
       {gameStatus.state === "init_roll" && (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
           <h1 style={{ 
@@ -391,7 +391,6 @@ const handleEndTurn = async (isForcedTimeout = false) => {
             &gt; SYSTEM BOOT: INITIATIVE SEQUENCE
           </h1>
           
-          {/* 🥷 親の箱：縦並び（column）に変更し、中央に揃える */}
           <div style={{ 
             display: 'flex', 
             flexDirection: 'column', 
@@ -415,12 +414,11 @@ const handleEndTurn = async (isForcedTimeout = false) => {
                 }}>
                   <h2 style={{ color: PLAYER_COLORS[p], margin: '0 0 15px 0' }}>{p}</h2>
                   {hasRolled ? (
-                    /* 🥷 修正：数式と合計値を1行（横並び）でスタイリッシュに表示 */
                     <div style={{ 
                       display: 'flex', 
                       justifyContent: 'center', 
-                      alignItems: 'baseline', // 文字の下端を揃える魔法
-                      gap: '12px',            // 数式と答えの間の絶妙な隙間
+                      alignItems: 'baseline',
+                      gap: '12px',
                       margin: '10px 0' 
                     }}>
                       <span style={{ fontSize: '1.8rem', color: '#fff', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
@@ -442,18 +440,54 @@ const handleEndTurn = async (isForcedTimeout = false) => {
         </div>
       )}
 
-      {/* 3. ゲーム本編 (setup / playing / finished) */}
+      {/* 🥷 3. ゲーム本編 (setup / playing / finished) */}
       {(gameStatus.state === "setup" || gameStatus.state === "playing" || gameStatus.state === "finished") && (
         <>
+          {/* 🥷 終了画面（真っ暗クラッシュ対策の防弾仕様！） */}
           {gameStatus.state === "finished" && (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-              <h1 style={{ color: '#ffcc00', fontSize: '4rem', textShadow: '0 0 30px #ffcc00', margin: '0 0 20px 0', animation: 'blink 1.5s infinite' }}>{gameStatus.winner === currentPlayer ? "[ VICTORY: MARKET DOMINATION ]" : "[ DEFEATED ]"}</h1>
-              {gameStatus.reason === "ANNIHILATION" ? <p style={{ color: '#ff0055', fontSize: '1.5rem', marginBottom: '10px' }}>敵対企業が全滅し、ゲームが強制終了しました！</p> : <p style={{ color: '#ffffff', fontSize: '1.5rem', marginBottom: '10px' }}>総企業価値 <strong style={{color: '#00ffcc', fontSize: '2rem'}}>{(score.total * 10000).toLocaleString()}</strong> シェア到達による決着！</p>}
-              <p style={{ color: '#aaaaaa', fontSize: '1.2rem' }}>WINNER: <strong style={{color: PLAYER_COLORS[gameStatus.winner], textShadow: `0 0 10px ${PLAYER_COLORS[gameStatus.winner]}`}}>{gameStatus.winner}</strong></p>
+              
+              <h1 style={{ 
+                color: gameStatus.winner === currentPlayer 
+                  ? (gameStatus.reason === "NATURE_VICTORY" ? '#44ff44' : '#ffcc00') 
+                  : '#ff0055', 
+                fontSize: '4rem', 
+                textShadow: gameStatus.winner === currentPlayer && gameStatus.reason === "NATURE_VICTORY" 
+                  ? '0 0 30px #44ff44' 
+                  : `0 0 30px ${gameStatus.winner === currentPlayer ? '#ffcc00' : '#ff0055'}`, 
+                margin: '0 0 20px 0', 
+                animation: 'blink 1.5s infinite' 
+              }}>
+                {gameStatus.winner === currentPlayer 
+                  ? (gameStatus.reason === "NATURE_VICTORY" ? "🌿 NATURE DOMINATION 🌿" : "[ VICTORY: MARKET DOMINATION ]") 
+                  : (gameStatus.winner ? "[ HOSTILE TAKEOVER ]" : "[ SYSTEM ABORTED ]")}
+              </h1>
+
+              {/* 🥷 決着理由（空っぽでも落ちない処理） */}
+              {gameStatus.reason === "ANNIHILATION" ? (
+                <p style={{ color: '#ff0055', fontSize: '1.5rem', marginBottom: '10px' }}>敵対企業が全滅し、ゲームが強制終了しました！</p>
+              ) : gameStatus.reason === "NATURE_VICTORY" ? (
+                <p style={{ color: '#44ff44', fontSize: '1.5rem', marginBottom: '10px' }}>適者生存。辺境の生態系を守り抜き、世界を制した。</p>
+              ) : (gameStatus.reason && gameStatus.reason.includes("初期配置を放棄")) ? (
+                <p style={{ color: '#aaaaaa', fontSize: '1.5rem', marginBottom: '10px' }}>初期配置フェーズでのタイムアウトにより、無効試合となりました。</p>
+              ) : (
+                <p style={{ color: '#ffffff', fontSize: '1.5rem', marginBottom: '10px' }}>
+                  総企業価値 <strong style={{color: '#00ffcc', fontSize: '2rem'}}>{((score?.total || 0) * 10000).toLocaleString()}</strong> シェア到達による決着！
+                </p>
+              )}
+
+              {/* 🥷 勝者表示（無効試合のクラッシュ防御） */}
+              <p style={{ color: '#aaaaaa', fontSize: '1.2rem' }}>
+                WINNER: <strong style={{color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff', textShadow: `0 0 10px ${(gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff'}`}}>
+                  {gameStatus.winner || "NONE (無効試合)"}
+                </strong>
+              </p>
+              
               <button onClick={handleResetSystem} style={{ marginTop: '40px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
             </div>
           )}
 
+          {/* 🥷 消えてしまっていたゲーム本編（UI）を復活 */}
           <PlayerStatus 
             currentPlayer={currentPlayer} pColor={pColor} timeLeft={timeLeft} gameStatus={gameStatus} 
             score={score} handleEndTurn={handleEndTurn} inventory={inventory} tradeRates={tradeRates} 
