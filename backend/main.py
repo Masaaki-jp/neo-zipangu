@@ -251,15 +251,32 @@ def get_or_generate_board():
             state.bots[npc_vertex] = {"player": "NPC_CORP", "level": random.randint(1, 3), "has_moved": False}
             placed_np_hubs += 1
 
+    # ...（前略：NPCの配置などの処理）...
+
     import map_layouts
     current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
     state.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
+
+    # 🥷 アプローチ2：全員分のスコアをまとめて計算し、辞書（all_scores）を作る！
+    from game_logic import get_score
+    import game_logic
+    all_scores = {
+        "Player1": game_logic.get_score("Player1", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
+        "Player2": game_logic.get_score("Player2", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
+        "Player3": game_logic.get_score("Player3", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
+        "Player4": game_logic.get_score("Player4", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
+    }
 
     return build_standard_response({
         "map_id": current_map_id,
         "init_rolls": state.init_rolls,
         "coastal_vertices": list(state.coastal_vertices),
-        "player_types": getattr(state, "player_types", {})
+        "player_types": getattr(state, "player_types", {}),
+        
+        # 🥷 従来のUIを壊さないよう、"score" には自分のスコア(Player1)をセット
+        "score": all_scores["Player1"], 
+        # 🥷 将来のマルチプレイやランキング用に全員分のデータもまるごと送る！
+        "all_scores": all_scores
     })
 
 @app.post("/api/init_roll")
@@ -402,10 +419,13 @@ def com_execute(req: ComExecuteRequest):
     target_score = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
     
     if score["total"] >= target_score:
+        # 🥷 修正：人間と同じ、シンプルなスコア到達勝利ロジックに統一！
         state.game_status["state"] = "finished"
         state.game_status["winner"] = req.player
-        state.game_status["reason"] = f"{target_score}M_SHARES"
+        state.game_status["reason"] = "SCORE_REACHED"
+        state.game_status["target_score"] = target_score
 
+    # 🥷 ターン進行やシーズンイベントの処理は既存のまま
     if state.game_status["state"] == "playing" and state.game_status.get("current_turn_index") == 0:
         import random
         res_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
@@ -422,11 +442,22 @@ def com_execute(req: ComExecuteRequest):
         else:
             state.game_status["turn_end_time"] = None
 
+    # 🥷 ここにもアプローチ2の全員分スコア計算を追加！
+    all_scores = {
+        "Player1": game_logic.get_score("Player1", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
+        "Player2": game_logic.get_score("Player2", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
+        "Player3": game_logic.get_score("Player3", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
+        "Player4": game_logic.get_score("Player4", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
+    }
+
     return build_standard_response({
         "status": "success",
         "action_logs": result["logs"],
-        "dice": result["dice"]
+        "dice": result["dice"],
+        "score": all_scores["Player1"], # 常に自分のスコアを画面に維持
+        "all_scores": all_scores        # 全員分のスコアも送る
     })
+ 
 
 @app.post("/api/draw_card")
 def draw_card(req: CardRequest):
