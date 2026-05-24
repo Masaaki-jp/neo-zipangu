@@ -40,6 +40,12 @@ def build_standard_response(extra_data: dict = None):
     全てのAPIエンドポイントはこの関数を通ってフロントエンドにデータを返します。
     ここで一括してスコアを計算し、フォーマットを完全に統一します。
     """
+
+    # 🥷 追加：現在のマップIDから目標スコアを取得し、常にgame_statusにセットしておく
+    import map_layouts
+    current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
+    state.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
+
     # 1. 常に最新のスコアを計算する前に、盤面全体のDARKマス開拓スキャンを走らせる
     game_logic.check_and_explore_dark_hexes(state.current_board, state.roads, CENTER_X, CENTER_Y, HEX_SIZE)
 
@@ -125,11 +131,16 @@ def health_check(): return {"status": "operational"}
 
 @app.get("/api/board")
 def get_or_generate_board():
+    # 🥷 `if` の外に出して、毎回必ずマップデータを読み込む
+    import map_layouts
+    map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
+    map_blueprint = map_layouts.MAP_CATALOG.get(map_id, map_layouts.MAP_CATALOG["STAGE_01_BEGINNER"])
+    
+    # 🥷 常に最新の目標スコアをセットしておく！
+    state.game_status["target_score"] = map_blueprint["winning_score"]
+
     if len(state.current_board) == 0:
-        import map_layouts
-        map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
-        map_blueprint = map_layouts.MAP_CATALOG.get(map_id, map_layouts.MAP_CATALOG["STAGE_01_BEGINNER"])
-        
+        # ----- (ここから下のマップ生成処理はそのまま) -----
         layout = map_blueprint["layout"]
         fixed_darks = map_blueprint.get("fixed_darks", [])
         fixed_oceans = map_blueprint.get("fixed_oceans", [])
@@ -328,43 +339,12 @@ def end_turn(req: BuildRequest):
         target_score = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
         
         if score["total"] >= target_score:
-            # 🥷 通常の勝者（企業価値到達者）を一旦仮置きする
-            final_winner = req.player
-            win_reason = f"{target_score}M_SHARES"
-            
-            # 🥷 【適者生存ロジック】盤面をスキャンし、NATUREによる大逆転を判定
-            import math
-            nature_winner = None
-            for h in state.current_board:
-                # 確率の低い（2〜4, 10〜12）NATUREマスを見つける
-                if h.get("sector") == "NATURE" and h.get("number") in [2, 3, 4, 10, 11, 12]:
-                    # そのマスの6つの頂点座標を計算
-                    cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (h["q"] + h["r"] / 2)
-                    cy = CENTER_Y + HEX_SIZE * (3 / 2) * h["r"]
-                    
-                    for i in range(6):
-                        angle_rad = math.radians(60 * i - 30)
-                        vx = round(cx + HEX_SIZE * math.cos(angle_rad))
-                        vy = round(cy + HEX_SIZE * math.sin(angle_rad))
-                        v_id = f"{vx},{vy}"
-                        
-                        # 誰かがこの自然保護区に拠点を置いていれば、真の勝者（生態系の頂点）とする
-                        if v_id in state.buildings:
-                            nature_winner = state.buildings[v_id]["player"]
-                            break
-                    if nature_winner:
-                        break # 条件を満たすNATUREマス占領者が一人でもいれば探索終了
-            
-            # 🥷 自然保護区の守護者がいれば、勝者を上書きする！
-            if nature_winner:
-                final_winner = nature_winner
-                win_reason = "NATURE_VICTORY"
-
-            # ステータスを更新してゲームセット
+            # 🥷 非常にシンプル：目標スコアに達した人がそのまま勝者！
             state.game_status["state"] = "finished"
-            state.game_status["winner"] = final_winner
-            state.game_status["reason"] = win_reason
-
+            state.game_status["winner"] = req.player
+            state.game_status["reason"] = "SCORE_REACHED"
+            # 🥷 フロントエンドで「/ 〇〇 SCORES」と表示するために目標値を渡しておく
+            state.game_status["target_score"] = target_score
         else:
             next_idx = (state.game_status["current_turn_index"] + 1) % 4
             state.game_status["current_turn_index"] = next_idx
@@ -384,7 +364,7 @@ def end_turn(req: BuildRequest):
         else:
             state.game_status["turn_end_time"] = None
             
-    return build_standard_response({"status": "success"})
+    return build_standard_response({"status": "success"}) 
 
 @app.post("/api/com_execute")
 def com_execute(req: ComExecuteRequest):
