@@ -142,6 +142,13 @@ def get_or_generate_board():
         
         base_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
         sectors = [base_types[i % 5] for i in range(normal_hex_count)]
+        
+        # 🥷 修正：全体の陸マスの約10%をNATUREにするロジック
+        # ※割合を変更したい場合は 0.10 の数値を調整してください
+        nature_count = max(1, math.ceil(normal_hex_count * 0.10))
+        for i in range(nature_count):
+            sectors[i] = "NATURE"
+                        
         random.shuffle(sectors)
         
         base_nums = [2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12]
@@ -149,6 +156,9 @@ def get_or_generate_board():
         random.shuffle(numbers)
 
         vertex_sectors = {} 
+        
+        # 🥷 ランダムな生態系（動物）のリスト
+        animals_list = ['🐘', '🐅', '🦍', '🐍', '🦅', '🦋', '🐢', '🐆', '🦉', '🦏']
         
         for q, r in layout:
             if (q, r) in fixed_darks:
@@ -164,7 +174,14 @@ def get_or_generate_board():
                 sector_type = sectors.pop()
                 num = numbers.pop()
 
-            state.current_board.append({"q": q, "r": r, "s": -q - r, "sector": sector_type, "number": num})
+            # 🥷 データの構築
+            hex_data = {"q": q, "r": r, "s": -q - r, "sector": sector_type, "number": num}
+            
+            # NATUREマスが選ばれた場合、動物を宿す
+            if sector_type == "NATURE":
+                hex_data["animal"] = random.choice(animals_list)
+
+            state.current_board.append(hex_data)
             
             cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (q + r / 2)
             cy = CENTER_Y + HEX_SIZE * (3 / 2) * r
@@ -191,8 +208,6 @@ def get_or_generate_board():
         
         state.vertex_sectors = vertex_sectors
 
-        # 🥷 修正：OCEANやDARKを除いた「純粋な陸マスの数」を基準にする！
-        # （※係数も0.05〜0.06程度に抑えることで、狭いマップでもプレイヤーの配置枠を確保します）
         npc_count = math.ceil(resource_hex_count * 0.06)
         placed_np_hubs = 0
         attempts = 0
@@ -229,7 +244,6 @@ def get_or_generate_board():
     current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
     state.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
 
-    # 🥷 共通関数を通すだけ！
     return build_standard_response({
         "map_id": current_map_id,
         "init_rolls": state.init_rolls,
@@ -314,9 +328,43 @@ def end_turn(req: BuildRequest):
         target_score = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
         
         if score["total"] >= target_score:
+            # 🥷 通常の勝者（企業価値到達者）を一旦仮置きする
+            final_winner = req.player
+            win_reason = f"{target_score}M_SHARES"
+            
+            # 🥷 【適者生存ロジック】盤面をスキャンし、NATUREによる大逆転を判定
+            import math
+            nature_winner = None
+            for h in state.current_board:
+                # 確率の低い（2〜4, 10〜12）NATUREマスを見つける
+                if h.get("sector") == "NATURE" and h.get("number") in [2, 3, 4, 10, 11, 12]:
+                    # そのマスの6つの頂点座標を計算
+                    cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (h["q"] + h["r"] / 2)
+                    cy = CENTER_Y + HEX_SIZE * (3 / 2) * h["r"]
+                    
+                    for i in range(6):
+                        angle_rad = math.radians(60 * i - 30)
+                        vx = round(cx + HEX_SIZE * math.cos(angle_rad))
+                        vy = round(cy + HEX_SIZE * math.sin(angle_rad))
+                        v_id = f"{vx},{vy}"
+                        
+                        # 誰かがこの自然保護区に拠点を置いていれば、真の勝者（生態系の頂点）とする
+                        if v_id in state.buildings:
+                            nature_winner = state.buildings[v_id]["player"]
+                            break
+                    if nature_winner:
+                        break # 条件を満たすNATUREマス占領者が一人でもいれば探索終了
+            
+            # 🥷 自然保護区の守護者がいれば、勝者を上書きする！
+            if nature_winner:
+                final_winner = nature_winner
+                win_reason = "NATURE_VICTORY"
+
+            # ステータスを更新してゲームセット
             state.game_status["state"] = "finished"
-            state.game_status["winner"] = req.player
-            state.game_status["reason"] = f"{target_score}M_SHARES"
+            state.game_status["winner"] = final_winner
+            state.game_status["reason"] = win_reason
+
         else:
             next_idx = (state.game_status["current_turn_index"] + 1) % 4
             state.game_status["current_turn_index"] = next_idx

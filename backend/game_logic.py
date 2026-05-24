@@ -44,6 +44,10 @@ def calculate_yields(total: int, current_board: list, hacker_position: str, buil
             
             sector_type = hex_data["sector"]
             
+            # 🥷 追加：NATUREマス（およびOCEAN, DARK）は資源を産出しないのでスキップ！
+            if sector_type in ["NATURE", "OCEAN", "DARK"]:
+                continue
+
             sector_amounts = {}
             sector_counts = {}
             cx = center_x + hex_size * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2); cy = center_y + hex_size * (3 / 2) * hex_data["r"]

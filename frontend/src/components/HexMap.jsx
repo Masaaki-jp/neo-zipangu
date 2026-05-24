@@ -170,12 +170,24 @@ const HexMap = ({ currentPlayer, activeNumber, actionMode, onStateUpdate, refres
         ctx.fillStyle = isHighlight ? '#ffffff' : '#050505'; ctx.fill(); 
         ctx.lineWidth = 1; ctx.strokeStyle = sector.color; ctx.stroke();
         ctx.fillStyle = isHighlight ? '#000000' : '#ffffff'; ctx.font = 'bold 16px monospace';
-        // 🥷 6と8は赤、7はゴールド！
+        
+        // 🥷 追加：NATUREマスかつ、ゲーム終了前なら「?」にする！
+        const isHiddenNature = hexSector === 'NATURE' && gameStatus?.state !== 'finished';
+        const displayText = isHiddenNature ? '?' : number.toString();
+
+        // 🥷 6と8は赤、7はゴールド！隠されたNatureは怪しく光る緑！
         if (!isHighlight) {
-            if (number === 6 || number === 8) ctx.fillStyle = '#ff0055';
-            if (number === 7) ctx.fillStyle = '#ffcc00'; 
+            if (isHiddenNature) {
+                ctx.fillStyle = '#44ff44'; // 未知の領域「?」は緑色
+            } else if (number === 6 || number === 8) {
+                ctx.fillStyle = '#ff0055';
+            } else if (number === 7) {
+                ctx.fillStyle = '#ffcc00'; 
+            }
         }
-        ctx.fillText(number.toString(), cx, cy + 10);
+        
+        // 🥷 判定した文字（? または 本来の数字）を描画
+        ctx.fillText(displayText, cx, cy + 10);
       }
     };
 
