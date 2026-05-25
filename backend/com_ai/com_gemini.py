@@ -210,12 +210,17 @@ def execute_turn(player_id: str, state, logic, constants):
 
         # --- [ルール9] 拠点が3つ以上なら MEGA_HQ 優先、無理ならBOT配備 ---
         if num_bldgs >= 3:
-            dc_hubs = [k for k, v in my_bldgs.items() if v["type"] == "DATA_CENTER"]
-            if dc_hubs and ensure_resources(player_id, "MEGA_HQ", state, constants, urgency=True):
-                logic.pay_cost(player_id, "MEGA_HQ", constants.COSTS, state.inventory)
-                state.buildings[random.choice(dc_hubs)]["type"] = "MEGA_HQ"
-                action_logs.append("🏰 [COM:GEMINI] メガテック化完了。覇権を握る。")
-                action_taken = True; continue
+            # 🥷 修正：現在保有しているMEGA_HQの数をカウント
+            current_hq_count = sum(1 for b in my_bldgs.values() if b["type"] == "MEGA_HQ")
+            
+            # 🥷 修正：上限チェックを追加
+            if current_hq_count < constants.MAX_STOCKS["MEGA_HQ"]:
+                dc_hubs = [k for k, v in my_bldgs.items() if v["type"] == "DATA_CENTER"]
+                if dc_hubs and ensure_resources(player_id, "MEGA_HQ", state, constants, urgency=True):
+                    logic.pay_cost(player_id, "MEGA_HQ", constants.COSTS, state.inventory)
+                    state.buildings[random.choice(dc_hubs)]["type"] = "MEGA_HQ"
+                    action_logs.append("🏰 [COM:GEMINI] メガテック化完了。覇権を握る。")
+                    action_taken = True; continue
             
             if my_bldgs:
                 target_vid = random.choice(list(my_bldgs.keys()))
