@@ -70,10 +70,16 @@ const PlayerStatus = ({
             &gt; NEO-ZIPANGU: TERMINAL _
           </h1>
           <div style={{ marginTop: '10px', fontSize: '1.1rem', color: '#ffffff' }}>
+            {/* 🥷 score?.total とすることで、scoreが空なら 0 を表示 */}
             SCORE: <span style={{color: '#00ffcc'}}>{score?.total || 0}</span> / {gameStatus?.target_score || 100} SCORES
           </div>
           <div style={{ fontSize: '0.9rem', color: '#aaaaaa', marginTop: '5px' }}>
-            TITLES: {score.titles.length > 0 ? <span style={{ color: '#bfff00' }}>[ {score.titles.join(' / ')} ]</span> : "NONE"}
+            {/* 🥷 score?.titles?.length とオプショナルチェーンを重ねることで、配列が無くても安全に処理 */}
+            TITLES: {score?.titles?.length > 0 ? (
+              <span style={{ color: '#bfff00' }}>[ {score.titles.join(' / ')} ]</span>
+            ) : (
+              "NONE"
+            )}
           </div>
         </div>
       </header>

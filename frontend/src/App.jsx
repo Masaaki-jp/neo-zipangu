@@ -21,6 +21,7 @@ function App() {
   const [tradeRates, setTradeRates] = useState(null);
   const [buildings, setBuildings] = useState({}); 
   const [score, setScore] = useState({ total: 0, titles: [] }); 
+  const [allScores, setAllScores] = useState({}); // 🥷 これを追加！
   const [cards, setCards] = useState([]); 
   const [actionMode, setActionMode] = useState('BUILD'); 
   const [activeCard, setActiveCard] = useState(null); 
@@ -39,13 +40,17 @@ function App() {
     try {
       const res = await fetch('/api/board');
       const boardData = await res.json(); 
+      
       setBuildings(boardData.buildings || {});
       setGameStatus(boardData.game_status);
       setInitRolls(boardData.init_rolls || {});
+      
       if (boardData.inventory) setInventory(boardData.inventory[currentPlayer]);
       if (boardData.trade_rates) setTradeRates(boardData.trade_rates[currentPlayer]);
 
-      if (boardData.scores && boardData.scores[currentPlayer]) setScore(boardData.scores[currentPlayer]);
+      // 🥷 修正：個人のスコアと全員分のスコアをセット
+      if (boardData.score) setScore(boardData.score);
+      if (boardData.all_scores) setAllScores(boardData.all_scores); // 全員分のデータを保存
 
       if (boardData.cards) setCards(boardData.cards[currentPlayer] || []);
     } catch (err) { console.error(err); }
@@ -441,48 +446,49 @@ const handleEndTurn = async (isForcedTimeout = false) => {
       )}
 
       {/* 🥷 3. ゲーム本編 (setup / playing / finished) */}
-      {(gameStatus.state === "setup" || gameStatus.state === "playing" || gameStatus.state === "finished") && (
-        <>
-          {/* 🥷 終了画面（真っ暗クラッシュ対策の防弾仕様！ & SCORE表記に変更） */}
-          {gameStatus.state === "finished" && (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-              
-              {/* 🥷 シンプルな勝利 / 敗北 タイトル。勝利色はエメラルドグリーンに！ */}
-              <h1 style={{ 
-                color: gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055', // エメラルドグリーン
-                fontSize: '4rem', 
-                textShadow: `0 0 30px ${gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055'}`, 
-                margin: '0 0 20px 0', 
-                animation: 'blink 1.5s infinite' 
-              }}>
-                {gameStatus.winner === currentPlayer ? "[ VICTORY ]" : "[ DEFEATED ]"}
-              </h1>
+          {(gameStatus.state === "setup" || gameStatus.state === "playing" || gameStatus.state === "finished") && (
+            <>
+              {/* 🥷 終了画面（全員のスコアを表示するランキング形式に変更） */}
+              {gameStatus.state === "finished" && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                  
+                  {/* 🥷 勝利 / 敗北 タイトル */}
+                  <h1 style={{ 
+                    color: gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055', 
+                    fontSize: '4rem', 
+                    textShadow: `0 0 30px ${gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055'}`, 
+                    margin: '0 0 20px 0', 
+                    animation: 'blink 1.5s infinite' 
+                  }}>
+                    {gameStatus.winner === currentPlayer ? "[ VICTORY ]" : "[ DEFEATED ]"}
+                  </h1>
 
-              {/* 🥷 決着理由（SCORE表記に変更。NATURE分岐を削除） */}
-              {gameStatus.reason === "ANNIHILATION" ? (
-                <p style={{ color: '#ff0055', fontSize: '1.5rem', marginBottom: '10px' }}>敵対企業が全滅し、ゲームが強制終了しました！</p>
-              ) : (gameStatus.reason && gameStatus.reason.includes("初期配置を放棄")) ? (
-                <p style={{ color: '#aaaaaa', fontSize: '1.5rem', marginBottom: '10px' }}>初期配置フェーズでのタイムアウトにより、無効試合となりました。</p>
-              ) : (
-                <p style={{ color: '#ffffff', fontSize: '1.5rem', marginBottom: '10px', display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '10px' }}>
-                  <span style={{ color: '#aaaaaa' }}>SCORE:</span>
-                  {/* 🥷 修正：現在のスコア / 目標スコア SCORES の表示。倍率はかけない。 */}
-                  <strong style={{color: '#00ffcc', fontSize: '3rem'}}>{score?.total || 0}</strong> 
-                  <span style={{color: '#ffffff', fontSize: '1.5rem'}}>/ {gameStatus.target_score || '???'} SCORES</span>
-                  <span>到達による決着！</span>
-                </p>
+                  {/* 🥷 全プレイヤーの最終スコア一覧表示 */}
+                  <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #333', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
+                    <h3 style={{ color: '#aaa', margin: '0 0 15px 0' }}>FINAL STANDINGS</h3>
+                    {Object.entries(allScores || {}).map(([pId, sData]) => (
+                      <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', width: '300px', margin: '8px 0', fontSize: '1.2rem', color: '#fff' }}>
+                        <span style={{ color: PLAYER_COLORS[pId]?.hex || '#fff' }}>{pId}</span>
+                        <span style={{ fontWeight: 'bold' }}>{sData.total} SCORES</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 🥷 決着の理由 */}
+                  <p style={{ color: '#ffffff', fontSize: '1.2rem', marginTop: '10px' }}>
+                    勝利条件: <strong>{gameStatus.target_score || 100} SCORES</strong> 到達により決着
+                  </p>
+                  
+                  {/* 🥷 勝者強調表示 */}
+                  <p style={{ color: '#aaaaaa', fontSize: '1.2rem', marginTop: '10px' }}>
+                    WINNER: <strong style={{color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner].hex : '#fff'}}>
+                      {gameStatus.winner || "NONE"}
+                    </strong>
+                  </p>
+                  
+                  <button onClick={handleResetSystem} style={{ marginTop: '30px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
+                </div>
               )}
-
-              {/* 🥷 勝者表示 */}
-              <p style={{ color: '#aaaaaa', fontSize: '1.2rem', marginTop: '20px' }}>
-                WINNER: <strong style={{color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff', textShadow: `0 0 10px ${(gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff'}`}}>
-                  {gameStatus.winner || "NONE (無効試合)"}
-                </strong>
-              </p>
-              
-              <button onClick={handleResetSystem} style={{ marginTop: '40px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
-            </div>
-          )}
 
           {/* 🥷 消えてしまっていたゲーム本編（UI）を復活 */}
           <PlayerStatus 
