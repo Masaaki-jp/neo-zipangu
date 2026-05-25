@@ -503,7 +503,7 @@ const handleEndTurn = async (isForcedTimeout = false) => {
           {/* 🥷 消えてしまっていたゲーム本編（UI）を復活 */}
           <PlayerStatus 
             currentPlayer={currentPlayer} pColor={pColor} timeLeft={timeLeft} gameStatus={gameStatus} 
-            score={score} handleEndTurn={handleEndTurn} inventory={inventory} tradeRates={tradeRates} 
+            score={score} allScores={allScores} handleEndTurn={handleEndTurn} inventory={inventory} tradeRates={tradeRates} 
             currentBCounts={currentBCounts} MAX_STOCKS={MAX_STOCKS} 
           />
 
