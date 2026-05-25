@@ -75,32 +75,32 @@ const PlayerStatus = ({
             </div>
           </div>
 
-          <div style={{ 
-            backgroundColor: 'rgba(0,0,0,0.5)', 
-            padding: '8px', 
-            borderRadius: '5px', 
-            border: '1px solid #333' 
-          }}>
+          {/* 🥷 スコアとタイトル表示エリア */}
+          <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '8px', borderRadius: '5px', border: '1px solid #333' }}>
             {Object.entries(allScores || {}).map(([pId, sData]) => (
-              <div key={pId} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                gap: '15px', 
-                fontSize: '1rem' 
-              }}>
-                <span style={{ 
-                  // 🥷 .hex を指定して、文字色のみを適用します
-                  color: PLAYER_COLORS[pId]?.hex || '#ffffff', 
-                  fontWeight: 'bold' 
-                }}>
+              <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px', fontSize: '1rem', padding: '2px 0' }}>
+      
+                {/* プレイヤー名 */}
+                <span style={{ color: PLAYER_COLORS[pId]?.hex || '#ffffff', fontWeight: 'bold' }}>
                   {pId}:
                 </span>
-                <span style={{ color: '#ffffff' }}>
-                  {sData.total}
-                </span>
-              </div>
-            ))}
-          </div>
+
+                {/* スコア数値とタイトルのコンテナ */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {/* スコア数値（右揃えで桁がずれないように固定幅を設定） */}
+                  <span style={{ color: '#ffffff', minWidth: '30px', textAlign: 'right' }}>
+                    {sData.total}
+                  </span>
+        
+                  {/* 🥷 獲得タイトル配列を展開して表示 */}
+                  <span style={{ minWidth: '60px', textAlign: 'left', letterSpacing: '2px' }}>
+                    {sData.titles ? sData.titles.join('') : ''}
+                  </span>
+               </div>
+      
+             </div>
+           ))}
+         </div>
         </div>
       </header>
 
