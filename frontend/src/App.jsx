@@ -466,12 +466,18 @@ const handleEndTurn = async (isForcedTimeout = false) => {
                   {/* 🥷 全プレイヤーの最終スコア一覧表示 */}
                   <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #333', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
                     <h3 style={{ color: '#aaa', margin: '0 0 15px 0' }}>FINAL STANDINGS</h3>
-                    {Object.entries(allScores || {}).map(([pId, sData]) => (
-                      <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', width: '300px', margin: '8px 0', fontSize: '1.2rem', color: '#fff' }}>
-                        <span style={{ color: PLAYER_COLORS[pId]?.hex || '#fff' }}>{pId}</span>
-                        <span style={{ fontWeight: 'bold' }}>{sData.total} SCORES</span>
-                      </div>
-                    ))}
+                    {Object.entries(allScores || {}).map(([pId, sData]) => {
+                      // 🥷 1. PLAYER_COLORS から該当プレイヤーの色を取得
+                      const playerColor = PLAYER_COLORS[pId] || '#ffffff';
+    
+                      return (
+                        <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', width: '300px', margin: '8px 0', fontSize: '1.2rem' }}>
+                          {/* 🥷 2. 名前とスコアにそれぞれの色を適用 */}
+                          <span style={{ color: playerColor, fontWeight: 'bold' }}>{pId}</span>
+                          <span style={{ color: '#fff' }}>{sData.total} SCORES</span>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* 🥷 決着の理由 */}
@@ -481,8 +487,12 @@ const handleEndTurn = async (isForcedTimeout = false) => {
                   
                   {/* 🥷 勝者強調表示 */}
                   <p style={{ color: '#aaaaaa', fontSize: '1.2rem', marginTop: '10px' }}>
-                    WINNER: <strong style={{color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner].hex : '#fff'}}>
-                      {gameStatus.winner || "NONE"}
+                    WINNER:
+                   <strong style={{
+                     color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff',
+                     textShadow: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? `0 0 10px ${PLAYER_COLORS[gameStatus.winner]}` : 'none'
+                   }}>
+                     {gameStatus.winner || "NONE"}
                     </strong>
                   </p>
                   
