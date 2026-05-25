@@ -32,6 +32,7 @@ const PlayerStatus = ({
   timeLeft,
   gameStatus,
   allScores,
+  title_owners, //追加
   handleEndTurn,
   inventory,
   tradeRates,
@@ -75,7 +76,7 @@ const PlayerStatus = ({
             </div>
           </div>
 
-          {/* 🥷 スコアとタイトル表示エリア */}
+          {/* 🥷 修正：スコアとタイトル表示エリア */}
           <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '8px', borderRadius: '5px', border: '1px solid #333' }}>
             {Object.entries(allScores || {}).map(([pId, sData]) => (
               <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px', fontSize: '1rem', padding: '2px 0' }}>
@@ -83,24 +84,26 @@ const PlayerStatus = ({
                 {/* プレイヤー名 */}
                 <span style={{ color: PLAYER_COLORS[pId]?.hex || '#ffffff', fontWeight: 'bold' }}>
                   {pId}:
-                </span>
+               </span>
 
-                {/* スコア数値とタイトルのコンテナ */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {/* スコア数値（右揃えで桁がずれないように固定幅を設定） */}
-                  <span style={{ color: '#ffffff', minWidth: '30px', textAlign: 'right' }}>
-                    {sData.total}
-                  </span>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                 {/* スコア数値 */}
+                 <span style={{ color: '#ffffff', minWidth: '30px', textAlign: 'right' }}>
+                   {sData.total}
+                 </span>
         
-                  {/* 🥷 獲得タイトル配列を展開して表示 */}
-                  <span style={{ minWidth: '60px', textAlign: 'left', letterSpacing: '2px' }}>
-                    {sData.titles ? sData.titles.join('') : ''}
-                  </span>
-               </div>
+                 {/* 🥷 修正：sData.titles を使わず、title_owners から所有者を判定して表示 */}
+                 <span style={{ minWidth: '60px', textAlign: 'left', letterSpacing: '2px' }}>
+                   {title_owners && Object.entries(title_owners).map(([icon, owner]) => 
+                     owner === pId ? <span key={icon}>{icon}</span> : null
+                   )}
+              </span>
+            </div>
       
-             </div>
-           ))}
-         </div>
+          </div>
+        ))}
+      </div>
+
         </div>
       </header>
 
