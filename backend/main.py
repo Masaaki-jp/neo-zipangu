@@ -258,8 +258,12 @@ def get_or_generate_board():
     state.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
 
     # 🥷 アプローチ2：全員分のスコアをまとめて計算し、辞書（all_scores）を作る！
-    from game_logic import get_score
+    from game_logic import update_all_titles, get_score
     import game_logic
+
+    # 称号の所有権を判定・更新する
+    update_all_titles(state, state.buildings, state.cards, state.roads, getattr(state, "combat_wins", {}))
+
     all_scores = {
         "Player1": game_logic.get_score("Player1", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
         "Player2": game_logic.get_score("Player2", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
@@ -276,7 +280,8 @@ def get_or_generate_board():
         # 🥷 従来のUIを壊さないよう、"score" には自分のスコア(Player1)をセット
         "score": all_scores["Player1"], 
         # 🥷 将来のマルチプレイやランキング用に全員分のデータもまるごと送る！
-        "all_scores": all_scores
+        "all_scores": all_scores,
+        "title_owners": getattr(game_state, "title_owners", {}) # 🥷 これを追加！
     })
 
 @app.post("/api/init_roll")
@@ -450,12 +455,13 @@ def com_execute(req: ComExecuteRequest):
         "Player4": game_logic.get_score("Player4", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
     }
 
+    # 称号獲得ログが result["logs"] に含まれてフロントに届きます
     return build_standard_response({
         "status": "success",
-        "action_logs": result["logs"],
+        "action_logs": result["logs"], # 称号ログもここに含まれて送信されます
         "dice": result["dice"],
-        "score": all_scores["Player1"], # 常に自分のスコアを画面に維持
-        "all_scores": all_scores        # 全員分のスコアも送る
+        "score": all_scores[req.player], # 常に自分のスコアを維持
+        "all_scores": all_scores        # ここで「称号付きの全スコア」を送るのが重要！
     })
  
 
@@ -804,19 +810,55 @@ def reset_game(req: ResetRequest = None):
         state.current_map_id = "STAGE_01_BEGINNER"
         new_state = "map_selection"
 
-    state.current_board.clear(); state.buildings.clear(); state.roads.clear(); state.bots.clear(); state.hacker_position = None; state.cards.clear(); state.card_counter_id = 0; state.init_rolls.clear(); state.roll_counter = 0; state.coastal_vertices.clear()
+    # 全体リセット
+    state.current_board.clear()
+    state.buildings.clear()
+    state.roads.clear()
+    state.bots.clear()
+    state.hacker_position = None
+    state.cards.clear()
+    state.card_counter_id = 0
+    state.init_rolls.clear()
+    state.roll_counter = 0
+    state.coastal_vertices.clear()
+
+    # 🥷 修正：state と game_state の両方の称号データを確実に None へ戻す！
+    import game_state
+    game_state.title_owners = {
+        "💎": None,
+        "🚀": None,
+        "🐳": None,
+        "🗺️": None,
+        "🎖️": None
+    }
+    state.title_owners = {
+        "💎": None,
+        "🚀": None,
+        "🐳": None,
+        "🗺️": None,
+        "🎖️": None
+    }
     
-    state.game_status.update({"state": new_state, "winner": None, "reason": "", "turn_order": [], "current_turn_index": 0, "current_player": "Player1", "setup_turn": 0})
+    # 🥷 称号判定の元となる勝利数もリセット
+    if not hasattr(state, "combat_wins"):
+        state.combat_wins = {}
+    state.combat_wins = {p: 0 for p in state.PLAYERS}
+
+    state.game_status.update({
+        "state": new_state, 
+        "winner": None, 
+        "reason": "", 
+        "turn_order": [], 
+        "current_turn_index": 0, 
+        "current_player": "Player1", 
+        "setup_turn": 0
+    })
     
     for p in state.PLAYERS:
         state.inventory[p] = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0}
         state.trade_rates[p] = {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0}
         state.cards[p] = []
         
-        # 🥷 追加：勝利数を0リセット
-        if not hasattr(state, "combat_wins"): state.combat_wins = {}
-        state.combat_wins[p] = 0
-
         if p == "Player1":
             state.player_types[p] = "human"
         else:

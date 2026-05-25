@@ -22,6 +22,7 @@ function App() {
   const [buildings, setBuildings] = useState({}); 
   const [score, setScore] = useState({ total: 0, titles: [] }); 
   const [allScores, setAllScores] = useState({}); // 🥷 これを追加！
+  const [title_owners, setTitleOwners] = useState({});
   const [cards, setCards] = useState([]); 
   const [actionMode, setActionMode] = useState('BUILD'); 
   const [activeCard, setActiveCard] = useState(null); 
@@ -44,6 +45,9 @@ function App() {
       setBuildings(boardData.buildings || {});
       setGameStatus(boardData.game_status);
       setInitRolls(boardData.init_rolls || {});
+
+      setAllScores(boardData.all_scores);
+      setTitleOwners(boardData.title_owners);
       
       if (boardData.inventory) setInventory(boardData.inventory[currentPlayer]);
       if (boardData.trade_rates) setTradeRates(boardData.trade_rates[currentPlayer]);
@@ -503,7 +507,7 @@ const handleEndTurn = async (isForcedTimeout = false) => {
           {/* 🥷 消えてしまっていたゲーム本編（UI）を復活 */}
           <PlayerStatus 
             currentPlayer={currentPlayer} pColor={pColor} timeLeft={timeLeft} gameStatus={gameStatus} 
-            score={score} allScores={allScores} handleEndTurn={handleEndTurn} inventory={inventory} tradeRates={tradeRates} 
+            score={score} allScores={allScores} title_owners={title_owners} handleEndTurn={handleEndTurn} inventory={inventory} tradeRates={tradeRates} 
             currentBCounts={currentBCounts} MAX_STOCKS={MAX_STOCKS} 
           />
 

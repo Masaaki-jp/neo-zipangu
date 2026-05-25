@@ -48,3 +48,24 @@ def save_ban_list():
         print(f"[ERROR] BANリストの保存に失敗しました: {e}")
 
 load_ban_list()
+
+# 🥷 称号所有権管理 (Noneは未獲得状態)
+title_owners = {
+    "💎": None,
+    "🚀": None,
+    "🐳": None,
+    "🗺️": None,
+    "🎖️": None
+}
+
+# game_state.py に追加
+def reset_game_state():
+    # 既存のステートのリセット処理があればここに...
+    global title_owners
+    title_owners = {
+        "💎": None,
+        "🚀": None,
+        "🐳": None,
+        "🗺️": None,
+        "🎖️": None
+    }

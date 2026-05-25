@@ -27,6 +27,51 @@ def get_score(player: str, buildings: dict, cards: dict, roads: dict, bots: dict
     if combat_wins.get(player, 0) >= 3: titles.append("🎖️"); bonus_shares += 20
     return {"base": base_shares, "bonus": bonus_shares, "total": base_shares + bonus_shares, "titles": titles}
 
+# game_logic.py に追加
+def update_all_titles(state, buildings, cards, roads, combat_wins):
+    import game_state # 称号所有権を見るために必要
+    logs = []
+    
+    # 定義（閾値）
+    rules = {
+        "💎": {"type": "PATENT", "count": 3},
+        "🚀": {"type": "MEGA_HQ", "count": 2},
+        "🐳": {"type": "GATEWAY", "count": 3},
+        "🗺️": {"type": "ROAD", "count": 10},
+        "🎖️": {"type": "COMBAT", "count": 3}
+    }
+
+    for t, rule in rules.items():
+        # 全プレイヤーの現在の値を計算
+        scores = {}
+        for p in ["Player1", "Player2", "Player3", "Player4"]:
+            if rule["type"] == "PATENT": val = sum(1 for c in cards.get(p, []) if c["type"] == "PATENT")
+            elif rule["type"] == "MEGA_HQ": val = sum(1 for b in buildings.values() if b["player"] == p and b["type"] == "MEGA_HQ")
+            elif rule["type"] == "GATEWAY": val = sum(1 for b in buildings.values() if b["player"] == p and b["type"] == "GATEWAY")
+            elif rule["type"] == "ROAD": val = sum(1 for r in roads.values() if r["player"] == p)
+            elif rule["type"] == "COMBAT": val = combat_wins.get(p, 0)
+            
+            if val >= rule["count"]: scores[p] = val
+
+        if not scores: continue
+        
+        # 最大保持者（同数の場合は既存オーナー優先のため順序を変えない）
+        best_p = max(scores, key=scores.get)
+        best_val = scores[best_p]
+        
+        current_owner = game_state.title_owners.get(t)
+        owner_val = scores.get(current_owner, 0)
+
+        # 称号の移譲・獲得の判定
+        if current_owner is None:
+            game_state.title_owners[t] = best_p
+            logs.append(f"🏆 {best_p} が称号 {t} を獲得しました！")
+        elif current_owner != best_p and best_val > owner_val:
+            game_state.title_owners[t] = best_p
+            logs.append(f"⚔️ 称号 {t} が {current_owner} から {best_p} へ移譲されました！")
+            
+    return logs
+
 # 🥷 修正：引数の最後に `hacker_vault: dict = None` を追加しました
 def calculate_yields(total: int, current_board: list, hacker_position: str, buildings: dict, inventory: dict, center_x: int, center_y: int, hex_size: int, building_yields: dict, season_event: dict = None, hacker_vault: dict = None):
     yields = []
