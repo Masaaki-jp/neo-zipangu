@@ -20,8 +20,11 @@ from com_ai import com_speeder, com_builder, com_fighter, com_gambler, com_gemin
 
 from constants import (
     HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS, MAX_BUILDINGS, 
-    COSTS, CARD_DEFS, TECH_DECK, WEAPON_DECK
+    COSTS, CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK
 )
+
+# === 🐘生物データのインポート ===
+from nature_data import WATCH_DEFS, get_watch_card_info
 
 # === 新規追加：カウントダウンモジュールのインポート ===
 from countdown import calculate_deadline, is_time_up
