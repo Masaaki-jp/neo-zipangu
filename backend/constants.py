@@ -41,5 +41,9 @@ CARD_DEFS = {
     "DDOS": {"name": "DDoS", "desc": "他社の道を破壊"}
 }
 
+#🐘生物データの呼び出し
+from nature_data import WATCH_DEFS
+
 TECH_DECK = ["PATENT", "ZERO_DAY", "VPN", "DATA_HACK"]
 WEAPON_DECK = ["EMP", "DRONE_STRIKE", "WEAPON_DEV", "DDOS"]
+WATCH_DECK = list(WATCH_DEFS.keys()) # ここに追加
