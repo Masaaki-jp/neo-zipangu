@@ -329,14 +329,38 @@ const handleEndTurn = async (isForcedTimeout = false) => {
   };
 
   const handleDrawCard = async (deckType) => {
-    if (!inventory || inventory.NUCLEAR < 10.0) { alert("[ ERROR ] NUCLEAR が 10.0 必要です！"); return; }
+    if (!inventory) return;
+
+    // ドローの種類に応じたコスト判定
+    if (deckType === "WATCH") {
+      if (!inventory.NATURE || inventory.NATURE < 10.0) {
+        alert("[ ERROR ] NATURE (🌿) が 10.0 必要です！");
+        return;
+      }
+    } else {
+      if (inventory.NUCLEAR < 10.0) {
+        alert("[ ERROR ] NUCLEAR が 10.0 必要です！");
+        return;
+      }
+    }
+
     try {
-      const res = await fetch('/api/draw_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: currentPlayer, deck_type: deckType }) });
+      const res = await fetch('/api/draw_card', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ player: currentPlayer, deck_type: deckType }) 
+      });
       if (res.ok) {
-        const data = await res.json(); handleStateUpdate(data.inventory, null, null, data.score, data.cards, data.game_status);
+        const data = await res.json(); 
+        handleStateUpdate(data.inventory, null, null, data.score, data.cards, data.game_status);
         alert(`[ CARD ACQUIRED ]\nカード【${data.drawn.name}】を入手しました！`);
-      } else { const err = await res.json(); alert(`[ ERROR ] ${err.detail}`); }
-    } catch (error) { console.error(error); }
+      } else { 
+        const err = await res.json(); 
+        alert(`[ ERROR ] ${err.detail}`); 
+      }
+    } catch (error) { 
+      console.error(error); 
+    }
   };
 
   const handleUseCard = async (card) => {

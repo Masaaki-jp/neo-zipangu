@@ -4,18 +4,18 @@ from pydantic import BaseModel
 import random
 import math
 
+# === 共通ステート・ロジックのインポート ===
 import game_state
-import game_logic  # 🥷 共通関数で update_all_scores を呼ぶためにインポート
-
-# === モジュールのインポート ===
+from game_state import scores  # 👈 修正：app と state はここから呼ばない
+import game_logic
 from game_logic import pay_cost, get_score, calculate_yields
+
+# === マネージャー・スキーマ・AI・定数 ===
 import state_manager as state
 from schemas import (
     BuildRequest, RoadRequest, MoveRequest, TradeRequest,
     HackerRequest, CardRequest, UseCardRequest, InitRollRequest, ResetRequest
 )
-
-# === 新規追加：AIモジュールのインポート ===
 from com_ai import com_speeder, com_builder, com_fighter, com_gambler, com_gemini  
 
 from constants import (
@@ -23,12 +23,13 @@ from constants import (
     COSTS, CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK
 )
 
-# === 🐘生物データのインポート ===
+# === 生物データ ===
 from nature_data import WATCH_DEFS, get_watch_card_info
 
-# === 新規追加：カウントダウンモジュールのインポート ===
+# === カウントダウンモジュール ===
 from countdown import calculate_deadline, is_time_up
 
+# === アプリの初期設定 ===
 app = FastAPI(title="Neo Zipang Core API", version="1.9.0-beta")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
@@ -471,11 +472,25 @@ def com_execute(req: ComExecuteRequest):
 @app.post("/api/draw_card")
 def draw_card(req: CardRequest):
     enforce_time_limit()
-    if state.inventory[req.player]["NUCLEAR"] < 10.0: raise HTTPException(status_code=400, detail="INSUFFICIENT_NUCLEAR")
-    state.inventory[req.player]["NUCLEAR"] -= 10.0
-    drawn_type = random.choice(TECH_DECK) if req.deck_type == "TECH" else random.choice(WEAPON_DECK)
+    
+    # 資源判定と消費
+    if req.deck_type == "WATCH":
+        if state.inventory[req.player].get("NATURE", 0) < 10.0:
+            raise HTTPException(status_code=400, detail="INSUFFICIENT_NATURE")
+        state.inventory[req.player]["NATURE"] -= 10.0
+        drawn_type = random.choice(WATCH_DECK)
+        info = get_watch_card_info(drawn_type)
+        name, desc = info["name"], info["desc"]
+    else:
+        # 既存のロジック
+        if state.inventory[req.player]["NUCLEAR"] < 10.0: 
+            raise HTTPException(status_code=400, detail="INSUFFICIENT_NUCLEAR")
+        state.inventory[req.player]["NUCLEAR"] -= 10.0
+        drawn_type = random.choice(TECH_DECK) if req.deck_type == "TECH" else random.choice(WEAPON_DECK)
+        name, desc = CARD_DEFS[drawn_type]["name"], CARD_DEFS[drawn_type]["desc"]
+    
     state.card_counter_id += 1
-    new_card = {"id": f"c_{state.card_counter_id}", "type": drawn_type, "name": CARD_DEFS[drawn_type]["name"], "desc": CARD_DEFS[drawn_type]["desc"]}
+    new_card = {"id": f"c_{state.card_counter_id}", "type": drawn_type, "name": name, "desc": desc}
     state.cards[req.player].append(new_card)
     
     return build_standard_response({"status": "success", "drawn": new_card})
@@ -524,7 +539,14 @@ def use_card(req: UseCardRequest):
         if state.roads[req.target_id]["player"] == req.player: raise HTTPException(status_code=400, detail="CANNOT_DESTROY_OWN_ROAD")
         del state.roads[req.target_id]
         msg = "DDoS攻撃成功！標的のネットワークを破壊しました。"
-        
+     
+    # use_card のカードタイプ判定ブロックに追加
+    elif c_type in WATCH_DECK: # WATCH_DECKの絵文字がそのままタイプとして入る前提
+        score = WATCH_DEFS[c_type]["score"]
+        # ここでスコア加算（state.scores等、管理方法に合わせて調整してください）
+        state.scores[req.player] = state.scores.get(req.player, 0) + score
+        msg = f"観測成功！{c_type} の発見によりスコア【+{score}】加算。"
+
     player_cards.remove(card)
     return build_standard_response({"status": "success", "msg": msg, "yields": yields})
 

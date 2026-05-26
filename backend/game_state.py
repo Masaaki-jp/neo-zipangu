@@ -3,10 +3,12 @@ import os
 import json
 
 # 1. 各プレイヤー固有のスコア変数
-player1_score = 0
-player2_score = None
-player3_score = None
-player4_score = None
+scores = {
+    'Player1': 0,
+    'Player2': 0,
+    'Player3': 0,
+    'Player4': 0
+}
 
 # 2. ゲームセッション・ステートの定義
 game_status = 'SELECTING'
