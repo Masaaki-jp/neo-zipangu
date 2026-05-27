@@ -352,7 +352,14 @@ const handleEndTurn = async (isForcedTimeout = false) => {
       });
       if (res.ok) {
         const data = await res.json(); 
-        handleStateUpdate(data.inventory, null, null, data.score, data.cards, data.game_status);
+        
+        // 🥷 修正1：data.score（単数形） を data.scores（複数形） に変更！
+        handleStateUpdate(data.inventory, null, null, data.scores, data.cards, data.game_status);
+        
+        // 🥷 修正2：ヘッダーのスコアと称号もその場で直接更新する！
+        if (data.scores) setAllScores(data.scores);
+        if (data.title_owners) setTitleOwners(data.title_owners);
+
         alert(`[ CARD ACQUIRED ]\nカード【${data.drawn.name}】を入手しました！`);
       } else { 
         const err = await res.json(); 
@@ -364,19 +371,38 @@ const handleEndTurn = async (isForcedTimeout = false) => {
   };
 
   const handleUseCard = async (card) => {
-    if (card.type === "PATENT") { alert("[ INFO ] 特許カードは持っているだけで企業価値(+10万シェア)に貢献します。使う必要はありません。"); return; }
+    if (card.type === "PATENT") { 
+      alert("[ INFO ] 特許カードは持っているだけで企業価値(+10万シェア)に貢献します。使う必要はありません。"); 
+      return; 
+    }
     
+    if (card.name.includes("発見") || card.type === "WATCH") {
+      alert(`【 生物データアーカイブ 】\n\n${card.desc}\n\n※このカードはパッシブカードです。持っているだけでレア度に応じたスコアが自動加算されます。`);
+      return; 
+    }
+
     if (card.type === "ZERO_DAY") {
       if (hasRolledDice) {
         alert("[ ERROR ] すでに今ターンのサイコロを振っています。ゼロデイ攻撃はサイコロを振る前にのみ使用可能です。");
         return;
       }
-      const numStr = prompt("【ゼロデイ攻撃】\n出したいサイコロの目（2〜12）を入力してください："); const num = parseInt(numStr, 10);
+      const numStr = prompt("【ゼロデイ攻撃】\n出したいサイコロの目（2〜12）を入力してください："); 
+      const num = parseInt(numStr, 10);
       if (isNaN(num) || num < 2 || num > 12) { alert("キャンセルしました。"); return; }
       try {
-        const res = await fetch('/api/use_card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player: currentPlayer, card_id: card.id, target_val: num }) });
+        const res = await fetch('/api/use_card', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ player: currentPlayer, card_id: card.id, target_val: num }) 
+        });
         if (res.ok) {
-          const data = await res.json(); handleStateUpdate(data.inventory, null, null, data.score, data.cards, data.game_status);
+          const data = await res.json(); 
+          
+          // 🥷 ここも同様に data.scores に修正
+          handleStateUpdate(data.inventory, null, null, data.scores, data.cards, data.game_status);
+          if (data.scores) setAllScores(data.scores);
+          if (data.title_owners) setTitleOwners(data.title_owners);
+          
           setDice({ dice1: '?', dice2: '?', total: num, yields: data.yields }); 
           setEventLog(data.msg); 
           setHasRolledDice(true);
@@ -391,7 +417,8 @@ const handleEndTurn = async (isForcedTimeout = false) => {
       return;
     }
 
-    setActionMode('USE_CARD'); setActiveCard(card);
+    setActionMode('USE_CARD'); 
+    setActiveCard(card);
     alert(`【${card.name} 準備完了】\n対象となるマップ上の場所をクリックしてください。`);
   };
 
