@@ -81,14 +81,19 @@ def get_score(player: str, buildings: dict, cards: dict, roads: dict, bots: dict
     }
 
 # game_logic.py に追加
+
 # game_logic.py
+
 def update_all_titles(state, buildings, cards, roads, combat_wins):
-    # 🥷 修正：諸悪の根源だった「import game_state」を削除！
+    # 🥷 解決策：両方のノートを安全に同期させる
+    import game_state
     logs = []
     
-    # state（本物のノート）に title_owners が無ければ安全に初期化
+    # 両方のオブジェクトに title_owners が無ければ安全に初期化
     if not hasattr(state, "title_owners"):
         state.title_owners = {}
+    if not hasattr(game_state, "title_owners"):
+        game_state.title_owners = {}
         
     rules = {
         "💎": {"type": "PATENT", "count": 3},
@@ -124,15 +129,18 @@ def update_all_titles(state, buildings, cards, roads, combat_wins):
         best_p = max(scores, key=scores.get)
         best_val = scores[best_p]
         
-        # 🥷 修正：game_state ではなく、引数の state.title_owners を直接読み書きする！
-        current_owner = state.title_owners.get(t)
+        # 判定には game_state 側の現在の所有者を使用
+        current_owner = game_state.title_owners.get(t)
         owner_val = scores.get(current_owner, 0)
 
+        # 🥷 修正：称号が確定したら、state と game_state の「両方」に同時に書き込む！
         if current_owner is None:
             state.title_owners[t] = best_p
+            game_state.title_owners[t] = best_p
             logs.append(f"🏆 {best_p} が称号 {t} を獲得しました！")
         elif current_owner != best_p and best_val > owner_val:
             state.title_owners[t] = best_p
+            game_state.title_owners[t] = best_p
             logs.append(f"⚔️ 称号 {t} が {current_owner} から {best_p} へ移譲されました！")
             
     return logs
