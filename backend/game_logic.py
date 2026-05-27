@@ -10,31 +10,89 @@ def pay_cost(player: str, cost_type: str, costs_def: dict, inventory: dict):
     for res, amount in cost.items(): inventory[player][res] -= amount
     return True
 
-def get_score(player: str, buildings: dict, cards: dict, roads: dict, bots: dict, combat_wins: dict = None):
-    if combat_wins is None: combat_wins = {}
-    base_shares = 0; bonus_shares = 0; titles = []
+def get_score(player: str, buildings: dict, cards: dict, roads: dict, bots: dict, combat_wins: dict = None, **kwargs):
+    if combat_wins is None: 
+        combat_wins = {}
+        
+    base_shares = 0
+    bonus_shares = 0
+    titles = []
+    
+    # 1. 建物のカウントとスコア加算
     b_counts = {"LOCAL_HUB": 0, "DATA_CENTER": 0, "GATEWAY": 0, "MEGA_HQ": 0}
     for b in buildings.values():
-        if b["player"] == player: b_counts[b["type"]] += 1
-    base_shares += b_counts["DATA_CENTER"] * 10; base_shares += b_counts["GATEWAY"] * 10; base_shares += b_counts["MEGA_HQ"] * 20
-    p_count = sum(1 for c in cards.get(player, []) if c["type"] == "PATENT")
-    base_shares += p_count * 10; 
-    if p_count >= 3: titles.append("💎"); bonus_shares += 20
-    if b_counts["MEGA_HQ"] >= 2: titles.append("🚀"); bonus_shares += 20
-    if b_counts["GATEWAY"] >= 3: titles.append("🐳"); bonus_shares += 20
-    if sum(1 for r in roads.values() if r["player"] == player) >= 10: titles.append("🗺️"); bonus_shares += 20
+        if b["player"] == player: 
+            b_counts[b["type"]] += 1
+            
+    base_shares += b_counts["DATA_CENTER"] * 10
+    base_shares += b_counts["GATEWAY"] * 10
+    base_shares += b_counts["MEGA_HQ"] * 20
+    
+    # 2. カードのカウントとスコア加算（PATENTとWATCHの分離）
+    p_count = 0
+    watch_count = 0
+    watch_score = 0
+    
+    for c in cards.get(player, []):
+        if c.get("type") == "PATENT":
+            p_count += 1
+        else:
+            # PATENT以外のカードで、score(またはrarity)を持つものをWATCHカードとして扱う
+            score_val = c.get("score", c.get("rarity", 0))
+            if score_val > 0:
+                watch_count += 1
+                watch_score += score_val
+                
+    base_shares += (p_count * 10)
+    base_shares += watch_score
+    
+    # 3. 称号とボーナスの判定
+    if p_count >= 3: 
+        titles.append("💎")
+        bonus_shares += 20
+        
+    # 🥷 追加：WATCHカード10枚以上で称号とボーナス
+    if watch_count >= 10: 
+        titles.append("🦉")  # ※称号の絵文字は好きに変更してください
+        bonus_shares += 20
+        
+    if b_counts["MEGA_HQ"] >= 2: 
+        titles.append("🚀")
+        bonus_shares += 20
+        
+    if b_counts["GATEWAY"] >= 3: 
+        titles.append("🐳")
+        bonus_shares += 20
+        
+    if sum(1 for r in roads.values() if r["player"] == player) >= 10: 
+        titles.append("🗺️")
+        bonus_shares += 20
+        
     # 🥷 変更：ボットLv4ではなく、「勝利数が3回以上」に変更！
-    if combat_wins.get(player, 0) >= 3: titles.append("🎖️"); bonus_shares += 20
-    return {"base": base_shares, "bonus": bonus_shares, "total": base_shares + bonus_shares, "titles": titles}
+    if combat_wins.get(player, 0) >= 3: 
+        titles.append("🎖️")
+        bonus_shares += 20
+        
+    return {
+        "base": base_shares, 
+        "bonus": bonus_shares, 
+        "total": base_shares + bonus_shares, 
+        "titles": titles
+    }
 
 # game_logic.py に追加
+# game_logic.py
 def update_all_titles(state, buildings, cards, roads, combat_wins):
-    import game_state # 称号所有権を見るために必要
+    # 🥷 修正：諸悪の根源だった「import game_state」を削除！
     logs = []
     
-    # 定義（閾値）
+    # state（本物のノート）に title_owners が無ければ安全に初期化
+    if not hasattr(state, "title_owners"):
+        state.title_owners = {}
+        
     rules = {
         "💎": {"type": "PATENT", "count": 3},
+        "🦉": {"type": "WATCH", "count": 10},
         "🚀": {"type": "MEGA_HQ", "count": 2},
         "🐳": {"type": "GATEWAY", "count": 3},
         "🗺️": {"type": "ROAD", "count": 10},
@@ -42,32 +100,39 @@ def update_all_titles(state, buildings, cards, roads, combat_wins):
     }
 
     for t, rule in rules.items():
-        # 全プレイヤーの現在の値を計算
         scores = {}
         for p in ["Player1", "Player2", "Player3", "Player4"]:
-            if rule["type"] == "PATENT": val = sum(1 for c in cards.get(p, []) if c["type"] == "PATENT")
-            elif rule["type"] == "MEGA_HQ": val = sum(1 for b in buildings.values() if b["player"] == p and b["type"] == "MEGA_HQ")
-            elif rule["type"] == "GATEWAY": val = sum(1 for b in buildings.values() if b["player"] == p and b["type"] == "GATEWAY")
-            elif rule["type"] == "ROAD": val = sum(1 for r in roads.values() if r["player"] == p)
-            elif rule["type"] == "COMBAT": val = combat_wins.get(p, 0)
+            val = 0
+            if rule["type"] == "PATENT": 
+                val = sum(1 for c in cards.get(p, []) if c.get("type") == "PATENT")
+            elif rule["type"] == "WATCH": 
+                val = sum(1 for c in cards.get(p, []) if c.get("type") != "PATENT" and c.get("score", c.get("rarity", 0)) > 0)
+            elif rule["type"] == "MEGA_HQ": 
+                val = sum(1 for b in buildings.values() if b["player"] == p and b["type"] == "MEGA_HQ")
+            elif rule["type"] == "GATEWAY": 
+                val = sum(1 for b in buildings.values() if b["player"] == p and b["type"] == "GATEWAY")
+            elif rule["type"] == "ROAD": 
+                val = sum(1 for r in roads.values() if r["player"] == p)
+            elif rule["type"] == "COMBAT": 
+                val = combat_wins.get(p, 0)
             
-            if val >= rule["count"]: scores[p] = val
+            if val >= rule["count"]: 
+                scores[p] = val
 
         if not scores: continue
         
-        # 最大保持者（同数の場合は既存オーナー優先のため順序を変えない）
         best_p = max(scores, key=scores.get)
         best_val = scores[best_p]
         
-        current_owner = game_state.title_owners.get(t)
+        # 🥷 修正：game_state ではなく、引数の state.title_owners を直接読み書きする！
+        current_owner = state.title_owners.get(t)
         owner_val = scores.get(current_owner, 0)
 
-        # 称号の移譲・獲得の判定
         if current_owner is None:
-            game_state.title_owners[t] = best_p
+            state.title_owners[t] = best_p
             logs.append(f"🏆 {best_p} が称号 {t} を獲得しました！")
         elif current_owner != best_p and best_val > owner_val:
-            game_state.title_owners[t] = best_p
+            state.title_owners[t] = best_p
             logs.append(f"⚔️ 称号 {t} が {current_owner} から {best_p} へ移譲されました！")
             
     return logs

@@ -72,6 +72,9 @@ def build_standard_response(extra_data: dict = None):
     # 2. 常に最新のスコアを計算して独立変数（game_state）を更新
     game_logic.update_all_scores(state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
 
+    # 2.5：スコア更新の直後に、称号の判定（奪い合い）も毎回実行させる！
+    game_logic.update_all_titles(state, state.buildings, state.cards, state.roads, getattr(state, "combat_wins", {}))
+
     # 3. フロントエンドが期待する完全なベースデータを構築
     response = {
         "game_status": state.game_status,
@@ -89,7 +92,9 @@ def build_standard_response(extra_data: dict = None):
             "Player2": game_state.player2_score,
             "Player3": game_state.player3_score,
             "Player4": game_state.player4_score
-        }
+        },
+        # 🥷 追加ポイント②：フロントエンドに送るデータに "title_owners" をちゃんと含める！
+        "title_owners": getattr(state, "title_owners", {}),
     }
     
     # 4. 各アクション特有のデータ（サイコロの目やログなど）をマージ
@@ -473,6 +478,8 @@ def com_execute(req: ComExecuteRequest):
 def draw_card(req: CardRequest):
     enforce_time_limit()
     
+    score_val = 0  # 🥷 追加：スコアを格納する変数を初期化
+    
     # 資源判定と消費
     if req.deck_type == "WATCH":
         if state.inventory[req.player].get("NATURE", 0) < 10.0:
@@ -481,6 +488,11 @@ def draw_card(req: CardRequest):
         drawn_type = random.choice(WATCH_DECK)
         info = get_watch_card_info(drawn_type)
         name, desc = info["name"], info["desc"]
+        
+        # 🥷 追加：スコア（レア度）を引っ張り出す
+        # info の中に score があればそれを取り、なければ WATCH_DEFS から安全に取得します
+        score_val = info.get("score", WATCH_DEFS.get(drawn_type, {}).get("score", 0))
+        
     else:
         # 既存のロジック
         if state.inventory[req.player]["NUCLEAR"] < 10.0: 
@@ -490,7 +502,16 @@ def draw_card(req: CardRequest):
         name, desc = CARD_DEFS[drawn_type]["name"], CARD_DEFS[drawn_type]["desc"]
     
     state.card_counter_id += 1
-    new_card = {"id": f"c_{state.card_counter_id}", "type": drawn_type, "name": name, "desc": desc}
+    
+    # 🥷 修正：最後に "score": score_val を付け足してカードを生成する！
+    new_card = {
+        "id": f"c_{state.card_counter_id}", 
+        "type": drawn_type, 
+        "name": name, 
+        "desc": desc, 
+        "score": score_val
+    }
+    
     state.cards[req.player].append(new_card)
     
     return build_standard_response({"status": "success", "drawn": new_card})
@@ -539,13 +560,6 @@ def use_card(req: UseCardRequest):
         if state.roads[req.target_id]["player"] == req.player: raise HTTPException(status_code=400, detail="CANNOT_DESTROY_OWN_ROAD")
         del state.roads[req.target_id]
         msg = "DDoS攻撃成功！標的のネットワークを破壊しました。"
-     
-    # use_card のカードタイプ判定ブロックに追加
-    elif c_type in WATCH_DECK: # WATCH_DECKの絵文字がそのままタイプとして入る前提
-        score = WATCH_DEFS[c_type]["score"]
-        # ここでスコア加算（state.scores等、管理方法に合わせて調整してください）
-        state.scores[req.player] = state.scores.get(req.player, 0) + score
-        msg = f"観測成功！{c_type} の発見によりスコア【+{score}】加算。"
 
     player_cards.remove(card)
     return build_standard_response({"status": "success", "msg": msg, "yields": yields})
