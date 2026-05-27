@@ -8,7 +8,8 @@ const resourceEmojis = {
   "SILICON": "🎛️",
   "HARD": "🛠️",
   "POLYMER": "🧪",
-  "NUCLEAR": "☢️"
+  "NUCLEAR": "☢️",
+  "NATURE": "🌿"
 };
 
 const otherCosts = {
