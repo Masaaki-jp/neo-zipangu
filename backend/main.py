@@ -535,10 +535,12 @@ def use_card(req: UseCardRequest):
 @app.post("/api/trade")
 def trade_resources(req: TradeRequest):
     enforce_time_limit()
-    if req.offer_res not in state.inventory[req.player] or req.receive_res not in state.inventory[req.player]: raise HTTPException(status_code=400, detail="INVALID_RESOURCE")
-    if state.inventory[req.player][req.offer_res] < state.trade_rates[req.player][req.offer_res]: raise HTTPException(status_code=400, detail="INSUFFICIENT_FUNDS")
-    state.inventory[req.player][req.offer_res] -= state.trade_rates[req.player][req.offer_res]; state.inventory[req.player][req.receive_res] += 10.0
     
+    result = state.execute_trade(req.player, req.offer_res, req.receive_res)
+    
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+        
     return build_standard_response({"status": "success"})
 
 @app.get("/api/trade_rates")
@@ -569,7 +571,8 @@ def build_hub(req: BuildRequest):
 @app.post("/api/move_hacker")
 def move_hacker(req: HackerRequest):
     enforce_time_limit()
-    state.hacker_position = req.hex_id
+    
+    state.execute_move_hacker(req.hex_id)
     return build_standard_response({"status": "success"})
 
 @app.post("/api/deploy_bot")
@@ -587,55 +590,14 @@ def deploy_bot(req: BuildRequest):
 @app.post("/api/move_bot")
 def move_bot(req: MoveRequest):
     enforce_time_limit()
-    if state.game_status["state"] == "setup": raise HTTPException(status_code=400, detail="CANNOT_MOVE_IN_SETUP")
-    if req.from_vertex not in state.bots or state.bots[req.from_vertex]["player"] != req.player: raise HTTPException(status_code=400, detail="NO_BOT_HERE")
-    bot = state.bots[req.from_vertex]
-    if bot.get("has_moved", False): raise HTTPException(status_code=400, detail="ALREADY_MOVED_THIS_TURN")
-    fx, fy = map(int, req.from_vertex.split(',')); tx, ty = map(int, req.to_vertex.split(','))
-    if not (50 < math.hypot(tx - fx, ty - fy) < 70): raise HTTPException(status_code=400, detail="TOO_FAR")
     
-    pts = [req.from_vertex, req.to_vertex]; pts.sort(); edge_id = f"{pts[0]}_{pts[1]}"
-    if edge_id not in state.roads: raise HTTPException(status_code=400, detail="MUST_MOVE_ALONG_ANY_ROAD")
-    if not pay_cost(req.player, "MOVE_BOT", COSTS, state.inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+    # 複雑なサイコロバトルと勝敗判定はすべて state にお任せ
+    result = state.execute_move_bot(req.player, req.from_vertex, req.to_vertex)
     
-    bot_data = dict(bot); atk_level = bot_data["level"]; target_bldg = state.buildings.get(req.to_vertex); target_bot = state.bots.get(req.to_vertex)
-    is_enemy = (target_bldg and target_bldg["player"] != req.player) or (target_bot and target_bot["player"] != req.player)
-    combat_log = None
-    if is_enemy:
-        def_dice_count = 0
-        if target_bldg:
-            if target_bldg["type"] == "LOCAL_HUB": def_dice_count += 1
-            elif target_bldg["type"] in ["DATA_CENTER", "GATEWAY"]: def_dice_count += 2
-            elif target_bldg["type"] == "MEGA_HQ": def_dice_count += 3
-        if target_bot: def_dice_count += target_bot["level"]
-
-        # 🥷 修正：同点(Draw)の間はサイコロを振り続けるサドンデス・ループ
-        atk_sum = 0
-        def_sum = 0
-        while atk_sum == def_sum:
-            atk_rolls = [random.randint(1,6) for _ in range(atk_level)]
-            def_rolls = [random.randint(1,6) for _ in range(max(1, def_dice_count))]
-            atk_sum, def_sum = sum(atk_rolls), sum(def_rolls)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
         
-        if atk_sum > def_sum:
-            combat_log = f"VICTORY! Atk:{atk_sum} vs Def:{def_sum} | 敵拠点を制圧！"
-
-            # 🥷 追加：勝利したらカウントを+1する
-            if not hasattr(state, "combat_wins"): state.combat_wins = {p: 0 for p in ["Player1", "Player2", "Player3", "Player4"]}
-            state.combat_wins[req.player] += 1
-
-            if target_bldg: target_bldg["player"] = req.player 
-            if target_bot: del state.bots[req.to_vertex] 
-            bot_data["has_moved"] = True; state.bots[req.to_vertex] = bot_data; del state.bots[req.from_vertex]
-            check_annihilation() 
-        else:
-            combat_log = f"DEFEAT... Atk:{atk_sum} vs Def:{def_sum} | 我が軍のボットは破壊されました。"
-            del state.bots[req.from_vertex]
-    else:
-        if req.to_vertex in state.bots: raise HTTPException(status_code=400, detail="ALLY_BOT_ALREADY_HERE")
-        bot_data["has_moved"] = True; state.bots[req.to_vertex] = bot_data; del state.bots[req.from_vertex]
-        
-    return build_standard_response({"status": "success", "combat_log": combat_log})
+    return build_standard_response({"status": "success", "combat_log": result.get("combat_log")})
 
 @app.post("/api/build_road")
 def build_road(req: RoadRequest):
