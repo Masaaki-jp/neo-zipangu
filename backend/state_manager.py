@@ -357,6 +357,120 @@ class GameSession:
         self.hacker_position = hex_id
         return {"success": True}
 
+    # 🥷 追加5：ゲーム開始時の順番決めダイス
+    def execute_init_roll(self, player_id: str):
+        if player_id in self.init_rolls: 
+            return {"error": "ALREADY_ROLLED"}
+            
+        d1, d2 = random.randint(1, 6), random.randint(1, 6)
+        self.roll_counter += 1
+        self.init_rolls[player_id] = {"total": d1 + d2, "order": self.roll_counter, "dice": [d1, d2]}
+        
+        if len(self.init_rolls) == 4:
+            sorted_players = sorted(self.init_rolls.keys(), key=lambda p: (-self.init_rolls[p]["total"], self.init_rolls[p]["order"]))
+            self.game_status["turn_order"] = sorted_players
+            self.game_status["current_turn_index"] = 0
+            self.game_status["current_player"] = sorted_players[0]
+            self.game_status["state"] = "setup"
+            self.game_status["setup_turn"] = 0
+
+            com_pool = ["com_gemini"] 
+            for p in sorted_players:
+                if self.player_types.get(p, "human") != "human":
+                    self.player_types[p] = random.choice(com_pool)
+
+            from countdown import calculate_deadline
+            current_p = self.game_status["current_player"]
+            if self.player_types.get(current_p, "human") == "human":
+                self.game_status["turn_end_time"] = calculate_deadline(60)
+            else:
+                self.game_status["turn_end_time"] = None
+
+        return {"success": True, "init_rolls": self.init_rolls}
+
+    # 🥷 追加6：ターン終了処理（フェーズ進行・シーズンイベント・勝利判定）
+    def execute_end_turn(self, player_id: str):
+        if self.game_status["current_player"] != player_id: 
+            return {"error": "NOT_YOUR_TURN"}
+            
+        for b in self.bots.values(): 
+            b["has_moved"] = False
+        
+        # 初期配置フェーズ（setup）の処理
+        if self.game_status["state"] == "setup":
+            my_bldgs = [b for b in self.buildings.values() if b["player"] == player_id]
+            my_roads = [r for r in self.roads.values() if r["player"] == player_id]
+            st = self.game_status["setup_turn"]
+            expected_count = 1 if st < 4 else 2
+            
+            from countdown import is_time_up
+            deadline = self.game_status.get("turn_end_time")
+            is_timeout = is_time_up(deadline)
+
+            if not is_timeout:
+                if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
+                    return {"error": "MUST_BUILD_HUB_AND_ROAD"}
+            else:
+                # タイムアウト時の初期配置未完了は無効試合
+                if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
+                    return {"status": "timeout_reset"}
+                
+            self.game_status["setup_turn"] += 1
+            st = self.game_status["setup_turn"]
+            
+            if st >= 8:
+                self.game_status["state"] = "playing"
+                self.game_status["current_turn_index"] = 0
+                self.game_status["current_player"] = self.game_status["turn_order"][0]
+
+                res_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
+                self.game_status["season_event"] = {
+                    "resource": random.choice(res_types),
+                    "rate": random.choice([-0.3, -0.2, -0.1, 0.1, 0.2, 0.3])
+                }
+            else:
+                idx = st if st < 4 else 7 - st
+                self.game_status["current_turn_index"] = idx
+                self.game_status["current_player"] = self.game_status["turn_order"][idx]
+                
+        # 通常プレイフェーズ（playing）の処理
+        elif self.game_status["state"] == "playing":
+            from game_logic import get_score
+            import map_layouts
+            
+            score = get_score(player_id, self.buildings, self.cards, self.roads, self.bots, self.combat_wins)
+            map_blueprint = map_layouts.MAP_CATALOG.get(self.current_map_id, map_layouts.MAP_CATALOG["STAGE_01_BEGINNER"])
+            target_score = map_blueprint["winning_score"]
+            
+            if score["total"] >= target_score:
+                self.game_status["state"] = "finished"
+                self.game_status["winner"] = player_id
+                self.game_status["reason"] = "SCORE_REACHED"
+                self.game_status["target_score"] = target_score
+            else:
+                next_idx = (self.game_status["current_turn_index"] + 1) % 4
+                self.game_status["current_turn_index"] = next_idx
+                self.game_status["current_player"] = self.game_status["turn_order"][next_idx]
+                
+                # ラウンドが1周したらシーズンイベント更新
+                if next_idx == 0:
+                    res_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
+                    self.game_status["season_event"] = {
+                        "resource": random.choice(res_types),
+                        "rate": random.choice([-0.3, -0.2, -0.1, 0.1, 0.2, 0.3])
+                    }
+
+        # 次のプレイヤーの制限時間設定
+        if self.game_status["state"] != "finished":
+            next_p = self.game_status["current_player"]
+            from countdown import calculate_deadline
+            if self.player_types.get(next_p, "human") == "human":
+                self.game_status["turn_end_time"] = calculate_deadline(60)
+            else:
+                self.game_status["turn_end_time"] = None
+                
+        return {"status": "success"}
+
 # ==========================================
 # 第一段階の安全策：
 # 将来のマルチプレイまでは、ここで作った1つのインスタンスを全員で使い回す
