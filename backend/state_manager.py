@@ -601,6 +601,104 @@ class GameSession:
             "event_log": event_log
         }
 
+    # 🥷 追加9：COM（NPC）のターン実行ロジック
+    def execute_com_turn(self, player_id: str):
+        import constants, game_logic
+        from com_ai import com_setup, com_speeder, com_builder, com_fighter, com_gambler, com_gemini
+
+        if self.game_status["current_player"] != player_id: 
+            return {"error": "NOT_COM_TURN"}
+            
+        current_type = self.player_types.get(player_id, "human")
+        if current_type == "human": 
+            return {"error": "PLAYER_IS_HUMAN"}
+            
+        if self.game_status["state"] not in ["playing", "setup"]: 
+            return {"error": "COM_ONLY_ACTIVE_IN_PLAYING_OR_SETUP_STATE"}
+
+        # AIの行動を決定
+        if self.game_status["state"] == "setup":
+            result = com_setup.execute_setup_turn(player_id, self, constants)
+        elif current_type == "com_speeder":
+            result = com_speeder.execute_turn(player_id, self, game_logic, constants)
+        elif current_type == "com_builder":
+            result = com_builder.execute_turn(player_id, self, game_logic, constants)
+        elif current_type == "com_fighter": 
+            result = com_fighter.execute_turn(player_id, self, game_logic, constants)
+        elif current_type == "com_gambler":
+            result = com_gambler.execute_turn(player_id, self, game_logic, constants)
+        elif current_type == "com_gemini":
+            result = com_gemini.execute_turn(player_id, self, game_logic, constants)
+        else:
+            result = com_speeder.execute_turn(player_id, self, game_logic, constants)
+            
+        # 勝敗判定
+        score = game_logic.get_score(player_id, self.buildings, self.cards, self.roads, self.bots, self.combat_wins)
+        import map_layouts
+        target_score = map_layouts.MAP_CATALOG.get(self.current_map_id, map_layouts.MAP_CATALOG["STAGE_01_BEGINNER"])["winning_score"]
+        
+        if score["total"] >= target_score:
+            self.game_status["state"] = "finished"
+            self.game_status["winner"] = player_id
+            self.game_status["reason"] = "SCORE_REACHED"
+            self.game_status["target_score"] = target_score
+
+        # ターン一巡時のシーズンイベント更新
+        if self.game_status["state"] == "playing" and self.game_status.get("current_turn_index") == 0:
+            import random
+            self.game_status["season_event"] = {
+                "resource": random.choice(["POWER", "DATA", "SILICON", "HARD", "POLYMER"]),
+                "rate": random.choice([-0.3, -0.2, -0.1, 0.1, 0.2, 0.3])
+            }
+
+        # タイマー管理
+        if self.game_status["state"] != "finished":
+            next_p = self.game_status["current_player"]
+            if self.player_types.get(next_p, "human") == "human":
+                from countdown import calculate_deadline
+                self.game_status["turn_end_time"] = calculate_deadline(60)
+            else:
+                self.game_status["turn_end_time"] = None
+
+        return {"success": True, "logs": result["logs"], "dice": result.get("dice")}
+
+    # 🥷 追加10：ゲーム全体のリセット（完全初期化）
+    def reset_state(self, map_id: str = None):
+        if map_id:
+            self.current_map_id = map_id
+            new_state = "init_roll"
+        else:
+            self.current_map_id = "STAGE_01_BEGINNER"
+            new_state = "map_selection"
+
+        self.current_board.clear()
+        self.buildings.clear()
+        self.roads.clear()
+        self.bots.clear()
+        self.hacker_position = None
+        self.cards.clear()
+        self.card_counter_id = 0
+        self.init_rolls.clear()
+        self.roll_counter = 0
+        self.coastal_vertices.clear()
+        
+        self.title_owners = {"💎": None, "🦉": None, "🚀": None, "🐳": None, "🗺️": None, "🎖️": None}
+        self.combat_wins = {p: 0 for p in self.PLAYERS}
+
+        self.game_status.update({
+            "state": new_state, "winner": None, "reason": "", "turn_order": [], 
+            "current_turn_index": 0, "current_player": "Player1", "setup_turn": 0
+        })
+        
+        import random
+        for p in self.PLAYERS:
+            self.inventory[p] = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0}
+            self.trade_rates[p] = {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0}
+            self.cards[p] = []
+            self.player_types[p] = "human" if p == "Player1" else random.choice(["com_speeder", "com_builder", "com_fighter", "com_gambler", "com_gemini"])
+            
+        return {"success": True}
+
 # ==========================================
 # 第一段階の安全策：
 # 将来のマルチプレイまでは、ここで作った1つのインスタンスを全員で使い回す

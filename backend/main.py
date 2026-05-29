@@ -322,80 +322,17 @@ def end_turn(req: BuildRequest):
 
 @app.post("/api/com_execute")
 def com_execute(req: ComExecuteRequest):
-    import constants
+    # AIターン実行の複雑なロジックを state に丸投げ
+    result = state.execute_com_turn(req.player)
     
-    if state.game_status["current_player"] != req.player:
-        raise HTTPException(status_code=400, detail="NOT_COM_TURN")
-    
-    current_type = state.player_types.get(req.player, "human")
-    if current_type == "human":
-        raise HTTPException(status_code=400, detail="PLAYER_IS_HUMAN")
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
         
-    if state.game_status["state"] not in ["playing", "setup"]:
-        raise HTTPException(status_code=400, detail="COM_ONLY_ACTIVE_IN_PLAYING_OR_SETUP_STATE")
-
-    if state.game_status["state"] == "setup":
-        from com_ai import com_setup 
-        result = com_setup.execute_setup_turn(req.player, state, constants)
-    elif current_type == "com_speeder":
-        result = com_speeder.execute_turn(req.player, state, game_logic, constants)
-    elif current_type == "com_builder":
-        result = com_builder.execute_turn(req.player, state, game_logic, constants)
-    elif current_type == "com_fighter": 
-        result = com_fighter.execute_turn(req.player, state, game_logic, constants)
-    elif current_type == "com_gambler":
-        result = com_gambler.execute_turn(req.player, state, game_logic, constants)
-    elif current_type == "com_gemini":
-        result = com_gemini.execute_turn(req.player, state, game_logic, constants)
-    else:
-        result = com_speeder.execute_turn(req.player, state, game_logic, constants)
-            
-    score = get_score(req.player, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
-    import map_layouts
-    current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
-    target_score = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
-    
-    if score["total"] >= target_score:
-        # 🥷 修正：人間と同じ、シンプルなスコア到達勝利ロジックに統一！
-        state.game_status["state"] = "finished"
-        state.game_status["winner"] = req.player
-        state.game_status["reason"] = "SCORE_REACHED"
-        state.game_status["target_score"] = target_score
-
-    # 🥷 ターン進行やシーズンイベントの処理は既存のまま
-    if state.game_status["state"] == "playing" and state.game_status.get("current_turn_index") == 0:
-        import random
-        res_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
-        state.game_status["season_event"] = {
-            "resource": random.choice(res_types),
-            "rate": random.choice([-0.3, -0.2, -0.1, 0.1, 0.2, 0.3])
-        }
-
-    from countdown import calculate_deadline
-    if state.game_status["state"] != "finished":
-        next_p = state.game_status["current_player"]
-        if state.player_types.get(next_p, "human") == "human":
-            state.game_status["turn_end_time"] = calculate_deadline(60)
-        else:
-            state.game_status["turn_end_time"] = None
-
-    # 🥷 ここにもアプローチ2の全員分スコア計算を追加！
-    all_scores = {
-        "Player1": game_logic.get_score("Player1", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
-        "Player2": game_logic.get_score("Player2", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
-        "Player3": game_logic.get_score("Player3", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
-        "Player4": game_logic.get_score("Player4", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
-    }
-
-    # 称号獲得ログが result["logs"] に含まれてフロントに届きます
     return build_standard_response({
         "status": "success",
-        "action_logs": result["logs"], # 称号ログもここに含まれて送信されます
-        "dice": result["dice"],
-        "score": all_scores[req.player], # 常に自分のスコアを維持
-        "all_scores": all_scores        # ここで「称号付きの全スコア」を送るのが重要！
+        "action_logs": result["logs"],
+        "dice": result["dice"]
     })
- 
 
 @app.post("/api/draw_card")
 def draw_card(req: CardRequest):
@@ -544,57 +481,8 @@ def roll_dice():
 
 @app.post("/api/reset")
 def reset_game(req: ResetRequest = None):
-    if req and req.map_id:
-        state.current_map_id = req.map_id
-        new_state = "init_roll"
-    else:
-        state.current_map_id = "STAGE_01_BEGINNER"
-        new_state = "map_selection"
-
-    # 全体リセット
-    state.current_board.clear()
-    state.buildings.clear()
-    state.roads.clear()
-    state.bots.clear()
-    state.hacker_position = None
-    state.cards.clear()
-    state.card_counter_id = 0
-    state.init_rolls.clear()
-    state.roll_counter = 0
-    state.coastal_vertices.clear()
-
-    state.title_owners = {
-        "💎": None,
-        "🦉": None, # WATCHのフクロウも初期化に含めました
-        "🚀": None,
-        "🐳": None,
-        "🗺️": None,
-        "🎖️": None
-    }
+    # 変数のクリアや初期化を state に丸投げ
+    map_id = req.map_id if req else None
+    state.reset_state(map_id)
     
-    # 🥷 称号判定の元となる勝利数もリセット
-    if not hasattr(state, "combat_wins"):
-        state.combat_wins = {}
-    state.combat_wins = {p: 0 for p in state.PLAYERS}
-
-    state.game_status.update({
-        "state": new_state, 
-        "winner": None, 
-        "reason": "", 
-        "turn_order": [], 
-        "current_turn_index": 0, 
-        "current_player": "Player1", 
-        "setup_turn": 0
-    })
-    
-    for p in state.PLAYERS:
-        state.inventory[p] = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0}
-        state.trade_rates[p] = {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0}
-        state.cards[p] = []
-        
-        if p == "Player1":
-            state.player_types[p] = "human"
-        else:
-            state.player_types[p] = random.choice(["com_speeder", "com_builder", "com_fighter", "com_gambler", "com_gemini"])
-            
     return {"status": "system_reset_complete"}
