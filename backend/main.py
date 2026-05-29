@@ -548,68 +548,23 @@ def get_trade_rates(player: str = "Player1"):
 @app.post("/api/build")
 def build_hub(req: BuildRequest):
     enforce_time_limit()
-    my_bldgs = [b for b in state.buildings.values() if b["player"] == req.player]; is_free_phase = state.game_status["state"] == "setup"
-    counts = {"LOCAL_HUB": 0, "DATA_CENTER": 0, "GATEWAY": 0, "MEGA_HQ": 0}
-    for b in my_bldgs: counts[b["type"]] += 1
-    try: new_x, new_y = map(int, req.vertex_id.split(',')); 
-    except ValueError: raise HTTPException(status_code=400, detail="INVALID")
-
-    touching_sectors = getattr(state, "vertex_sectors", {}).get(req.vertex_id, [])
-    if "DARK" in touching_sectors:
-        raise HTTPException(status_code=400, detail="DARK領域には建築できません！")
-    if touching_sectors and all(s == "OCEAN" for s in touching_sectors):
-        raise HTTPException(status_code=400, detail="深海には建築できません！海岸線を狙ってください。")
-
-    is_coastal = req.vertex_id in state.coastal_vertices
-
-    if req.vertex_id in state.buildings:
-        b = state.buildings[req.vertex_id]
-        if b["player"] != req.player: raise HTTPException(status_code=400, detail="ALREADY_BUILT")
-        if is_free_phase: raise HTTPException(status_code=400, detail="CANNOT_UPGRADE_IN_SETUP")
-        
-        if b["type"] == "LOCAL_HUB":
-            if is_coastal and req.upgrade_to == "GATEWAY":
-                if counts["GATEWAY"] >= MAX_BUILDINGS["GATEWAY"]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
-                if not pay_cost(req.player, "GATEWAY", COSTS, state.inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
-                b["type"] = "GATEWAY"
-                available_res = [res for res, rate in state.trade_rates[req.player].items() if rate > 10.0]
-                discount_res = random.choice(available_res) if available_res else None
-                if discount_res: state.trade_rates[req.player][discount_res] = 10.0
-                return build_standard_response({"status": "upgraded", "type": "GATEWAY", "discount": discount_res})
-            else:
-                if counts["DATA_CENTER"] >= MAX_BUILDINGS["DATA_CENTER"]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
-                if not pay_cost(req.player, "DATA_CENTER", COSTS, state.inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
-                b["type"] = "DATA_CENTER"
-        elif b["type"] == "DATA_CENTER":
-            if counts["MEGA_HQ"] >= MAX_BUILDINGS["MEGA_HQ"]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
-            if not pay_cost(req.player, "MEGA_HQ", COSTS, state.inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
-            b["type"] = "MEGA_HQ"
-        else: raise HTTPException(status_code=400, detail="MAX_LEVEL_REACHED")
-        return build_standard_response({"status": "upgraded", "type": b["type"]})
-        
-    for ex_id in state.buildings.keys():
-        ex_x, ex_y = map(int, ex_id.split(','))
-        if math.hypot(new_x - ex_x, new_y - ex_y) < (HEX_SIZE + 5): raise HTTPException(status_code=400, detail="TOO_CLOSE_TO_ANOTHER_HUB")
-
-    new_type = "DATA_CENTER" if is_free_phase else "LOCAL_HUB"
-    if counts[new_type] >= MAX_BUILDINGS[new_type]: raise HTTPException(status_code=400, detail="MAX_STOCK_REACHED")
     
-    if not is_free_phase:
-        is_connected = False
-        for r_id, r_info in state.roads.items():
-            if r_info["player"] == req.player:
-                v1, v2 = r_id.split('_')
-                if req.vertex_id == v1 or req.vertex_id == v2: is_connected = True; break
-        if not is_connected: raise HTTPException(status_code=400, detail="NOT_CONNECTED_TO_ROAD")
-        if not pay_cost(req.player, "LOCAL_HUB", COSTS, state.inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
-    else:
-        st = state.game_status["setup_turn"]
-        expected = 1 if st < 4 else 2
-        if len(my_bldgs) >= expected:
-            raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
-
-    state.buildings[req.vertex_id] = {"player": req.player, "type": new_type, "bot_level": 0}
-    return build_standard_response({"status": "success"})
+    # 🥷 複雑な建設ロジックはすべて state に任せる
+    upgrade_to = getattr(req, "upgrade_to", None)
+    result = state.execute_build(req.player, req.vertex_id, upgrade_to)
+    
+    # エラーがあれば弾く
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+        
+    # 成功時のレスポンスデータを組み立てる
+    response_data = {"status": result["status"]}
+    if "type" in result:
+        response_data["type"] = result["type"]
+    if "discount" in result and result["discount"]:
+        response_data["discount"] = result["discount"]
+        
+    return build_standard_response(response_data)
 
 @app.post("/api/move_hacker")
 def move_hacker(req: HackerRequest):
