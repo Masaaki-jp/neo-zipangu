@@ -2,7 +2,7 @@
 
 import random
 import math
-from constants import CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK, MAX_BUILDINGS, COSTS, HEX_SIZE
+from constants import CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK, MAX_BUILDINGS, COSTS, HEX_SIZE, CENTER_X, CENTER_Y
 from game_logic import pay_cost
 from nature_data import WATCH_DEFS, get_watch_card_info
 
@@ -158,6 +158,92 @@ class GameSession:
         # 建築実行
         self.buildings[vertex_id] = {"player": player_id, "type": new_type, "bot_level": 0}
         return {"success": True, "status": "success"}
+
+    # 🥷 追加：道の建設と、それに伴うDARKマスの開拓ロジック
+    def execute_build_road(self, player_id: str, edge_id: str):
+        my_roads = [r for r in self.roads.values() if r["player"] == player_id]
+        is_free_phase = self.game_status["state"] == "setup"
+        
+        if edge_id in self.roads: 
+            return {"error": "ROAD_ALREADY_EXISTS"}
+        
+        try:
+            v1, v2 = edge_id.split('_')
+        except ValueError:
+            return {"error": "INVALID_EDGE_ID"}
+        
+        if is_free_phase:
+            st = self.game_status["setup_turn"]
+            expected = 1 if st < 4 else 2
+            if len(my_roads) >= expected:
+                return {"error": "ALREADY_BUILT_IN_THIS_SETUP_TURN"}
+            
+            is_connected_to_hub = False
+            if (v1 in self.buildings and self.buildings[v1]["player"] == player_id) or \
+               (v2 in self.buildings and self.buildings[v2]["player"] == player_id): 
+                is_connected_to_hub = True
+                
+            if not is_connected_to_hub: 
+                return {"error": "MUST_CONNECT_TO_YOUR_NEW_HUB"}
+        else:
+            is_connected = False
+            if (v1 in self.buildings and self.buildings[v1]["player"] == player_id) or \
+               (v2 in self.buildings and self.buildings[v2]["player"] == player_id): 
+                is_connected = True
+            else:
+                for r_id, r_info in self.roads.items():
+                    if r_info["player"] == player_id:
+                        ex_v1, ex_v2 = r_id.split('_')
+                        if v1 in (ex_v1, ex_v2) or v2 in (ex_v1, ex_v2): 
+                            is_connected = True
+                            break
+                            
+            if not is_connected: 
+                return {"error": "NOT_CONNECTED"}
+                
+            if not pay_cost(player_id, "ROAD", COSTS, self.inventory): 
+                return {"error": "INSUFFICIENT_RESOURCES"}
+            
+        self.roads[edge_id] = {"player": player_id}
+        
+        # 開拓（探索）ロジック
+        mid_x = (float(v1.split(',')[0]) + float(v2.split(',')[0])) / 2
+        mid_y = (float(v1.split(',')[1]) + float(v2.split(',')[1])) / 2 
+        explored = False
+        new_sector = None
+        
+        for hex_data in self.current_board:
+            if hex_data["sector"] == "DARK":
+                cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
+                cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
+                if 45 < math.hypot(cx - mid_x, cy - mid_y) < 55: 
+                    new_sector = random.choice(["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"])
+                    hex_data["sector"] = new_sector
+                    hex_data["number"] = random.choice([2, 3, 4, 5, 6, 8, 9, 10, 11, 12])
+                    explored = True
+                    break
+                    
+        return {"success": True, "explored": explored, "new_sector": new_sector}
+
+    # 🥷 追加：ボットの配置・強化ロジック
+    def execute_deploy_bot(self, player_id: str, vertex_id: str):
+        if self.game_status["state"] == "setup": 
+            return {"error": "CANNOT_DEPLOY_IN_SETUP"}
+            
+        if vertex_id in self.bots and self.bots[vertex_id]["player"] == player_id:
+            if self.bots[vertex_id]["level"] >= 4: 
+                return {"error": "MAX_BOT_LEVEL_REACHED"}
+            if not pay_cost(player_id, "UPGRADE_BOT", COSTS, self.inventory): 
+                return {"error": "INSUFFICIENT_RESOURCES_FOR_UPGRADE"}
+            self.bots[vertex_id]["level"] += 1
+        else:
+            if vertex_id not in self.buildings or self.buildings[vertex_id]["player"] != player_id: 
+                return {"error": "MUST_DEPLOY_ON_YOUR_HUB"}
+            if not pay_cost(player_id, "BOT", COSTS, self.inventory): 
+                return {"error": "INSUFFICIENT_RESOURCES"}
+            self.bots[vertex_id] = {"player": player_id, "level": 1, "has_moved": False}
+            
+        return {"success": True}
 
 # ==========================================
 # 第一段階の安全策：
