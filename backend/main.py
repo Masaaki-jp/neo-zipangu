@@ -291,107 +291,34 @@ def get_or_generate_board():
 
 @app.post("/api/init_roll")
 def init_roll(req: InitRollRequest):
-    if req.player in state.init_rolls: raise HTTPException(status_code=400, detail="ALREADY_ROLLED")
-    d1, d2 = random.randint(1, 6), random.randint(1, 6)
-    state.roll_counter += 1
-    state.init_rolls[req.player] = {"total": d1+d2, "order": state.roll_counter, "dice": [d1, d2]}
-    if len(state.init_rolls) == 4:
-        sorted_players = sorted(state.init_rolls.keys(), key=lambda p: (-state.init_rolls[p]["total"], state.init_rolls[p]["order"]))
-        state.game_status["turn_order"] = sorted_players
-        state.game_status["current_turn_index"] = 0
-        state.game_status["current_player"] = sorted_players[0]
-        state.game_status["state"] = "setup"
-        state.game_status["setup_turn"] = 0
+    # 順番決めのダイスロジックをクラスに丸投げ
+    result = state.execute_init_roll(req.player)
+    
+    if "error" in result: 
+        raise HTTPException(status_code=400, detail=result["error"])
+        
+    return build_standard_response({"status": "success", "init_rolls": result["init_rolls"]})
 
-        com_pool = ["com_gemini"] 
-        for p in sorted_players:
-            if state.player_types.get(p, "human") != "human":
-                state.player_types[p] = random.choice(com_pool)
-
-        current_p = state.game_status["current_player"]
-        if state.player_types.get(current_p, "human") == "human":
-            state.game_status["turn_end_time"] = calculate_deadline(60)
-        else:
-            state.game_status["turn_end_time"] = None
-
-    return build_standard_response({"status": "success", "init_rolls": state.init_rolls})
+# main.py
 
 @app.post("/api/end_turn")
 def end_turn(req: BuildRequest): 
-    if state.game_status["current_player"] != req.player: raise HTTPException(status_code=400, detail="NOT_YOUR_TURN")
-    for b in state.bots.values(): b["has_moved"] = False
+    # 🥷 修正：ここにあった enforce_time_limit() を削除！
+    # 時間切れのペナルティ判定はクラス側で行うため、ここで弾いてはいけません。
     
-    if state.game_status["state"] == "setup":
-        my_bldgs = [b for b in state.buildings.values() if b["player"] == req.player]
-        my_roads = [r for r in state.roads.values() if r["player"] == req.player]
-        st = state.game_status["setup_turn"]
-        expected_count = 1 if st < 4 else 2
+    # 手番終了にまつわる複雑な判定をクラスに丸投げ
+    result = state.execute_end_turn(req.player)
+    
+    if "error" in result: 
+        raise HTTPException(status_code=400, detail=result["error"])
         
-        deadline = state.game_status.get("turn_end_time")
-        is_timeout = is_time_up(deadline)
-
-        if not is_timeout:
-            if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
-                raise HTTPException(status_code=400, detail="MUST_BUILD_HUB_AND_ROAD")
-        else:
-            if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
-                reset_game() 
-                state.game_status["reason"] = f"{req.player} が初期配置を放棄したため、無効試合（解散）となりました。"
-                return build_standard_response({"status": "success"})
+    # 初期配置でタイムアウト失格になった場合のハンドリング
+    if result.get("status") == "timeout_reset":
+        reset_game() 
+        state.game_status["reason"] = f"{req.player} が初期配置を放棄したため、無効試合（解散）となりました。"
+        return build_standard_response({"status": "success"})
             
-        state.game_status["setup_turn"] += 1
-        st = state.game_status["setup_turn"]
-        
-        if st >= 8:
-            state.game_status["state"] = "playing"
-            state.game_status["current_turn_index"] = 0
-            state.game_status["current_player"] = state.game_status["turn_order"][0]
-
-            import random
-            res_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
-            state.game_status["season_event"] = {
-                "resource": random.choice(res_types),
-                "rate": random.choice([-0.3, -0.2, -0.1, 0.1, 0.2, 0.3])
-            }
-        else:
-            idx = st if st < 4 else 7 - st
-            state.game_status["current_turn_index"] = idx
-            state.game_status["current_player"] = state.game_status["turn_order"][idx]
-            
-    elif state.game_status["state"] == "playing":
-        # 勝敗判定のためのスコア計算
-        score = get_score(req.player, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
-        import map_layouts
-        current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
-        target_score = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
-        
-        if score["total"] >= target_score:
-            # 🥷 非常にシンプル：目標スコアに達した人がそのまま勝者！
-            state.game_status["state"] = "finished"
-            state.game_status["winner"] = req.player
-            state.game_status["reason"] = "SCORE_REACHED"
-            # 🥷 フロントエンドで「/ 〇〇 SCORES」と表示するために目標値を渡しておく
-            state.game_status["target_score"] = target_score
-        else:
-            next_idx = (state.game_status["current_turn_index"] + 1) % 4
-            state.game_status["current_turn_index"] = next_idx
-            state.game_status["current_player"] = state.game_status["turn_order"][next_idx]
-            if next_idx == 0:
-                import random
-                res_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
-                state.game_status["season_event"] = {
-                    "resource": random.choice(res_types),
-                    "rate": random.choice([-0.3, -0.2, -0.1, 0.1, 0.2, 0.3])
-                }
-
-    if state.game_status["state"] != "finished":
-        next_p = state.game_status["current_player"]
-        if state.player_types.get(next_p, "human") == "human":
-            state.game_status["turn_end_time"] = calculate_deadline(60)
-        else:
-            state.game_status["turn_end_time"] = None
-            
-    return build_standard_response({"status": "success"}) 
+    return build_standard_response({"status": "success"})
 
 @app.post("/api/com_execute")
 def com_execute(req: ComExecuteRequest):
