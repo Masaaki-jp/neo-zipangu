@@ -2,7 +2,7 @@
 
 import random
 import math
-from constants import CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK, MAX_BUILDINGS, COSTS, HEX_SIZE, CENTER_X, CENTER_Y
+from constants import CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK, MAX_BUILDINGS, COSTS, HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS
 from game_logic import pay_cost
 from nature_data import WATCH_DEFS, get_watch_card_info
 
@@ -535,6 +535,71 @@ class GameSession:
         # 使ったカードを手札から消費する
         player_cards.remove(card)
         return {"success": True, "msg": msg, "yields": yields}
+    
+    # 🥷 追加8：サイコロを振り、ランダムイベントの判定と資源産出を行うメソッド
+    def execute_roll_dice(self):
+        if self.game_status["state"] == "setup": 
+            return {"error": "CANNOT_ROLL_IN_SETUP"}
+            
+        dice1, dice2 = random.randint(1, 6), random.randint(1, 6)
+        total = dice1 + dice2
+        event_log = None
+        event_type = None
+        current_player = self.game_status["current_player"]
+
+        if not hasattr(self, "hacker_vault") or self.hacker_vault is None:
+            self.hacker_vault = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0}
+        
+        # ゾロ目の判定
+        if dice1 == dice2:
+            if dice1 == 1:
+                r = random.random()
+                if r < 0.2: 
+                    target_hexes = [h for h in self.current_board if h["sector"] not in ["DARK", "OCEAN"] and h.get("number") is not None]
+                    numbers = [h["number"] for h in target_hexes]
+                    random.shuffle(numbers)
+                    for h in target_hexes: h["number"] = numbers.pop()
+                    event_type = "EARTHQUAKE"
+                    event_log = "⚠️【大地震（EARTHQUAKE）】地殻変動発生！全マスの資源ナンバーがシャッフルされました！"
+                elif r < 0.6: 
+                    for p in self.inventory:
+                        for res in self.inventory[p]: self.inventory[p][res] = 0.0
+                    event_type = "FAMINE"
+                    event_log = "【大暴落（飢饉）】すべての資源が 0 になりました！"
+                else: 
+                    for p in self.inventory:
+                        for res in self.inventory[p]: self.inventory[p][res] += 10.0
+                    event_type = "BOOM"
+                    event_log = "【好景気（助成金）】すべての資源が +10.0 されました！"
+            else: 
+                event_type = "HACKER"
+                harvested_info = []
+                for res, amt in self.hacker_vault.items():
+                    if amt > 0:
+                        self.inventory[current_player][res] += amt
+                        harvested_info.append(f"{res}:+{int(amt)}")
+                        self.hacker_vault[res] = 0.0 
+                
+                jackpot_msg = f"（獲得ボーナス ➔ {' / '.join(harvested_info)}）" if harvested_info else "（金庫は空でした）"
+                event_log = f"🏴‍☠️【ランサムウェア集団出現】ハッカー金庫をハックしました！ {jackpot_msg} マップをクリックして、ハッカーを新天地へ再配置してください！"
+                
+        # 資源の産出計算
+        from game_logic import calculate_yields
+        yields = calculate_yields(
+            total, self.current_board, self.hacker_position, self.buildings, self.inventory, 
+            CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS, 
+            self.game_status.get("season_event"), hacker_vault=self.hacker_vault
+        )
+        
+        return {
+            "success": True,
+            "dice1": dice1, 
+            "dice2": dice2, 
+            "total": total, 
+            "yields": yields, 
+            "event_type": event_type, 
+            "event_log": event_log
+        }
 
 # ==========================================
 # 第一段階の安全策：
