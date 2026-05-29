@@ -135,158 +135,16 @@ def health_check(): return {"status": "operational"}
 
 @app.get("/api/board")
 def get_or_generate_board():
-    # 🥷 `if` の外に出して、毎回必ずマップデータを読み込む
-    import map_layouts
-    map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
-    map_blueprint = map_layouts.MAP_CATALOG.get(map_id, map_layouts.MAP_CATALOG["STAGE_01_BEGINNER"])
-    
-    # 🥷 常に最新の目標スコアをセットしておく！
-    state.game_status["target_score"] = map_blueprint["winning_score"]
+    # state側でマップ生成ロジックをすべて実行
+    result = state.generate_board_if_empty()
 
-    if len(state.current_board) == 0:
-        # ----- (ここから下のマップ生成処理はそのまま) -----
-        layout = map_blueprint["layout"]
-        fixed_darks = map_blueprint.get("fixed_darks", [])
-        fixed_oceans = map_blueprint.get("fixed_oceans", [])
-        fixed_sectors = map_blueprint.get("fixed_sectors", {})
-        exclusion_radius = map_blueprint.get("coastal_exclusion_radius", 0.0)
-
-        total_hexes = len(layout)
-        resource_hex_count = len(layout) - len(fixed_darks) - len(fixed_oceans)
-        normal_hex_count = resource_hex_count - len(fixed_sectors)
-        
-        base_types = ["POWER", "DATA", "SILICON", "HARD", "POLYMER"]
-        sectors = [base_types[i % 5] for i in range(normal_hex_count)]
-        
-        # 🥷 修正：全体の陸マスの約10%をNATUREにするロジック
-        # ※割合を変更したい場合は 0.10 の数値を調整してください
-        nature_count = max(1, math.ceil(normal_hex_count * 0.10))
-        for i in range(nature_count):
-            sectors[i] = "NATURE"
-                        
-        random.shuffle(sectors)
-        
-        base_nums = [2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12]
-        numbers = [base_nums[i % len(base_nums)] for i in range(resource_hex_count)]
-        random.shuffle(numbers)
-
-        vertex_sectors = {} 
-        
-        # 🥷 ランダムな生態系（動物）のリスト
-        animals_list = ['🐘', '🐅', '🦍', '🐍', '🦅', '🦋', '🐢', '🐆', '🦉', '🦏']
-        
-        for q, r in layout:
-            if (q, r) in fixed_darks:
-                sector_type = "DARK"
-                num = None
-            elif (q, r) in fixed_oceans:
-                sector_type = "OCEAN"
-                num = None
-            elif (q, r) in fixed_sectors:
-                sector_type = fixed_sectors[(q, r)]
-                num = numbers.pop() 
-            else:
-                sector_type = sectors.pop()
-                num = numbers.pop()
-
-            # 🥷 データの構築
-            hex_data = {"q": q, "r": r, "s": -q - r, "sector": sector_type, "number": num}
-            
-            # NATUREマスが選ばれた場合、動物を宿す
-            if sector_type == "NATURE":
-                hex_data["animal"] = random.choice(animals_list)
-
-            state.current_board.append(hex_data)
-            
-            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (q + r / 2)
-            cy = CENTER_Y + HEX_SIZE * (3 / 2) * r
-            for i in range(6):
-                angle_rad = math.radians(60 * i - 30)
-                vx = round(cx + HEX_SIZE * math.cos(angle_rad))
-                vy = round(cy + HEX_SIZE * math.sin(angle_rad))
-                v_id = f"{vx},{vy}"
-                if v_id not in vertex_sectors:
-                    vertex_sectors[v_id] = []
-                vertex_sectors[v_id].append(sector_type)
-                
-        for v_id, touching_sectors in vertex_sectors.items():
-            is_outer_edge = len(touching_sectors) <= 2
-            has_ocean = "OCEAN" in touching_sectors
-            is_only_ocean = all(s == "OCEAN" for s in touching_sectors)
-            
-            if (is_outer_edge or has_ocean) and not is_only_ocean:
-                vx, vy = map(int, v_id.split(','))
-                dist_from_center = math.hypot(vx - CENTER_X, vy - CENTER_Y)
-                if exclusion_radius > 0 and dist_from_center < (HEX_SIZE * exclusion_radius):
-                    continue 
-                state.coastal_vertices.add(v_id)
-        
-        state.vertex_sectors = vertex_sectors
-
-        npc_count = math.ceil(resource_hex_count * 0.06)
-        placed_np_hubs = 0
-        attempts = 0
-        while placed_np_hubs < npc_count and attempts < 1000:
-            attempts += 1
-            valid_hexes = [h for h in state.current_board if h["sector"] not in ["DARK", "OCEAN"]]
-            if not valid_hexes: break
-            target_hex = random.choice(valid_hexes)
-            
-            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (target_hex["q"] + target_hex["r"] / 2)
-            cy = CENTER_Y + HEX_SIZE * (3 / 2) * target_hex["r"]
-            angle_rad = math.radians(random.choice([30, 90, 150, 210, 270, 330]))
-            npc_x = round(cx + HEX_SIZE * math.cos(angle_rad))
-            npc_y = round(cy + HEX_SIZE * math.sin(angle_rad))
-            npc_vertex = f"{npc_x},{npc_y}"
-            
-            if npc_vertex in state.buildings: continue
-            
-            touching_sectors = vertex_sectors.get(npc_vertex, [])
-            if "DARK" in touching_sectors or all(s == "OCEAN" for s in touching_sectors):
-                continue 
-            
-            too_close = False
-            for ex_id in state.buildings.keys():
-                ex_x, ex_y = map(int, ex_id.split(','))
-                if math.hypot(npc_x - ex_x, npc_y - ex_y) < (HEX_SIZE + 5): too_close = True; break
-            if too_close: continue
-            
-            state.buildings[npc_vertex] = {"player": "NPC_CORP", "type": "DATA_CENTER"}
-            state.bots[npc_vertex] = {"player": "NPC_CORP", "level": random.randint(1, 3), "has_moved": False}
-            placed_np_hubs += 1
-
-    # ...（前略：NPCの配置などの処理）...
-
-    import map_layouts
-    current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
-    state.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
-
-    # 🥷 アプローチ2：全員分のスコアをまとめて計算し、辞書（all_scores）を作る！
-    from game_logic import update_all_titles, get_score
-    import game_logic
-
-    # 称号の所有権を判定・更新する
-    update_all_titles(state, state.buildings, state.cards, state.roads, getattr(state, "combat_wins", {}))
-
-    all_scores = {
-        "Player1": game_logic.get_score("Player1", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
-        "Player2": game_logic.get_score("Player2", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
-        "Player3": game_logic.get_score("Player3", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})),
-        "Player4": game_logic.get_score("Player4", state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
-    }
-
+    # スコアや称号の計算・同期は build_standard_response が自動で行うため、
+    # ここではゲーム進行に必要な固有のデータだけをマージして返す
     return build_standard_response({
-        "map_id": current_map_id,
+        "map_id": result["map_id"],
         "init_rolls": state.init_rolls,
         "coastal_vertices": list(state.coastal_vertices),
-        "player_types": getattr(state, "player_types", {}),
-        
-        # 🥷 従来のUIを壊さないよう、"score" には自分のスコア(Player1)をセット
-        "score": all_scores["Player1"], 
-        # 🥷 将来のマルチプレイやランキング用に全員分のデータもまるごと送る！
-        "all_scores": all_scores,
-        # 🥷 修正：game_state を state に変更！
-        "title_owners": getattr(state, "title_owners", {})
+        "player_types": getattr(state, "player_types", {})
     })
 
 @app.post("/api/init_roll")
