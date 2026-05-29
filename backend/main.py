@@ -525,63 +525,20 @@ def hack_resources(req: InitRollRequest):
 @app.get("/api/dice")
 def roll_dice():
     enforce_time_limit()
-    if state.game_status["state"] == "setup": 
-        raise HTTPException(status_code=400, detail="CANNOT_ROLL_IN_SETUP")
+    
+    # サイコロ振りとそれに伴う全イベント・産出ロジックを state に丸投げ
+    result = state.execute_roll_dice()
+    
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
         
-    dice1, dice2 = random.randint(1, 6), random.randint(1, 6)
-    total = dice1 + dice2
-    event_log = None
-    event_type = None
-    current_player = state.game_status["current_player"]
-
-    if not hasattr(state, "hacker_vault") or state.hacker_vault is None:
-        state.hacker_vault = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0}
-    
-    if dice1 == dice2:
-        if dice1 == 1:
-            r = random.random()
-            if r < 0.2: 
-                target_hexes = [h for h in state.current_board if h["sector"] not in ["DARK", "OCEAN"] and h.get("number") is not None]
-                numbers = [h["number"] for h in target_hexes]
-                random.shuffle(numbers)
-                for h in target_hexes: h["number"] = numbers.pop()
-                event_type = "EARTHQUAKE"
-                event_log = "⚠️【大地震（EARTHQUAKE）】地殻変動発生！全マスの資源ナンバーがシャッフルされました！"
-            elif r < 0.6: 
-                for p in state.inventory:
-                    for res in state.inventory[p]: state.inventory[p][res] = 0.0
-                event_type = "FAMINE"
-                event_log = "【大暴落（飢饉）】すべての資源が 0 になりました！"
-            else: 
-                for p in state.inventory:
-                    for res in state.inventory[p]: state.inventory[p][res] += 10.0
-                event_type = "BOOM"
-                event_log = "【好景気（助成金）】すべての資源が +10.0 されました！"
-        else: 
-            event_type = "HACKER"
-            harvested_info = []
-            for res, amt in state.hacker_vault.items():
-                if amt > 0:
-                    state.inventory[current_player][res] += amt
-                    harvested_info.append(f"{res}:+{int(amt)}")
-                    state.hacker_vault[res] = 0.0 
-            
-            jackpot_msg = f"（獲得ボーナス ➔ {' / '.join(harvested_info)}）" if harvested_info else "（金庫は空でした）"
-            event_log = f"🏴‍☠️【ランサムウェア集団出現】ハッカー金庫をハックしました！ {jackpot_msg} マップをクリックして、ハッカーを新天地へ再配置してください！"
-            
-    yields = calculate_yields(
-        total, state.current_board, state.hacker_position, state.buildings, state.inventory, 
-        CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS, 
-        state.game_status.get("season_event"), hacker_vault=state.hacker_vault
-    )
-    
     return build_standard_response({
-        "dice1": dice1, 
-        "dice2": dice2, 
-        "total": total, 
-        "yields": yields, 
-        "event_type": event_type, 
-        "event_log": event_log,
+        "dice1": result["dice1"], 
+        "dice2": result["dice2"], 
+        "total": result["total"], 
+        "yields": result["yields"], 
+        "event_type": result["event_type"], 
+        "event_log": result["event_log"],
         "hacker_vault": state.hacker_vault 
     })
 
