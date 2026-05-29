@@ -575,21 +575,12 @@ def move_hacker(req: HackerRequest):
 @app.post("/api/deploy_bot")
 def deploy_bot(req: BuildRequest):
     enforce_time_limit()
-    if state.game_status["state"] == "setup": 
-        raise HTTPException(status_code=400, detail="CANNOT_DEPLOY_IN_SETUP")
-        
-    if req.vertex_id in state.bots and state.bots[req.vertex_id]["player"] == req.player:
-        if state.bots[req.vertex_id]["level"] >= 4: 
-            raise HTTPException(status_code=400, detail="MAX_BOT_LEVEL_REACHED")
-        if not pay_cost(req.player, "UPGRADE_BOT", COSTS, state.inventory): 
-            raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES_FOR_UPGRADE")
-        state.bots[req.vertex_id]["level"] += 1
-    else:
-        if req.vertex_id not in state.buildings or state.buildings[req.vertex_id]["player"] != req.player: 
-            raise HTTPException(status_code=400, detail="MUST_DEPLOY_ON_YOUR_HUB")
-        if not pay_cost(req.player, "BOT", COSTS, state.inventory): 
-            raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
-        state.bots[req.vertex_id] = {"player": req.player, "level": 1, "has_moved": False}
+    
+    # ボットの配置・強化を state に丸投げ
+    result = state.execute_deploy_bot(req.player, req.vertex_id)
+    
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
         
     return build_standard_response({"status": "success"})
 
@@ -649,48 +640,18 @@ def move_bot(req: MoveRequest):
 @app.post("/api/build_road")
 def build_road(req: RoadRequest):
     enforce_time_limit()
-    my_roads = [r for r in state.roads.values() if r["player"] == req.player]
-    is_free_phase = state.game_status["state"] == "setup"
     
-    if req.edge_id in state.roads: raise HTTPException(status_code=400, detail="ROAD_ALREADY_EXISTS")
+    # 道の建設と開拓処理を state に丸投げ
+    result = state.execute_build_road(req.player, req.edge_id)
     
-    v1, v2 = req.edge_id.split('_')
-    
-    if is_free_phase:
-        st = state.game_status["setup_turn"]
-        expected = 1 if st < 4 else 2
-        if len(my_roads) >= expected:
-            raise HTTPException(status_code=400, detail="ALREADY_BUILT_IN_THIS_SETUP_TURN")
-        is_connected_to_hub = False
-        if (v1 in state.buildings and state.buildings[v1]["player"] == req.player) or (v2 in state.buildings and state.buildings[v2]["player"] == req.player): 
-            is_connected_to_hub = True
-        if not is_connected_to_hub: 
-            raise HTTPException(status_code=400, detail="MUST_CONNECT_TO_YOUR_NEW_HUB")
-    else:
-        is_connected = False
-        if (v1 in state.buildings and state.buildings[v1]["player"] == req.player) or (v2 in state.buildings and state.buildings[v2]["player"] == req.player): 
-            is_connected = True
-        else:
-            for r_id, r_info in state.roads.items():
-                if r_info["player"] == req.player:
-                    ex_v1, ex_v2 = r_id.split('_')
-                    if v1 == ex_v1 or v1 == ex_v2 or v2 == ex_v1 or v2 == ex_v2: is_connected = True; break
-        if not is_connected: raise HTTPException(status_code=400, detail="NOT_CONNECTED")
-        if not pay_cost(req.player, "ROAD", COSTS, state.inventory): raise HTTPException(status_code=400, detail="INSUFFICIENT_RESOURCES")
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
         
-    state.roads[req.edge_id] = {"player": req.player}
-    
-    mid_x, mid_y = (float(v1.split(',')[0]) + float(v2.split(',')[0])) / 2, (float(v1.split(',')[1]) + float(v2.split(',')[1])) / 2 
-    explored, new_sector = False, None
-    for hex_data in state.current_board:
-        if hex_data["sector"] == "DARK":
-            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2); cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
-            if 45 < math.hypot(cx - mid_x, cy - mid_y) < 55: 
-                new_sector = random.choice(["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"])
-                hex_data["sector"] = new_sector; hex_data["number"] = random.choice([2, 3, 4, 5, 6, 8, 9, 10, 11, 12])
-                explored = True; break
-                
-    return build_standard_response({"status": "success", "explored": explored, "new_sector": new_sector})
+    return build_standard_response({
+        "status": "success", 
+        "explored": result["explored"], 
+        "new_sector": result["new_sector"]
+    })
 
 @app.get("/api/inventory")
 def get_inventory(): return {"inventory": state.inventory}
