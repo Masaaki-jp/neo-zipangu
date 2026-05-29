@@ -5,13 +5,12 @@ import random
 import math
 
 # === 共通ステート・ロジックのインポート ===
-import game_state
-from game_state import scores  # 👈 修正：app と state はここから呼ばない
 import game_logic
 from game_logic import pay_cost, get_score, calculate_yields
 
 # === マネージャー・スキーマ・AI・定数 ===
-import state_manager as state
+# 🥷 変更：state_manager 全体ではなく、中で作った global_state を state という名前で呼ぶ！
+from state_manager import global_state as state
 from schemas import (
     BuildRequest, RoadRequest, MoveRequest, TradeRequest,
     HackerRequest, CardRequest, UseCardRequest, InitRollRequest, ResetRequest
@@ -39,22 +38,20 @@ class ComExecuteRequest(BaseModel):
 # 🥷 =========================================================
 # 【新設】全API共通のレスポンスジェネレータ（中央管制室）
 # =========================================================
+# main.py
+
 def build_standard_response(extra_data: dict = None):
     """
     全てのAPIエンドポイントはこの関数を通ってフロントエンドにデータを返します。
-    ここで一括してスコアを計算し、フォーマットを完全に統一します。
     """
-
-    # 🥷 追加：現在のマップIDから目標スコアを取得し、常にgame_statusにセットしておく
     import map_layouts
     current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
     state.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
 
-    # 1. 常に最新のスコアを計算する前に、盤面全体のDARKマス開拓スキャンを走らせる
     game_logic.check_and_explore_dark_hexes(state.current_board, state.roads, CENTER_X, CENTER_Y, HEX_SIZE)
 
-    # 🥷 1.5. 【追加】開拓によって地目が変わったため、建築判定用キャッシュ（vertex_sectors）を最新の盤面で再構築する！
     new_vertex_sectors = {}
+    import math
     for hex_data in state.current_board:
         sector_type = hex_data["sector"]
         cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
@@ -67,37 +64,35 @@ def build_standard_response(extra_data: dict = None):
             if v_id not in new_vertex_sectors:
                 new_vertex_sectors[v_id] = []
             new_vertex_sectors[v_id].append(sector_type)
-    state.vertex_sectors = new_vertex_sectors # 古いDARK判定を消去し、最新状態で上書き！
+    state.vertex_sectors = new_vertex_sectors 
 
-    # 2. 常に最新のスコアを計算して独立変数（game_state）を更新
-    game_logic.update_all_scores(state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
+    # 🥷 修正ポイント！：ここで全員分のスコアを確実に「再計算」して state に保存する
+    all_scores = {
+        p: game_logic.get_score(p, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})) 
+        for p in state.PLAYERS
+    }
+    state.scores = all_scores # 最新のスコアでノートを上書き！
 
-    # 2.5：スコア更新の直後に、称号の判定（奪い合い）も毎回実行させる！
+    # 称号の判定（奪い合い）も毎回実行
     game_logic.update_all_titles(state, state.buildings, state.cards, state.roads, getattr(state, "combat_wins", {}))
 
-    # 3. フロントエンドが期待する完全なベースデータを構築
     response = {
         "game_status": state.game_status,
-        "combat_wins": getattr(state, "combat_wins", {}), # 🥷 追加：フロントへの返却用
+        "combat_wins": getattr(state, "combat_wins", {}), 
         "inventory": state.inventory,
         "trade_rates": state.trade_rates,
         "board": state.current_board,
         "buildings": state.buildings,
         "roads": state.roads,
-        "bots": state.bots,
+        "bots": getattr(state, "bots", {}),
         "cards": state.cards,
-        "hacker_position": state.hacker_position,
-        "scores": {
-            "Player1": game_state.player1_score,
-            "Player2": game_state.player2_score,
-            "Player3": game_state.player3_score,
-            "Player4": game_state.player4_score
-        },
-        # 🥷 追加ポイント②：フロントエンドに送るデータに "title_owners" をちゃんと含める！
+        "hacker_position": getattr(state, "hacker_position", None),
+        
+        # 🥷 ここで必ず最新の計算結果をフロントに返す
+        "scores": state.scores, 
         "title_owners": getattr(state, "title_owners", {}),
     }
     
-    # 4. 各アクション特有のデータ（サイコロの目やログなど）をマージ
     if extra_data:
         response.update(extra_data)
         
@@ -290,7 +285,8 @@ def get_or_generate_board():
         "score": all_scores["Player1"], 
         # 🥷 将来のマルチプレイやランキング用に全員分のデータもまるごと送る！
         "all_scores": all_scores,
-        "title_owners": getattr(game_state, "title_owners", {}) # 🥷 これを追加！
+        # 🥷 修正：game_state を state に変更！
+        "title_owners": getattr(state, "title_owners", {})
     })
 
 @app.post("/api/init_roll")
@@ -861,17 +857,9 @@ def reset_game(req: ResetRequest = None):
     state.roll_counter = 0
     state.coastal_vertices.clear()
 
-    # 🥷 修正：state と game_state の両方の称号データを確実に None へ戻す！
-    import game_state
-    game_state.title_owners = {
-        "💎": None,
-        "🚀": None,
-        "🐳": None,
-        "🗺️": None,
-        "🎖️": None
-    }
     state.title_owners = {
         "💎": None,
+        "🦉": None, # WATCHのフクロウも初期化に含めました
         "🚀": None,
         "🐳": None,
         "🗺️": None,
