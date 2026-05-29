@@ -414,50 +414,22 @@ def draw_card(req: CardRequest):
 @app.post("/api/use_card")
 def use_card(req: UseCardRequest):
     enforce_time_limit()
-    player_cards = state.cards.get(req.player, [])
-    card = next((c for c in player_cards if c["id"] == req.card_id), None)
-    if not card: raise HTTPException(status_code=400, detail="CARD_NOT_FOUND")
-    c_type = card["type"]; msg = ""; yields = []
     
-    if c_type == "ZERO_DAY":
-        total = req.target_val; yields = calculate_yields(total, state.current_board, state.hacker_position, state.buildings, state.inventory, CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS)
-        msg = f"ゼロデイ発動！ 出目【{total}】を強制実行。"
-    elif c_type == "VPN":
-        if req.target_id in state.buildings: raise HTTPException(status_code=400, detail="ALREADY_BUILT")
-        new_x, new_y = map(int, req.target_id.split(','))
-        for ex_id in state.buildings.keys():
-            ex_x, ex_y = map(int, ex_id.split(','))
-            if math.hypot(new_x - ex_x, new_y - ex_y) < (HEX_SIZE + 5): raise HTTPException(status_code=400, detail="TOO_CLOSE")
-        state.buildings[req.target_id] = {"player": req.player, "type": "LOCAL_HUB", "bot_level": 0}
-        msg = "VPN構築完了！孤立地帯にワープ建築しました。"
-    elif c_type == "DATA_HACK":
-        hacked = False
-        for h in state.current_board:
-            if f"{h['q']},{h['r']}" == req.target_id:
-                if h["sector"] == "DARK": raise HTTPException(status_code=400, detail="CANNOT_HACK_DARK")
-                h["number"] = req.target_val; hacked = True; break
-        if not hacked: raise HTTPException(status_code=400, detail="INVALID_TARGET")
-        msg = f"データ改ざん成功！数字が【{req.target_val}】になりました。"
-    elif c_type == "EMP":
-        if req.target_id not in state.bots or state.bots[req.target_id]["player"] == req.player: raise HTTPException(status_code=400, detail="INVALID_TARGET")
-        state.bots[req.target_id]["level"] = 1
-        msg = "EMP直撃！敵兵のシステムがダウンしました。"
-    elif c_type == "DRONE_STRIKE":
-        if req.target_id not in state.buildings or state.buildings[req.target_id]["player"] == req.player: raise HTTPException(status_code=400, detail="INVALID_TARGET")
-        state.buildings[req.target_id]["type"] = "LOCAL_HUB"
-        msg = "ドローン空爆直撃！敵拠点が砦に降格しました。"
-    elif c_type == "WEAPON_DEV":
-        if req.target_id not in state.bots or state.bots[req.target_id]["player"] != req.player: raise HTTPException(status_code=400, detail="INVALID_TARGET")
-        state.bots[req.target_id]["level"] = min(4, state.bots[req.target_id]["level"] + 2)
-        msg = "兵器開発促進！自軍ボットが強化されました。"
-    elif c_type == "DDOS":
-        if req.target_id not in state.roads: raise HTTPException(status_code=400, detail="INVALID_TARGET")
-        if state.roads[req.target_id]["player"] == req.player: raise HTTPException(status_code=400, detail="CANNOT_DESTROY_OWN_ROAD")
-        del state.roads[req.target_id]
-        msg = "DDoS攻撃成功！標的のネットワークを破壊しました。"
-
-    player_cards.remove(card)
-    return build_standard_response({"status": "success", "msg": msg, "yields": yields})
+    # リクエストから安全に値を取り出す
+    target_val = getattr(req, "target_val", None)
+    target_id = getattr(req, "target_id", None)
+    
+    # 全ての複雑なカード処理を state に丸投げ
+    result = state.execute_use_card(req.player, req.card_id, target_id, target_val)
+    
+    if "error" in result: 
+        raise HTTPException(status_code=400, detail=result["error"])
+        
+    return build_standard_response({
+        "status": "success", 
+        "msg": result["msg"], 
+        "yields": result["yields"]
+    })
 
 @app.post("/api/trade")
 def trade_resources(req: TradeRequest):

@@ -471,6 +471,71 @@ class GameSession:
                 
         return {"status": "success"}
 
+    # 🥷 追加7：カードの使用（特殊効果の実行）
+    def execute_use_card(self, player_id: str, card_id: str, target_id: str = None, target_val: int = None):
+        player_cards = self.cards.get(player_id, [])
+        card = next((c for c in player_cards if c["id"] == card_id), None)
+        if not card: 
+            return {"error": "CARD_NOT_FOUND"}
+            
+        c_type = card["type"]
+        msg = ""
+        yields = []
+        
+        import math
+        from constants import HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS
+        
+        if c_type == "ZERO_DAY":
+            from game_logic import calculate_yields
+            total = target_val
+            yields = calculate_yields(total, self.current_board, self.hacker_position, self.buildings, self.inventory, CENTER_X, CENTER_Y, HEX_SIZE, BUILDING_YIELDS)
+            msg = f"ゼロデイ発動！ 出目【{total}】を強制実行。"
+            
+        elif c_type == "VPN":
+            if target_id in self.buildings: return {"error": "ALREADY_BUILT"}
+            new_x, new_y = map(int, target_id.split(','))
+            for ex_id in self.buildings.keys():
+                ex_x, ex_y = map(int, ex_id.split(','))
+                if math.hypot(new_x - ex_x, new_y - ex_y) < (HEX_SIZE + 5): return {"error": "TOO_CLOSE"}
+            self.buildings[target_id] = {"player": player_id, "type": "LOCAL_HUB", "bot_level": 0}
+            msg = "VPN構築完了！孤立地帯にワープ建築しました。"
+            
+        elif c_type == "DATA_HACK":
+            hacked = False
+            for h in self.current_board:
+                if f"{h['q']},{h['r']}" == target_id:
+                    if h["sector"] == "DARK": return {"error": "CANNOT_HACK_DARK"}
+                    h["number"] = target_val
+                    hacked = True
+                    break
+            if not hacked: return {"error": "INVALID_TARGET"}
+            msg = f"データ改ざん成功！数字が【{target_val}】になりました。"
+            
+        elif c_type == "EMP":
+            if target_id not in self.bots or self.bots[target_id]["player"] == player_id: return {"error": "INVALID_TARGET"}
+            self.bots[target_id]["level"] = 1
+            msg = "EMP直撃！敵兵のシステムがダウンしました。"
+            
+        elif c_type == "DRONE_STRIKE":
+            if target_id not in self.buildings or self.buildings[target_id]["player"] == player_id: return {"error": "INVALID_TARGET"}
+            self.buildings[target_id]["type"] = "LOCAL_HUB"
+            msg = "ドローン空爆直撃！敵拠点が砦に降格しました。"
+            
+        elif c_type == "WEAPON_DEV":
+            if target_id not in self.bots or self.bots[target_id]["player"] != player_id: return {"error": "INVALID_TARGET"}
+            self.bots[target_id]["level"] = min(4, self.bots[target_id]["level"] + 2)
+            msg = "兵器開発促進！自軍ボットが強化されました。"
+            
+        elif c_type == "DDOS":
+            if target_id not in self.roads: return {"error": "INVALID_TARGET"}
+            if self.roads[target_id]["player"] == player_id: return {"error": "CANNOT_DESTROY_OWN_ROAD"}
+            del self.roads[target_id]
+            msg = "DDoS攻撃成功！標的のネットワークを破壊しました。"
+
+        # 使ったカードを手札から消費する
+        player_cards.remove(card)
+        return {"success": True, "msg": msg, "yields": yields}
+
 # ==========================================
 # 第一段階の安全策：
 # 将来のマルチプレイまでは、ここで作った1つのインスタンスを全員で使い回す
