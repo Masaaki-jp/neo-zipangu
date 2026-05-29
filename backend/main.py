@@ -474,43 +474,15 @@ def com_execute(req: ComExecuteRequest):
 def draw_card(req: CardRequest):
     enforce_time_limit()
     
-    score_val = 0  # 🥷 追加：スコアを格納する変数を初期化
+    # 複雑な処理はすべて state(GameSession) に丸投げする
+    result = state.draw_card_for_player(req.player, req.deck_type)
     
-    # 資源判定と消費
-    if req.deck_type == "WATCH":
-        if state.inventory[req.player].get("NATURE", 0) < 10.0:
-            raise HTTPException(status_code=400, detail="INSUFFICIENT_NATURE")
-        state.inventory[req.player]["NATURE"] -= 10.0
-        drawn_type = random.choice(WATCH_DECK)
-        info = get_watch_card_info(drawn_type)
-        name, desc = info["name"], info["desc"]
+    # エラーが返ってきたら弾く
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
         
-        # 🥷 追加：スコア（レア度）を引っ張り出す
-        # info の中に score があればそれを取り、なければ WATCH_DEFS から安全に取得します
-        score_val = info.get("score", WATCH_DEFS.get(drawn_type, {}).get("score", 0))
-        
-    else:
-        # 既存のロジック
-        if state.inventory[req.player]["NUCLEAR"] < 10.0: 
-            raise HTTPException(status_code=400, detail="INSUFFICIENT_NUCLEAR")
-        state.inventory[req.player]["NUCLEAR"] -= 10.0
-        drawn_type = random.choice(TECH_DECK) if req.deck_type == "TECH" else random.choice(WEAPON_DECK)
-        name, desc = CARD_DEFS[drawn_type]["name"], CARD_DEFS[drawn_type]["desc"]
-    
-    state.card_counter_id += 1
-    
-    # 🥷 修正：最後に "score": score_val を付け足してカードを生成する！
-    new_card = {
-        "id": f"c_{state.card_counter_id}", 
-        "type": drawn_type, 
-        "name": name, 
-        "desc": desc, 
-        "score": score_val
-    }
-    
-    state.cards[req.player].append(new_card)
-    
-    return build_standard_response({"status": "success", "drawn": new_card})
+    # 成功したらそのままレスポンスを返す
+    return build_standard_response({"status": "success", "drawn": result["card"]})
 
 @app.post("/api/use_card")
 def use_card(req: UseCardRequest):
