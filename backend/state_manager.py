@@ -245,6 +245,118 @@ class GameSession:
             
         return {"success": True}
 
+    # 🥷 追加1：全滅（倒産）をチェックする内部メソッド
+    def check_annihilation(self):
+        if self.game_status.get("state") != "playing":
+            return
+
+        bldg_counts = {p: 0 for p in self.game_status.get("turn_order", [])}
+        for b in self.buildings.values():
+            if b["player"] in bldg_counts:
+                bldg_counts[b["player"]] += 1
+                
+        annihilated_players = [p for p, count in bldg_counts.items() if count == 0]
+        
+        if annihilated_players:
+            loser = annihilated_players[0] 
+            best_player = None
+            max_score = -1
+            
+            from game_logic import get_score
+            for p in self.game_status["turn_order"]:
+                score_data = get_score(p, self.buildings, self.cards, self.roads, self.bots, self.combat_wins)
+                if score_data["total"] > max_score:
+                    max_score = score_data["total"]
+                    best_player = p
+                    
+            self.game_status["state"] = "finished"
+            self.game_status["winner"] = best_player
+            self.game_status["reason"] = f"ANNIHILATION: {loser} の全拠点が陥落し、倒産しました！"
+
+    # 🥷 追加2：ボットの移動と戦闘（サイコロバトル）
+    def execute_move_bot(self, player_id: str, from_vertex: str, to_vertex: str):
+        if self.game_status["state"] == "setup": return {"error": "CANNOT_MOVE_IN_SETUP"}
+        if from_vertex not in self.bots or self.bots[from_vertex]["player"] != player_id: return {"error": "NO_BOT_HERE"}
+        
+        bot = self.bots[from_vertex]
+        if bot.get("has_moved", False): return {"error": "ALREADY_MOVED_THIS_TURN"}
+        
+        fx, fy = map(int, from_vertex.split(','))
+        tx, ty = map(int, to_vertex.split(','))
+        import math
+        if not (50 < math.hypot(tx - fx, ty - fy) < 70): return {"error": "TOO_FAR"}
+        
+        pts = [from_vertex, to_vertex]
+        pts.sort()
+        edge_id = f"{pts[0]}_{pts[1]}"
+        if edge_id not in self.roads: return {"error": "MUST_MOVE_ALONG_ANY_ROAD"}
+        
+        from game_logic import pay_cost
+        from constants import COSTS
+        if not pay_cost(player_id, "MOVE_BOT", COSTS, self.inventory): return {"error": "INSUFFICIENT_RESOURCES"}
+        
+        bot_data = dict(bot)
+        atk_level = bot_data["level"]
+        target_bldg = self.buildings.get(to_vertex)
+        target_bot = self.bots.get(to_vertex)
+        
+        is_enemy = (target_bldg and target_bldg["player"] != player_id) or (target_bot and target_bot["player"] != player_id)
+        combat_log = None
+        
+        if is_enemy:
+            def_dice_count = 0
+            if target_bldg:
+                if target_bldg["type"] == "LOCAL_HUB": def_dice_count += 1
+                elif target_bldg["type"] in ["DATA_CENTER", "GATEWAY"]: def_dice_count += 2
+                elif target_bldg["type"] == "MEGA_HQ": def_dice_count += 3
+            if target_bot: def_dice_count += target_bot["level"]
+
+            atk_sum = 0
+            def_sum = 0
+            import random
+            while atk_sum == def_sum:
+                atk_rolls = [random.randint(1,6) for _ in range(atk_level)]
+                def_rolls = [random.randint(1,6) for _ in range(max(1, def_dice_count))]
+                atk_sum, def_sum = sum(atk_rolls), sum(def_rolls)
+            
+            if atk_sum > def_sum:
+                combat_log = f"VICTORY! Atk:{atk_sum} vs Def:{def_sum} | 敵拠点を制圧！"
+                self.combat_wins[player_id] += 1
+                
+                if target_bldg: target_bldg["player"] = player_id 
+                if target_bot: del self.bots[to_vertex] 
+                
+                bot_data["has_moved"] = True
+                self.bots[to_vertex] = bot_data
+                del self.bots[from_vertex]
+                self.check_annihilation() # クラス内の判定を呼び出し
+            else:
+                combat_log = f"DEFEAT... Atk:{atk_sum} vs Def:{def_sum} | 我が軍のボットは破壊されました。"
+                del self.bots[from_vertex]
+        else:
+            if to_vertex in self.bots: return {"error": "ALLY_BOT_ALREADY_HERE"}
+            bot_data["has_moved"] = True
+            self.bots[to_vertex] = bot_data
+            del self.bots[from_vertex]
+            
+        return {"success": True, "combat_log": combat_log}
+
+    # 🥷 追加3：資源トレード
+    def execute_trade(self, player_id: str, offer_res: str, receive_res: str):
+        if offer_res not in self.inventory[player_id] or receive_res not in self.inventory[player_id]: 
+            return {"error": "INVALID_RESOURCE"}
+        if self.inventory[player_id][offer_res] < self.trade_rates[player_id][offer_res]: 
+            return {"error": "INSUFFICIENT_FUNDS"}
+            
+        self.inventory[player_id][offer_res] -= self.trade_rates[player_id][offer_res]
+        self.inventory[player_id][receive_res] += 10.0
+        return {"success": True}
+
+    # 🥷 追加4：ハッカーの移動
+    def execute_move_hacker(self, hex_id: str):
+        self.hacker_position = hex_id
+        return {"success": True}
+
 # ==========================================
 # 第一段階の安全策：
 # 将来のマルチプレイまでは、ここで作った1つのインスタンスを全員で使い回す
