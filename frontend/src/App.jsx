@@ -15,6 +15,8 @@ const PLAYER_COLORS = { Player1: '#ff0033', Player2: '#0088ff', Player3: '#ffcc0
 function App() {
   //ログインの機能を追加
   const [loggedInUser, setLoggedInUser] = useState(null);
+  // 🥷 追加：自動ログインのチェック中かどうかを判定するフラグ
+  const [isCheckingLogin, setIsCheckingLogin] = useState(true);
   // 🥷 初期値を "map_selection" に変更
   const [gameStatus, setGameStatus] = useState({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 }); 
   const [initRolls, setInitRolls] = useState({});
@@ -62,6 +64,38 @@ function App() {
       if (boardData.cards) setCards(boardData.cards[currentPlayer] || []);
     } catch (err) { console.error(err); }
   };
+
+  // 🥷 追加：ページを開いた瞬間に1回だけ実行される「自動ログイン機構」
+  useEffect(() => {
+    const autoLogin = async () => {
+      const savedId = localStorage.getItem('nz_login_id');
+      const savedPw = localStorage.getItem('nz_password');
+      
+      // ブラウザがIDとパスワードを覚えていたら裏側でこっそりログイン
+      if (savedId && savedPw) {
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login_id: savedId, password: savedPw }),
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            setLoggedInUser(data); // ログイン成功！
+          } else {
+            // パスワードが古かったりサーバーから消えていたら、記憶を消去
+            localStorage.removeItem('nz_login_id');
+            localStorage.removeItem('nz_password');
+          }
+        } catch (err) {
+          console.error('Auto login failed:', err);
+        }
+      }
+      setIsCheckingLogin(false); // チェック終了
+    };
+    autoLogin();
+  }, []); // 空の配列 [] は「初回起動時のみ実行」を意味します
 
   useEffect(() => { fetchData(); }, [gameStatus.current_player]);
 
@@ -433,7 +467,13 @@ const handleEndTurn = async (isForcedTimeout = false) => {
   const currentBCounts = bCounts();
 
 // ===ログイン画面を描画して出力する===
-if (!loggedInUser) {
+// 🥷 修正：門番ロジック（ローディング画面 → ログイン画面の切り替え）
+  if (isCheckingLogin) {
+    // 記憶を調べている間の数ミリ秒だけ表示する暗転画面
+    return <div style={{ height: '100vh', backgroundColor: '#1a1a2e', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>システムに接続中...</div>;
+  }
+
+  if (!loggedInUser) {
     return <LoginScreen onLoginSuccess={(userData) => setLoggedInUser(userData)} />;
   }
 
