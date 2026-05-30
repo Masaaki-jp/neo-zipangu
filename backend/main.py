@@ -20,8 +20,8 @@ import game_logic
 from game_logic import pay_cost, get_score, calculate_yields
 
 # === マネージャー・スキーマ・AI・定数 ===
-# 🥷 変更：state_manager 全体ではなく、中で作った global_state を state という名前で呼ぶ！
-from state_manager import global_state as state
+# 🥷 変更：固定の global_state を廃止し、RoomManager をインポートする
+from state_manager import room_manager
 from schemas import (
     BuildRequest, RoadRequest, MoveRequest, TradeRequest,
     HackerRequest, CardRequest, UseCardRequest, InitRollRequest, ResetRequest
@@ -32,6 +32,22 @@ from constants import (
     HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS, MAX_BUILDINGS, 
     COSTS, CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK
 )
+
+# 🥷 追加：既存のAPI（state.xxx）を書き換えず、自動的に「SOLO_CPU_ROOM」へデータを流す魔法のプロキシ
+class StateProxy:
+    def __getattribute__(self, name):
+        # 変数を読み込もうとしたら、自動的にCPU部屋のデータを返す
+        actual_state = room_manager.get_or_create_room("SOLO_CPU_ROOM")
+        return getattr(actual_state, name)
+
+    def __setattr__(self, name, value):
+        # 変数を書き込もうとしたら、自動的にCPU部屋のデータを書き換える
+        actual_state = room_manager.get_or_create_room("SOLO_CPU_ROOM")
+        setattr(actual_state, name, value)
+
+# これ以降のコードは、今まで通り「state」という名前でアクセスするだけで、
+# 裏側では勝手に「SOLO_CPU_ROOM」の部屋のデータがいじられるようになります！
+state = StateProxy()
 
 # === 生物データ ===
 from nature_data import WATCH_DEFS, get_watch_card_info

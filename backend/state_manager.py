@@ -828,3 +828,26 @@ class GameSession:
 # 将来のマルチプレイまでは、ここで作った1つのインスタンスを全員で使い回す
 # ==========================================
 global_state = GameSession()
+
+
+# 🥷 追加：複数のゲーム部屋（ルーム）を統括するマネージャー
+class RoomManager:
+    def __init__(self):
+        # ルームIDをキーにして、それぞれの GameSession インスタンスを保持する金庫
+        self.rooms = {}
+
+    def get_or_create_room(self, room_id: str) -> GameSession:
+        """指定されたルームIDのゲームセッションを取得、無ければ新規作成する"""
+        if room_id not in self.rooms:
+            self.rooms[room_id] = GameSession()
+            # 新しい部屋用に、現在のマップIDなどを初期設定する等の拡張がここで可能
+            self.rooms[room_id].current_map_id = "STAGE_01_BEGINNER" 
+        return self.rooms[room_id]
+
+    def delete_room(self, room_id: str):
+        """ゲームが終了した部屋を削除してメモリを解放する"""
+        if room_id in self.rooms:
+            del self.rooms[room_id]
+
+# グローバルなマネージャーインスタンスを生成
+room_manager = RoomManager()
