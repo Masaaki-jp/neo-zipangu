@@ -5,6 +5,7 @@ import ControlPanel from './components/ControlPanel';
 import CardHand from './components/CardHand';
 import MapSelector from './components/MapSelector'; // 🥷 追加
 import LoginScreen from './components/LoginScreen'; // フォルダのパスは環境に合わせてください
+import ModeSelectionScreen from './components/ModeSelectionScreen';
 
 // 🥷 サイコロの目マッピングを追加
 const diceFaces = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅'};
@@ -13,10 +14,14 @@ const PLAYERS = ["Player1", "Player2", "Player3", "Player4"];
 const PLAYER_COLORS = { Player1: '#ff0033', Player2: '#0088ff', Player3: '#ffcc00', Player4: '#00ff44' };
 
 function App() {
+  //===ログイン関連の定義===
   //ログインの機能を追加
   const [loggedInUser, setLoggedInUser] = useState(null);
   // 🥷 追加：自動ログインのチェック中かどうかを判定するフラグ
   const [isCheckingLogin, setIsCheckingLogin] = useState(true);
+  // 🥷 追加：選択されたゲームモード（初期値は未選択の null）
+  const [selectedMode, setSelectedMode] = useState(null);
+
   // 🥷 初期値を "map_selection" に変更
   const [gameStatus, setGameStatus] = useState({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 }); 
   const [initRolls, setInitRolls] = useState({});
@@ -475,6 +480,16 @@ const handleEndTurn = async (isForcedTimeout = false) => {
 
   if (!loggedInUser) {
     return <LoginScreen onLoginSuccess={(userData) => setLoggedInUser(userData)} />;
+  }
+
+  // 🥷 追加：ログインしているが、モードが未選択なら「モード選択画面」を出す
+  if (!selectedMode) {
+    return (
+      <ModeSelectionScreen 
+        user={loggedInUser} 
+        onSelectMode={(mode) => setSelectedMode(mode)} 
+      />
+    );
   }
 
 // ======== レンダリング（画面描画）========
