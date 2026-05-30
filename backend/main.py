@@ -38,7 +38,7 @@ class ComExecuteRequest(BaseModel):
 # 🥷 =========================================================
 # 【新設】全API共通のレスポンスジェネレータ（中央管制室）
 # =========================================================
-# main.py
+
 
 def build_standard_response(extra_data: dict = None):
     """
@@ -66,15 +66,26 @@ def build_standard_response(extra_data: dict = None):
             new_vertex_sectors[v_id].append(sector_type)
     state.vertex_sectors = new_vertex_sectors 
 
-    # 🥷 修正ポイント！：ここで全員分のスコアを確実に「再計算」して state に保存する
-    all_scores = {
-        p: game_logic.get_score(p, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {})) 
-        for p in state.PLAYERS
-    }
-    state.scores = all_scores # 最新のスコアでノートを上書き！
-
-    # 称号の判定（奪い合い）も毎回実行
+    # 1. まず称号の所有者を最新状態に更新する
     game_logic.update_all_titles(state, state.buildings, state.cards, state.roads, getattr(state, "combat_wins", {}))
+
+    # 2. フロントエンドが絶対に読み込める「完璧なスコア辞書」を構築する
+    all_scores = {}
+    title_owners = getattr(state, "title_owners", {})
+    
+    for p in state.PLAYERS:
+        s_data = game_logic.get_score(p, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
+        
+        if not isinstance(s_data, dict):
+            s_data = {"total": s_data, "base": s_data, "bonus": 0}
+            
+        # 🥷 核心：Reactがクラッシュしたり数字が消えたりしないよう、必ず "titles" 配列を持たせる
+        p_titles = [t for t, owner in title_owners.items() if owner == p]
+        s_data["titles"] = p_titles
+        
+        all_scores[p] = s_data
+
+    state.scores = all_scores 
 
     response = {
         "game_status": state.game_status,
@@ -88,15 +99,20 @@ def build_standard_response(extra_data: dict = None):
         "cards": state.cards,
         "hacker_position": getattr(state, "hacker_position", None),
         
-        # 🥷 ここで必ず最新の計算結果をフロントに返す
-        "scores": state.scores, 
-        "title_owners": getattr(state, "title_owners", {}),
+        # 🥷 修正完了：ただの数字ではなく、total と titles が入った完全な辞書データをそのまま渡す
+        "scores": state.scores,
+        
+        "all_scores": state.scores, 
+        "score": state.scores.get("Player1", {}),
+        "title_owners": title_owners,
     }
     
     if extra_data:
         response.update(extra_data)
         
     return response
+
+
 # =========================================================
 
 def check_annihilation():
