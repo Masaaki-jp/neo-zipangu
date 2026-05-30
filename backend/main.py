@@ -8,6 +8,11 @@ import math
 import database
 database.init_db()  # サーバー起動時にテーブルを自動生成
 
+import hashlib
+# 🥷 追加：パスワードを不可逆の暗号（ハッシュ）に変換する関数
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
 # === 共通ステート・ロジックのインポート ===
 import game_logic
 from game_logic import pay_cost, get_score, calculate_yields
@@ -36,8 +41,22 @@ from countdown import calculate_deadline, is_time_up
 app = FastAPI(title="Neo Zipang Core API", version="1.9.0-beta")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
+
+# === classの定義 ===
+# 🥷 追加：アカウント登録とログイン用のデータ構造
+class RegisterRequest(BaseModel):
+    login_id: str
+    password: str
+    display_name: str
+
+class LoginRequest(BaseModel):
+    login_id: str
+    password: str
+
 class ComExecuteRequest(BaseModel):
     player: str
+
+# ===================================
 
 # 🥷 =========================================================
 # 【新設】全API共通のレスポンスジェネレータ（中央管制室）
@@ -149,6 +168,45 @@ def enforce_time_limit():
     deadline = state.game_status.get("turn_end_time")
     if is_time_up(deadline):
         raise HTTPException(status_code=408, detail="TURN_TIMEOUT")
+
+
+# 🥷 追加：新規アカウント登録API
+@app.post("/api/register")
+def register_user(req: RegisterRequest):
+    # パスワードを暗号化してからデータベースに渡す
+    hashed_pw = hash_password(req.password)
+    result = database.create_user(req.login_id, hashed_pw, req.display_name)
+    
+    if "error" in result:
+        # IDがすでに使われている場合などのエラー
+        raise HTTPException(status_code=400, detail=result["error"])
+        
+    return {"status": "success", "user_id": result["user_id"]}
+
+
+# 🥷 追加：ログインAPI
+@app.post("/api/login")
+def login_user(req: LoginRequest):
+    user = database.get_user_by_login_id(req.login_id)
+    
+    # ユーザーが存在しない場合
+    if not user:
+        raise HTTPException(status_code=400, detail="USER_NOT_FOUND")
+        
+    # パスワードの答え合わせ
+    hashed_pw = hash_password(req.password)
+    if user["password_hash"] != hashed_pw:
+        raise HTTPException(status_code=400, detail="INVALID_PASSWORD")
+        
+    # ログイン成功！ UIで表示するためのトークンやランクを全て返す
+    return {
+        "status": "success", 
+        "user_id": user["user_id"],
+        "display_name": user["display_name"],
+        "rank_points": user["rank_points"],
+        "free_tokens": user["free_tokens"],
+        "paid_tokens": user["paid_tokens"]
+    }
 
 @app.get("/health")
 def health_check(): return {"status": "operational"}

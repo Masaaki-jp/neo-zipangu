@@ -4,6 +4,7 @@ import PlayerStatus from './components/PlayerStatus';
 import ControlPanel from './components/ControlPanel';
 import CardHand from './components/CardHand';
 import MapSelector from './components/MapSelector'; // 🥷 追加
+import LoginScreen from './components/LoginScreen'; // フォルダのパスは環境に合わせてください
 
 // 🥷 サイコロの目マッピングを追加
 const diceFaces = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅'};
@@ -12,6 +13,8 @@ const PLAYERS = ["Player1", "Player2", "Player3", "Player4"];
 const PLAYER_COLORS = { Player1: '#ff0033', Player2: '#0088ff', Player3: '#ffcc00', Player4: '#00ff44' };
 
 function App() {
+  //ログインの機能を追加
+  const [loggedInUser, setLoggedInUser] = useState(null);
   // 🥷 初期値を "map_selection" に変更
   const [gameStatus, setGameStatus] = useState({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 }); 
   const [initRolls, setInitRolls] = useState({});
@@ -429,6 +432,10 @@ const handleEndTurn = async (isForcedTimeout = false) => {
   };
   const currentBCounts = bCounts();
 
+// ===ログイン画面を描画して出力する===
+if (!loggedInUser) {
+    return <LoginScreen onLoginSuccess={(userData) => setLoggedInUser(userData)} />;
+  }
 
 // ======== レンダリング（画面描画）========
   return (
