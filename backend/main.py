@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import random
 import math
+import string
+import uuid
 
 # 🥷 以下の2行を追加！
 import database
@@ -202,6 +204,38 @@ def login_user(req: LoginRequest):
     return {
         "status": "success", 
         "user_id": user["user_id"],
+        "display_name": user["display_name"],
+        "rank_points": user["rank_points"],
+        "free_tokens": user["free_tokens"],
+        "paid_tokens": user["paid_tokens"]
+    }
+
+# 🥷 追加：1クリックで自動生成されるゲストログインAPI
+@app.post("/api/guest_login")
+def guest_login():
+    # 1. 重複しないランダムな文字列を生成
+    guest_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    login_id = f"guest_{guest_suffix}"
+    raw_password = str(uuid.uuid4()) # ゲスト用のランダムパスワード
+    display_name = f"見習い忍者_{guest_suffix[:4]}"
+
+    # 2. 既存の登録システムを再利用してデータベースに保存
+    hashed_pw = hash_password(raw_password)
+    result = database.create_user(login_id, hashed_pw, display_name)
+
+    if "error" in result:
+        raise HTTPException(status_code=500, detail="GUEST_CREATION_FAILED")
+
+    # 3. 作成したユーザーの全データを取得
+    user = database.get_user_by_login_id(login_id)
+    
+    # 💡 ココがポイント：フロントエンドに生のパスワード(raw_password)も渡し、
+    # ブラウザのLocalStorageに保存させることで次回から完全自動ログインにする
+    return {
+        "status": "success", 
+        "user_id": user["user_id"],
+        "login_id": login_id,         # 記憶用
+        "password": raw_password,     # 記憶用
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
