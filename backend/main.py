@@ -4,6 +4,10 @@ from pydantic import BaseModel
 import random
 import math
 
+# 🥷 以下の2行を追加！
+import database
+database.init_db()  # サーバー起動時にテーブルを自動生成
+
 # === 共通ステート・ロジックのインポート ===
 import game_logic
 from game_logic import pay_cost, get_score, calculate_yields
