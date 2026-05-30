@@ -43,13 +43,15 @@ export default function ModeSelectionScreen({ user, onSelectMode }) {
           <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>AIと戦い、戦略を磨く（ステージ選択へ）</div>
         </button>
 
-        {/* ② カジュアル対戦（未実装） */}
+        {/* ② カジュアル対戦（変更後） */}
         <button 
-          onClick={() => handleWipClick('カジュアル対戦')}
-          style={{ padding: '1.5rem', backgroundColor: '#222', color: '#888', border: '2px solid #444', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold' }}
+          onClick={() => onSelectMode('CASUAL')}
+          style={{ padding: '1.5rem', backgroundColor: '#0f3460', color: 'white', border: '2px solid #4caf50', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.3s', boxShadow: '0 4px 6px rgba(76,175,80,0.2)' }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#1a4b8c'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#0f3460'}
         >
           🤝 カジュアル対戦
-          <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem', fontWeight: 'normal' }}>ルームを作って友達と遊ぶ（レート変動なし）</div>
+          <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>ルームを作って見知らぬ人や友達と遊ぶ</div>
         </button>
 
         {/* ③ ランク対戦（未実装・連携必須） */}

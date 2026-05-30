@@ -6,6 +6,7 @@ import CardHand from './components/CardHand';
 import MapSelector from './components/MapSelector'; // 🥷 追加
 import LoginScreen from './components/LoginScreen'; // フォルダのパスは環境に合わせてください
 import ModeSelectionScreen from './components/ModeSelectionScreen';
+import LobbyScreen from './components/LobbyScreen';
 
 // 🥷 サイコロの目マッピングを追加
 const diceFaces = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅'};
@@ -21,6 +22,8 @@ function App() {
   const [isCheckingLogin, setIsCheckingLogin] = useState(true);
   // 🥷 追加：選択されたゲームモード（初期値は未選択の null）
   const [selectedMode, setSelectedMode] = useState(null);
+  // 🥷　追加：ルームIDを定義
+  const [currentRoomId, setCurrentRoomId] = useState(null);
 
   // 🥷 初期値を "map_selection" に変更
   const [gameStatus, setGameStatus] = useState({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 }); 
@@ -489,6 +492,33 @@ const handleEndTurn = async (isForcedTimeout = false) => {
         user={loggedInUser} 
         onSelectMode={(mode) => setSelectedMode(mode)} 
       />
+    );
+  }
+
+  // 🥷 追加：カジュアル対戦が選ばれ、まだルームに入っていない場合は「ロビー画面」を出す
+  if (selectedMode === 'CASUAL' && !currentRoomId) {
+    return (
+      <LobbyScreen 
+        user={loggedInUser} 
+        onBack={() => setSelectedMode(null)} 
+        onEnterRoom={(roomId) => setCurrentRoomId(roomId)} 
+      />
+    );
+  }
+
+  // 🥷 追加：ルームに入室成功した場合の「仮の待機画面」
+  if (selectedMode === 'CASUAL' && currentRoomId) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        <h1 style={{ color: '#4caf50' }}>ROOM: {currentRoomId} に入室しました！</h1>
+        <p>他のプレイヤーを待っています... (待合室のUIは次回実装)</p>
+        <button 
+          onClick={() => { setCurrentRoomId(null); setSelectedMode(null); }}
+          style={{ marginTop: '2rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
+        >
+          退室して戻る
+        </button>
+      </div>
     );
   }
 
