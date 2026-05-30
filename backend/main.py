@@ -74,6 +74,16 @@ class LoginRequest(BaseModel):
 class ComExecuteRequest(BaseModel):
     player: str
 
+# 🥷 追加：マルチプレイ用のリクエストモデル
+class CreateRoomRequest(BaseModel):
+    user_id: str
+    display_name: str
+
+class JoinRoomRequest(BaseModel):
+    room_id: str
+    user_id: str
+    display_name: str
+
 # ===================================
 
 # 🥷 =========================================================
@@ -464,6 +474,63 @@ def roll_dice():
         "event_log": result["event_log"],
         "hacker_vault": state.hacker_vault 
     })
+
+# 🥷 追加：マルチプレイ（ロビー）用のAPI群
+
+@app.get("/api/rooms")
+def get_rooms():
+    """現在立っている部屋の一覧を取得する"""
+    room_list = []
+    for r_id, session in room_manager.rooms.items():
+        # CPU対戦用の裏部屋は表示しない
+        if r_id == "SOLO_CPU_ROOM":
+            continue
+            
+        joined = getattr(session, "joined_players", [])
+        room_list.append({
+            "room_id": r_id,
+            "player_count": len(joined),
+            "status": "waiting" if len(joined) < 4 else "playing"
+        })
+    return {"rooms": room_list}
+
+
+@app.post("/api/rooms/create")
+def create_room(req: CreateRoomRequest):
+    """新しい部屋を作成する"""
+    import random
+    import string
+    
+    # 友達に教えやすいように、4桁の英数字（例: A7B2）をルームIDにする
+    room_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    
+    session = room_manager.get_or_create_room(room_id)
+    # 部屋の情報を初期設定（ホストを参加者リストの1人目に入れる）
+    session.joined_players = [{"user_id": req.user_id, "display_name": req.display_name}]
+    session.is_started = False
+    
+    return {"status": "success", "room_id": room_id}
+
+
+@app.post("/api/rooms/join")
+def join_room(req: JoinRoomRequest):
+    """既存の部屋に参加する"""
+    if req.room_id not in room_manager.rooms:
+        raise HTTPException(status_code=404, detail="ROOM_NOT_FOUND")
+        
+    session = room_manager.rooms[req.room_id]
+    joined = getattr(session, "joined_players", [])
+    
+    # 満員チェック
+    if len(joined) >= 4:
+        raise HTTPException(status_code=400, detail="ROOM_FULL")
+        
+    # すでに入っているかどうかの重複チェック
+    if not any(p["user_id"] == req.user_id for p in joined):
+        joined.append({"user_id": req.user_id, "display_name": req.display_name})
+        session.joined_players = joined
+        
+    return {"status": "success", "room_id": req.room_id}
 
 @app.post("/api/reset")
 def reset_game(req: ResetRequest = None):
