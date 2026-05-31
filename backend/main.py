@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import random
@@ -47,6 +47,8 @@ class StateProxy:
 
 # これ以降のコードは、今まで通り「state」という名前でアクセスするだけで、
 # 裏側では勝手に「SOLO_CPU_ROOM」の部屋のデータがいじられるようになります！
+# ⚠️ 将来的には各エンドポイント内で room_id から直接セッションを取得するため、
+#    この state は段階的に廃止予定です。
 state = StateProxy()
 
 # === 生物データ ===
@@ -87,23 +89,23 @@ class JoinRoomRequest(BaseModel):
 # ===================================
 
 # 🥷 =========================================================
-# 【新設】全API共通のレスポンスジェネレータ（中央管制室）
+# 【改修】全API共通のレスポンスジェネレータ（中央管制室）
+# セッションを受け取って動作するように変更
 # =========================================================
-
-
-def build_standard_response(extra_data: dict = None):
+def build_standard_response(session, extra_data: dict = None):
     """
     全てのAPIエンドポイントはこの関数を通ってフロントエンドにデータを返します。
+    引数 session は room_manager から取得した GameSession オブジェクトです。
     """
     import map_layouts
-    current_map_id = getattr(state, "current_map_id", "STAGE_01_BEGINNER")
-    state.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
+    current_map_id = getattr(session, "current_map_id", "STAGE_01_BEGINNER")
+    session.game_status["target_score"] = map_layouts.MAP_CATALOG[current_map_id]["winning_score"]
 
-    game_logic.check_and_explore_dark_hexes(state.current_board, state.roads, CENTER_X, CENTER_Y, HEX_SIZE)
+    game_logic.check_and_explore_dark_hexes(session.current_board, session.roads, CENTER_X, CENTER_Y, HEX_SIZE)
 
     new_vertex_sectors = {}
     import math
-    for hex_data in state.current_board:
+    for hex_data in session.current_board:
         sector_type = hex_data["sector"]
         cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
         cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
@@ -115,17 +117,17 @@ def build_standard_response(extra_data: dict = None):
             if v_id not in new_vertex_sectors:
                 new_vertex_sectors[v_id] = []
             new_vertex_sectors[v_id].append(sector_type)
-    state.vertex_sectors = new_vertex_sectors 
+    session.vertex_sectors = new_vertex_sectors 
 
     # 1. まず称号の所有者を最新状態に更新する
-    game_logic.update_all_titles(state, state.buildings, state.cards, state.roads, getattr(state, "combat_wins", {}))
+    game_logic.update_all_titles(session, session.buildings, session.cards, session.roads, getattr(session, "combat_wins", {}))
 
     # 2. フロントエンドが絶対に読み込める「完璧なスコア辞書」を構築する
     all_scores = {}
-    title_owners = getattr(state, "title_owners", {})
+    title_owners = getattr(session, "title_owners", {})
     
-    for p in state.PLAYERS:
-        s_data = game_logic.get_score(p, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
+    for p in session.PLAYERS:
+        s_data = game_logic.get_score(p, session.buildings, session.cards, session.roads, session.bots, getattr(session, "combat_wins", {}))
         
         if not isinstance(s_data, dict):
             s_data = {"total": s_data, "base": s_data, "bonus": 0}
@@ -136,25 +138,25 @@ def build_standard_response(extra_data: dict = None):
         
         all_scores[p] = s_data
 
-    state.scores = all_scores 
+    session.scores = all_scores 
 
     response = {
-        "game_status": state.game_status,
-        "combat_wins": getattr(state, "combat_wins", {}), 
-        "inventory": state.inventory,
-        "trade_rates": state.trade_rates,
-        "board": state.current_board,
-        "buildings": state.buildings,
-        "roads": state.roads,
-        "bots": getattr(state, "bots", {}),
-        "cards": state.cards,
-        "hacker_position": getattr(state, "hacker_position", None),
+        "game_status": session.game_status,
+        "combat_wins": getattr(session, "combat_wins", {}), 
+        "inventory": session.inventory,
+        "trade_rates": session.trade_rates,
+        "board": session.current_board,
+        "buildings": session.buildings,
+        "roads": session.roads,
+        "bots": getattr(session, "bots", {}),
+        "cards": session.cards,
+        "hacker_position": getattr(session, "hacker_position", None),
         
         # 🥷 修正完了：ただの数字ではなく、total と titles が入った完全な辞書データをそのまま渡す
-        "scores": state.scores,
+        "scores": session.scores,
         
-        "all_scores": state.scores, 
-        "score": state.scores.get("Player1", {}),
+        "all_scores": session.scores, 
+        "score": session.scores.get("Player1", {}),
         "title_owners": title_owners,
     }
     
@@ -166,12 +168,12 @@ def build_standard_response(extra_data: dict = None):
 
 # =========================================================
 
-def check_annihilation():
-    if state.game_status.get("state") != "playing":
+def check_annihilation(session):
+    if session.game_status.get("state") != "playing":
         return
 
-    bldg_counts = {p: 0 for p in state.game_status.get("turn_order", [])}
-    for b in state.buildings.values():
+    bldg_counts = {p: 0 for p in session.game_status.get("turn_order", [])}
+    for b in session.buildings.values():
         if b["player"] in bldg_counts:
             bldg_counts[b["player"]] += 1
             
@@ -182,18 +184,18 @@ def check_annihilation():
         best_player = None
         max_score = -1
         
-        for p in state.game_status["turn_order"]:
-            score_data = get_score(p, state.buildings, state.cards, state.roads, state.bots, getattr(state, "combat_wins", {}))
+        for p in session.game_status["turn_order"]:
+            score_data = get_score(p, session.buildings, session.cards, session.roads, session.bots, getattr(session, "combat_wins", {}))
             if score_data["total"] > max_score:
                 max_score = score_data["total"]
                 best_player = p
                 
-        state.game_status["state"] = "finished"
-        state.game_status["winner"] = best_player
-        state.game_status["reason"] = f"ANNIHILATION: {loser} の全拠点が陥落し、倒産しました！"
+        session.game_status["state"] = "finished"
+        session.game_status["winner"] = best_player
+        session.game_status["reason"] = f"ANNIHILATION: {loser} の全拠点が陥落し、倒産しました！"
 
-def enforce_time_limit():
-    deadline = state.game_status.get("turn_end_time")
+def enforce_time_limit(session):
+    deadline = session.game_status.get("turn_end_time")
     if is_time_up(deadline):
         raise HTTPException(status_code=408, detail="TURN_TIMEOUT")
 
@@ -272,120 +274,130 @@ def guest_login():
 def health_check(): return {"status": "operational"}
 
 @app.get("/api/board")
-def get_or_generate_board():
+def get_or_generate_board(room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
     # state側でマップ生成ロジックをすべて実行
-    result = state.generate_board_if_empty()
+    result = session.generate_board_if_empty()
 
     # スコアや称号の計算・同期は build_standard_response が自動で行うため、
     # ここではゲーム進行に必要な固有のデータだけをマージして返す
-    return build_standard_response({
+    return build_standard_response(session, {
         "map_id": result["map_id"],
-        "init_rolls": state.init_rolls,
-        "coastal_vertices": list(state.coastal_vertices),
-        "player_types": getattr(state, "player_types", {})
+        "init_rolls": session.init_rolls,
+        "coastal_vertices": list(session.coastal_vertices),
+        "player_types": getattr(session, "player_types", {})
     })
 
 @app.post("/api/init_roll")
-def init_roll(req: InitRollRequest):
+def init_roll(req: InitRollRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
     # 順番決めのダイスロジックをクラスに丸投げ
-    result = state.execute_init_roll(req.player)
+    result = session.execute_init_roll(req.player)
     
     if "error" in result: 
         raise HTTPException(status_code=400, detail=result["error"])
         
-    return build_standard_response({"status": "success", "init_rolls": result["init_rolls"]})
+    return build_standard_response(session, {"status": "success", "init_rolls": result["init_rolls"]})
 
 # main.py
 
 @app.post("/api/end_turn")
-def end_turn(req: BuildRequest): 
+def end_turn(req: BuildRequest, room_id: str = Query("SOLO_CPU_ROOM")): 
+    session = room_manager.get_or_create_room(room_id)
     # 🥷 修正：ここにあった enforce_time_limit() を削除！
     # 時間切れのペナルティ判定はクラス側で行うため、ここで弾いてはいけません。
     
     # 手番終了にまつわる複雑な判定をクラスに丸投げ
-    result = state.execute_end_turn(req.player)
+    result = session.execute_end_turn(req.player)
     
     if "error" in result: 
         raise HTTPException(status_code=400, detail=result["error"])
         
     # 初期配置でタイムアウト失格になった場合のハンドリング
     if result.get("status") == "timeout_reset":
-        reset_game() 
-        state.game_status["reason"] = f"{req.player} が初期配置を放棄したため、無効試合（解散）となりました。"
-        return build_standard_response({"status": "success"})
+        # 同じ部屋のセッションに対してリセットをかける
+        session.reset_state(None)  # マップIDはNoneで元のままリセット
+        session.game_status["reason"] = f"{req.player} が初期配置を放棄したため、無効試合（解散）となりました。"
+        return build_standard_response(session, {"status": "success"})
             
-    return build_standard_response({"status": "success"})
+    return build_standard_response(session, {"status": "success"})
 
 @app.post("/api/com_execute")
-def com_execute(req: ComExecuteRequest):
+def com_execute(req: ComExecuteRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
     # AIターン実行の複雑なロジックを state に丸投げ
-    result = state.execute_com_turn(req.player)
+    result = session.execute_com_turn(req.player)
     
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
         
-    return build_standard_response({
+    return build_standard_response(session, {
         "status": "success",
         "action_logs": result["logs"],
         "dice": result["dice"]
     })
 
 @app.post("/api/draw_card")
-def draw_card(req: CardRequest):
-    enforce_time_limit()
+def draw_card(req: CardRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    enforce_time_limit(session)
     
-    # 複雑な処理はすべて state(GameSession) に丸投げする
-    result = state.draw_card_for_player(req.player, req.deck_type)
+    # 複雑な処理はすべて session(GameSession) に丸投げする
+    result = session.draw_card_for_player(req.player, req.deck_type)
     
     # エラーが返ってきたら弾く
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
         
     # 成功したらそのままレスポンスを返す
-    return build_standard_response({"status": "success", "drawn": result["card"]})
+    return build_standard_response(session, {"status": "success", "drawn": result["card"]})
 
 @app.post("/api/use_card")
-def use_card(req: UseCardRequest):
-    enforce_time_limit()
+def use_card(req: UseCardRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    enforce_time_limit(session)
     
     # リクエストから安全に値を取り出す
     target_val = getattr(req, "target_val", None)
     target_id = getattr(req, "target_id", None)
     
-    # 全ての複雑なカード処理を state に丸投げ
-    result = state.execute_use_card(req.player, req.card_id, target_id, target_val)
+    # 全ての複雑なカード処理を session に丸投げ
+    result = session.execute_use_card(req.player, req.card_id, target_id, target_val)
     
     if "error" in result: 
         raise HTTPException(status_code=400, detail=result["error"])
         
-    return build_standard_response({
+    return build_standard_response(session, {
         "status": "success", 
         "msg": result["msg"], 
         "yields": result["yields"]
     })
 
 @app.post("/api/trade")
-def trade_resources(req: TradeRequest):
-    enforce_time_limit()
+def trade_resources(req: TradeRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    enforce_time_limit(session)
     
-    result = state.execute_trade(req.player, req.offer_res, req.receive_res)
+    result = session.execute_trade(req.player, req.offer_res, req.receive_res)
     
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
         
-    return build_standard_response({"status": "success"})
+    return build_standard_response(session, {"status": "success"})
 
 @app.get("/api/trade_rates")
-def get_trade_rates(player: str = "Player1"): 
-    return {"rates": state.trade_rates[player]} # このAPIは状態を更新しないためそのまま
+def get_trade_rates(player: str = "Player1", room_id: str = Query("SOLO_CPU_ROOM")): 
+    session = room_manager.get_or_create_room(room_id)
+    return {"rates": session.trade_rates[player]} # このAPIは状態を更新しないためそのまま
 
 @app.post("/api/build")
-def build_hub(req: BuildRequest):
-    enforce_time_limit()
+def build_hub(req: BuildRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    enforce_time_limit(session)
     
-    # 🥷 複雑な建設ロジックはすべて state に任せる
+    # 🥷 複雑な建設ロジックはすべて session に任せる
     upgrade_to = getattr(req, "upgrade_to", None)
-    result = state.execute_build(req.player, req.vertex_id, upgrade_to)
+    result = session.execute_build(req.player, req.vertex_id, upgrade_to)
     
     # エラーがあれば弾く
     if "error" in result:
@@ -398,81 +410,89 @@ def build_hub(req: BuildRequest):
     if "discount" in result and result["discount"]:
         response_data["discount"] = result["discount"]
         
-    return build_standard_response(response_data)
+    return build_standard_response(session, response_data)
 
 @app.post("/api/move_hacker")
-def move_hacker(req: HackerRequest):
-    enforce_time_limit()
+def move_hacker(req: HackerRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    enforce_time_limit(session)
     
-    state.execute_move_hacker(req.hex_id)
-    return build_standard_response({"status": "success"})
+    session.execute_move_hacker(req.hex_id)
+    return build_standard_response(session, {"status": "success"})
 
 @app.post("/api/deploy_bot")
-def deploy_bot(req: BuildRequest):
-    enforce_time_limit()
+def deploy_bot(req: BuildRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    enforce_time_limit(session)
     
-    # ボットの配置・強化を state に丸投げ
-    result = state.execute_deploy_bot(req.player, req.vertex_id)
+    # ボットの配置・強化を session に丸投げ
+    result = session.execute_deploy_bot(req.player, req.vertex_id)
     
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
         
-    return build_standard_response({"status": "success"})
+    return build_standard_response(session, {"status": "success"})
 
 @app.post("/api/move_bot")
-def move_bot(req: MoveRequest):
-    enforce_time_limit()
+def move_bot(req: MoveRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    enforce_time_limit(session)
     
-    # 複雑なサイコロバトルと勝敗判定はすべて state にお任せ
-    result = state.execute_move_bot(req.player, req.from_vertex, req.to_vertex)
+    # 複雑なサイコロバトルと勝敗判定はすべて session にお任せ
+    result = session.execute_move_bot(req.player, req.from_vertex, req.to_vertex)
     
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
         
-    return build_standard_response({"status": "success", "combat_log": result.get("combat_log")})
+    return build_standard_response(session, {"status": "success", "combat_log": result.get("combat_log")})
 
 @app.post("/api/build_road")
-def build_road(req: RoadRequest):
-    enforce_time_limit()
+def build_road(req: RoadRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    enforce_time_limit(session)
     
-    # 道の建設と開拓処理を state に丸投げ
-    result = state.execute_build_road(req.player, req.edge_id)
+    # 道の建設と開拓処理を session に丸投げ
+    result = session.execute_build_road(req.player, req.edge_id)
     
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
         
-    return build_standard_response({
+    return build_standard_response(session, {
         "status": "success", 
         "explored": result["explored"], 
         "new_sector": result["new_sector"]
     })
 
 @app.get("/api/inventory")
-def get_inventory(): return {"inventory": state.inventory}
+def get_inventory(room_id: str = Query("SOLO_CPU_ROOM")): 
+    session = room_manager.get_or_create_room(room_id)
+    return {"inventory": session.inventory}
 
 @app.post("/api/hack_resources")
-def hack_resources(req: InitRollRequest):
-    for res in state.inventory[req.player]: state.inventory[req.player][res] += 100.0
-    return build_standard_response({"status": "hacked"})
+def hack_resources(req: InitRollRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    for res in session.inventory[req.player]: session.inventory[req.player][res] += 100.0
+    return build_standard_response(session, {"status": "hacked"})
 
 @app.get("/api/dice")
-def roll_dice():
-    enforce_time_limit()
+def roll_dice(room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    enforce_time_limit(session)
     
-    # サイコロ振りとそれに伴う全イベント・産出ロジックを state に丸投げ
-    result = state.execute_roll_dice()
+    # サイコロ振りとそれに伴う全イベント・産出ロジックを session に丸投げ
+    result = session.execute_roll_dice()
     
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
         
-    return build_standard_response({
+    return build_standard_response(session, {
         "dice1": result["dice1"], 
         "dice2": result["dice2"], 
         "total": result["total"], 
         "yields": result["yields"], 
         "event_type": result["event_type"], 
         "event_log": result["event_log"],
-        "hacker_vault": state.hacker_vault 
+        "hacker_vault": session.hacker_vault 
     })
 
 # 🥷 追加：マルチプレイ（ロビー）用のAPI群
@@ -533,9 +553,10 @@ def join_room(req: JoinRoomRequest):
     return {"status": "success", "room_id": req.room_id}
 
 @app.post("/api/reset")
-def reset_game(req: ResetRequest = None):
-    # 変数のクリアや初期化を state に丸投げ
+def reset_game(req: ResetRequest = None, room_id: str = Query("SOLO_CPU_ROOM")):
+    session = room_manager.get_or_create_room(room_id)
+    # 変数のクリアや初期化を session に丸投げ
     map_id = req.map_id if req else None
-    state.reset_state(map_id)
+    session.reset_state(map_id)
     
     return {"status": "system_reset_complete"}
