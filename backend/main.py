@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import random
@@ -14,6 +14,47 @@ import hashlib
 # 🥷 追加：パスワードを不可逆の暗号（ハッシュ）に変換する関数
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+# 🥷 JWT認証用のライブラリ
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from datetime import datetime, timedelta
+from fastapi.security import OAuth2PasswordBearer
+
+# パスワードハッシュ用（bcrypt）
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# JWTの設定（⚠️ 本番では必ず強力なランダム文字列に変更）
+SECRET_KEY = "CHANGE_ME_TO_RANDOM_64CHAR_STRING"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24時間
+
+# トークン取得用のスキーム
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """トークンからユーザーを特定する依存関数（後で使う）"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = database.get_user_by_id(user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
 
 # === 共通ステート・ロジックのインポート ===
 import game_logic
@@ -203,14 +244,10 @@ def enforce_time_limit(session):
 # 🥷 追加：新規アカウント登録API
 @app.post("/api/register")
 def register_user(req: RegisterRequest):
-    # パスワードを暗号化してからデータベースに渡す
-    hashed_pw = hash_password(req.password)
+    hashed_pw = pwd_context.hash(req.password)  # ← ここを変更
     result = database.create_user(req.login_id, hashed_pw, req.display_name)
-    
     if "error" in result:
-        # IDがすでに使われている場合などのエラー
         raise HTTPException(status_code=400, detail=result["error"])
-        
     return {"status": "success", "user_id": result["user_id"]}
 
 
@@ -218,19 +255,16 @@ def register_user(req: RegisterRequest):
 @app.post("/api/login")
 def login_user(req: LoginRequest):
     user = database.get_user_by_login_id(req.login_id)
-    
-    # ユーザーが存在しない場合
     if not user:
         raise HTTPException(status_code=400, detail="USER_NOT_FOUND")
-        
-    # パスワードの答え合わせ
-    hashed_pw = hash_password(req.password)
-    if user["password_hash"] != hashed_pw:
+    if not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="INVALID_PASSWORD")
-        
-    # ログイン成功！ UIで表示するためのトークンやランクを全て返す
+
+    token = create_access_token({"sub": user["user_id"]})
     return {
-        "status": "success", 
+        "status": "success",
+        "access_token": token,
+        "token_type": "bearer",
         "user_id": user["user_id"],
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
@@ -241,33 +275,30 @@ def login_user(req: LoginRequest):
 # 🥷 追加：1クリックで自動生成されるゲストログインAPI
 @app.post("/api/guest_login")
 def guest_login():
-    # 1. 重複しないランダムな文字列を生成
     guest_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
     login_id = f"guest_{guest_suffix}"
-    raw_password = str(uuid.uuid4()) # ゲスト用のランダムパスワード
+    raw_password = str(uuid.uuid4())
     display_name = f"見習い忍者_{guest_suffix[:4]}"
 
-    # 2. 既存の登録システムを再利用してデータベースに保存
-    hashed_pw = hash_password(raw_password)
+    hashed_pw = pwd_context.hash(raw_password)
     result = database.create_user(login_id, hashed_pw, display_name)
-
     if "error" in result:
         raise HTTPException(status_code=500, detail="GUEST_CREATION_FAILED")
 
-    # 3. 作成したユーザーの全データを取得
     user = database.get_user_by_login_id(login_id)
-    
-    # 💡 ココがポイント：フロントエンドに生のパスワード(raw_password)も渡し、
-    # ブラウザのLocalStorageに保存させることで次回から完全自動ログインにする
+    token = create_access_token({"sub": user["user_id"]})  # ← 追加
+
     return {
-        "status": "success", 
+        "status": "success",
         "user_id": user["user_id"],
-        "login_id": login_id,         # 記憶用
-        "password": raw_password,     # 記憶用
+        "login_id": login_id,
+        "password": raw_password,
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
-        "paid_tokens": user["paid_tokens"]
+        "paid_tokens": user["paid_tokens"],
+        "access_token": token,     # ← 追加
+        "token_type": "bearer"     # ← 追加
     }
 
 @app.get("/health")
