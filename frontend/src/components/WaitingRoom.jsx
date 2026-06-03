@@ -1,0 +1,112 @@
+import React, { useState, useEffect } from 'react';
+
+export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
+  const [players, setPlayers] = useState([]);
+  const [isHost, setIsHost] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const fetchRoomState = async () => {
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/state`);
+      if (res.ok) {
+        const data = await res.json();
+
+        // 🥷 ゲームが開始されたかチェック
+        if (
+          data.game_status &&
+          (data.game_status.state === 'init_roll' ||
+            data.game_status.state === 'setup' ||
+            data.game_status.state === 'playing')
+        ) {
+          onGameStart(roomId); // ゲーム画面へ遷移
+          return; // これ以上のポーリングは不要
+        }
+
+        const joined = data.joined_players || [];
+        setPlayers(joined);
+        // ホスト判定（最初の参加者）
+        setIsHost(joined.length > 0 && joined[0].user_id === user.user_id);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoomState();
+    const interval = setInterval(fetchRoomState, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleStartGame = async () => {
+    setErrorMsg('');
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/start?user_id=${user.user_id}`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        onGameStart(roomId); // 自分もゲーム画面へ
+      } else {
+        const data = await res.json();
+        setErrorMsg(data.detail || 'ゲーム開始に失敗しました');
+      }
+    } catch (err) {
+      setErrorMsg('通信エラー');
+    }
+  };
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#1a1a2e',
+      color: 'white',
+      padding: '2rem',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center'
+    }}>
+      <h2 style={{ color: '#4caf50' }}>ROOM: {roomId}</h2>
+      <div style={{ width: '100%', maxWidth: '400px', marginTop: '2rem' }}>
+        {players.map((p, idx) => (
+          <div key={idx} style={{ padding: '0.5rem', borderBottom: '1px solid #333' }}>
+            {p.display_name} {idx === 0 ? '(ホスト)' : ''}
+          </div>
+        ))}
+      </div>
+
+      {errorMsg && <div style={{ color: '#e94560', margin: '1rem 0' }}>{errorMsg}</div>}
+
+      <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+        <button
+          onClick={onLeave}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: '#555',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          退室する
+        </button>
+        {isHost && (
+          <button
+            onClick={handleStartGame}
+            disabled={players.length < 2}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: players.length >= 2 ? '#e94560' : '#555',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: players.length >= 2 ? 'pointer' : 'not-allowed'
+            }}
+          >
+            ゲーム開始 (最低2人)
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
