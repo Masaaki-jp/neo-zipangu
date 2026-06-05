@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from schemas import (
     BuildRequest, RoadRequest, MoveRequest, TradeRequest,
     HackerRequest, CardRequest, UseCardRequest, InitRollRequest, ResetRequest,
-    ComExecuteRequest  # 🥷 追加
+    ComExecuteRequest
 )
-import main  # 循環インポートを避けるため、関数は実行時に main.xxx で参照する
+import main
 
 router = APIRouter()
 
@@ -34,6 +34,7 @@ def _init_roll(session, req: InitRollRequest):
 def _end_turn(session, req: BuildRequest):
     result = session.execute_end_turn(req.player)
     if "error" in result:
+        print(f"[DEBUG] end_turn error for {req.player}: {result['error']}")
         raise HTTPException(status_code=400, detail=result["error"])
     if result.get("status") == "timeout_reset":
         session.reset_state(None)
@@ -117,6 +118,7 @@ def _build_road(session, req: RoadRequest):
     main.enforce_time_limit(session)
     result = session.execute_build_road(req.player, req.edge_id)
     if "error" in result:
+        print(f"[DEBUG] build_road error for {req.player}: {result['error']}")
         raise HTTPException(status_code=400, detail=result["error"])
     return main.build_standard_response(session, {
         "status": "success",

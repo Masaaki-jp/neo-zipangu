@@ -5,6 +5,7 @@ import math
 from constants import CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK, MAX_BUILDINGS, COSTS, HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS
 from game_logic import pay_cost
 from nature_data import WATCH_DEFS, get_watch_card_info
+from countdown import calculate_deadline, is_time_up
 
 class GameSession:
     def __init__(self):
@@ -374,17 +375,17 @@ class GameSession:
             self.game_status["state"] = "setup"
             self.game_status["setup_turn"] = 0
 
-            com_pool = ["com_gemini"] 
-            for p in sorted_players:
-                if self.player_types.get(p, "human") != "human":
-                    self.player_types[p] = random.choice(com_pool)
-
-            from countdown import calculate_deadline
+            # 🥷 修正：setup 状態に移行したら、最初の手番プレイヤーのタイマーを即座に設定
             current_p = self.game_status["current_player"]
             if self.player_types.get(current_p, "human") == "human":
                 self.game_status["turn_end_time"] = calculate_deadline(60)
             else:
                 self.game_status["turn_end_time"] = None
+
+            com_pool = ["com_gemini"] 
+            for p in sorted_players:
+                if self.player_types.get(p, "human") != "human":
+                    self.player_types[p] = random.choice(com_pool)
 
         return {"success": True, "init_rolls": self.init_rolls}
 
@@ -403,7 +404,6 @@ class GameSession:
             st = self.game_status["setup_turn"]
             expected_count = 1 if st < 4 else 2
             
-            from countdown import is_time_up
             deadline = self.game_status.get("turn_end_time")
             is_timeout = is_time_up(deadline)
 
@@ -463,7 +463,6 @@ class GameSession:
         # 次のプレイヤーの制限時間設定
         if self.game_status["state"] != "finished":
             next_p = self.game_status["current_player"]
-            from countdown import calculate_deadline
             if self.player_types.get(next_p, "human") == "human":
                 self.game_status["turn_end_time"] = calculate_deadline(60)
             else:
@@ -655,7 +654,6 @@ class GameSession:
         if self.game_status["state"] != "finished":
             next_p = self.game_status["current_player"]
             if self.player_types.get(next_p, "human") == "human":
-                from countdown import calculate_deadline
                 self.game_status["turn_end_time"] = calculate_deadline(60)
             else:
                 self.game_status["turn_end_time"] = None

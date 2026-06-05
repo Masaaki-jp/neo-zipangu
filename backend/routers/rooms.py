@@ -99,7 +99,12 @@ def start_room_game(room_id: str, user_id: str = Query(...)):
         else:
             cpu_key = f"Player{i+1}"
             cpu_name = cpu_names[i - human_count] if (i - human_count) < len(cpu_names) else "CPU_Extra"
-            session.bots[cpu_key] = cpu_name
+            # 🥷 ボットとして正しい辞書型で追加（str ではなく dict を代入）
+            session.bots[cpu_key] = {
+                "player": cpu_key,
+                "level": 1,
+                "has_moved": False
+            }
             joined.append({"user_id": f"cpu_{i}", "display_name": cpu_name, "player_key": cpu_key})
 
     # プレイヤー種別を記録

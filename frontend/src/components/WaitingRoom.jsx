@@ -11,15 +11,19 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
       if (res.ok) {
         const data = await res.json();
 
-        // 🥷 ゲームが開始されたかチェック
+        // ゲームが開始されたかチェック
         if (
           data.game_status &&
           (data.game_status.state === 'init_roll' ||
             data.game_status.state === 'setup' ||
             data.game_status.state === 'playing')
         ) {
-          onGameStart(roomId); // ゲーム画面へ遷移
-          return; // これ以上のポーリングは不要
+          // 自分のプレイヤー番号を取得してからゲーム画面へ
+          const joined = data.joined_players || [];
+          const me = joined.find(p => p.user_id === user.user_id);
+          const myKey = me?.player_key || 'Player1';
+          onGameStart(roomId, myKey);
+          return;
         }
 
         const joined = data.joined_players || [];
@@ -45,7 +49,13 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
         method: 'POST'
       });
       if (res.ok) {
-        onGameStart(roomId); // 自分もゲーム画面へ
+        // 開始後に自分のプレイヤー番号を取得
+        const stateRes = await fetch(`/api/rooms/${roomId}/state`);
+        const stateData = await stateRes.json();
+        const joined = stateData.joined_players || [];
+        const me = joined.find(p => p.user_id === user.user_id);
+        const myKey = me?.player_key || 'Player1';
+        onGameStart(roomId, myKey);
       } else {
         const data = await res.json();
         setErrorMsg(data.detail || 'ゲーム開始に失敗しました');
