@@ -23,6 +23,11 @@ class JoinRoomRequest(BaseModel):
     display_name: str
 
 
+class LeaveRoomRequest(BaseModel):
+    room_id: str
+    user_id: str
+
+
 @router.get("/api/rooms")
 def get_rooms():
     """現在立っている部屋の一覧を取得する"""
@@ -70,6 +75,30 @@ def join_room(req: JoinRoomRequest):
         session.joined_players = joined
 
     return {"status": "success", "room_id": req.room_id}
+
+
+@router.post("/api/rooms/{room_id}/leave")
+def leave_room(room_id: str, req: LeaveRoomRequest):
+    """部屋から退出する。ゲーム中なら GameSession.remove_player に処理を委譲。
+    部屋の削除は行わず、残ったプレイヤーがリセットするまで保持する。
+    """
+    session = room_manager.rooms.get(room_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="ROOM_NOT_FOUND")
+
+    # GameSession の退出処理に委譲（ゲーム中なら finished にする等）
+    result = session.remove_player(req.user_id)
+
+    # 誰もいなくなった場合のみ部屋を削除（ゲーム未開始 or 退出により人間ゼロ）
+    remaining_humans = [
+        p for p in getattr(session, "joined_players", [])
+        if not p["user_id"].startswith("cpu_")
+    ]
+    if len(remaining_humans) == 0:
+        room_manager.delete_room(room_id)
+        return {"status": "room_deleted"}
+
+    return {"status": result.get("status", "success"), "detail": result}
 
 
 @router.post("/api/rooms/{room_id}/start")
@@ -161,3 +190,19 @@ def get_room_state(room_id: str):
         raise HTTPException(status_code=404, detail="ROOM_NOT_FOUND")
     # 部屋の参加者情報を一緒に返す
     return main.build_standard_response(session, {"joined_players": getattr(session, "joined_players", [])})
+
+
+# 🥷 追加：軽量ステータスAPI（マルチプレイの退出検知用）
+@router.get("/api/rooms/{room_id}/status")
+def get_room_status(room_id: str):
+    """ゲーム状態（state と winner）のみを返す軽量API。
+    フロントエンドのポーリングで finished を素早く検知するために使用。
+    """
+    session = room_manager.rooms.get(room_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="ROOM_NOT_FOUND")
+    
+    return {
+        "state": session.game_status.get("state", "unknown"),
+        "winner": session.game_status.get("winner")
+    }
