@@ -33,12 +33,13 @@ const PlayerStatus = ({
   timeLeft,
   gameStatus,
   allScores,
-  title_owners, //追加
+  title_owners,
   handleEndTurn,
   inventory,
   tradeRates,
   currentBCounts,
-  MAX_STOCKS
+  MAX_STOCKS,
+  isMyTurn // 🥷 追加：自分のターンかどうか
 }) => {
   const [showCosts, setShowCosts] = useState(false);
   const [showConditions, setShowConditions] = useState(false);
@@ -46,7 +47,7 @@ const PlayerStatus = ({
   return (
     <>
       <header style={{ padding: '1rem', borderBottom: `2px solid ${pColor}`, textAlign: 'center', textShadow: `0 0 10px ${pColor}` }}>
-        {/* ヘッダー上部（ターン情報、タイマー）は変更なし */}
+        {/* ヘッダー上部（ターン情報、タイマー） */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
           <div style={{ textAlign: 'left' }}>
              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: pColor }}>{currentPlayer} 'S TURN</div>
@@ -58,8 +59,20 @@ const PlayerStatus = ({
               [ TIMER: {timeLeft.toString().padStart(2, '0')}s ]
             </div>
             <button 
-              onClick={handleEndTurn} 
-              style={{ marginTop: '5px', padding: '5px 15px', backgroundColor: pColor, color: '#000', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', borderRadius: '3px' }}
+              onClick={handleEndTurn}
+              disabled={!isMyTurn} // 🥷 修正：自分のターンでなければ無効化
+              style={{ 
+                marginTop: '5px', 
+                padding: '5px 15px', 
+                backgroundColor: isMyTurn ? pColor : '#555', 
+                color: isMyTurn ? '#000' : '#333', 
+                border: 'none', 
+                cursor: isMyTurn ? 'pointer' : 'not-allowed', 
+                fontWeight: 'bold', 
+                fontSize: '0.8rem', 
+                borderRadius: '3px',
+                opacity: isMyTurn ? 1 : 0.5
+              }}
             >
               END TURN
             </button>
@@ -77,7 +90,7 @@ const PlayerStatus = ({
             </div>
           </div>
 
-          {/* 🥷 修正：スコアとタイトル表示エリア */}
+          {/* 🥷 スコアとタイトル表示エリア */}
           <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '8px', borderRadius: '5px', border: '1px solid #333' }}>
             {Object.entries(allScores || {}).map(([pId, sData]) => (
               <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px', fontSize: '1rem', padding: '2px 0' }}>
@@ -93,7 +106,7 @@ const PlayerStatus = ({
                    {sData.total}
                  </span>
         
-                 {/* 🥷 修正：sData.titles を使わず、title_owners から所有者を判定して表示 */}
+                 {/* 🥷 title_owners から所有者を判定して表示 */}
                  <span style={{ minWidth: '60px', textAlign: 'left', letterSpacing: '2px' }}>
                    {title_owners && Object.entries(title_owners).map(([icon, owner]) => 
                      owner === pId ? <span key={icon}>{icon}</span> : null

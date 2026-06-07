@@ -4,6 +4,7 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
   const [players, setPlayers] = useState([]);
   const [isHost, setIsHost] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isLeaving, setIsLeaving] = useState(false); // 🥷 退室中の二重クリック防止
 
   const fetchRoomState = async () => {
     try {
@@ -41,6 +42,27 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
     const interval = setInterval(fetchRoomState, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // 🥷 修正：退出APIを呼び出してから退室する
+  const handleLeaveRoom = async () => {
+    if (isLeaving) return; // 二重クリック防止
+    setIsLeaving(true);
+    try {
+      await fetch(`/api/rooms/${roomId}/leave`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          room_id: roomId,
+          user_id: user.user_id,
+        }),
+      });
+    } catch (err) {
+      console.error('退出APIの呼び出しに失敗しました:', err);
+    } finally {
+      setIsLeaving(false);
+      onLeave(); // 成功・失敗にかかわらず画面は戻す
+    }
+  };
 
   const handleStartGame = async () => {
     setErrorMsg('');
@@ -88,17 +110,18 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
 
       <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
         <button
-          onClick={onLeave}
+          onClick={handleLeaveRoom}
+          disabled={isLeaving}
           style={{
             padding: '0.5rem 1rem',
-            backgroundColor: '#555',
+            backgroundColor: isLeaving ? '#333' : '#555',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
-            cursor: 'pointer'
+            cursor: isLeaving ? 'not-allowed' : 'pointer'
           }}
         >
-          退室する
+          {isLeaving ? '退室中...' : '退室する'}
         </button>
         {isHost && (
           <button

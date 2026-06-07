@@ -242,4 +242,10 @@ def roll_dice(room_id: str = Query("SOLO_CPU_ROOM")):
 @router.post("/api/reset")
 def reset_game(req: ResetRequest = None, room_id: str = Query("SOLO_CPU_ROOM")):
     session = main.room_manager.get_or_create_room(room_id)
+
+    # マルチプレイでゲームが終了している場合、部屋を削除する
+    if room_id != "SOLO_CPU_ROOM" and session.game_status.get("state") == "finished":
+        main.room_manager.delete_room(room_id)
+        return {"status": "room_deleted"}
+
     return _reset_game(session, req)

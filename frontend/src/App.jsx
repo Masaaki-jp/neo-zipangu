@@ -8,6 +8,7 @@ import LoginScreen from './components/LoginScreen';
 import ModeSelectionScreen from './components/ModeSelectionScreen';
 import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const diceFaces = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅' };
 const MAX_STOCKS = { LOCAL_HUB: 5, DATA_CENTER: 4, GATEWAY: 3, MEGA_HQ: 2 };
@@ -57,6 +58,9 @@ function App() {
   const currentPlayer = gameStatus.current_player || "Player1";
   const pColor = PLAYER_COLORS[currentPlayer];
 
+  // 🥷 自分のターンかどうか（マルチプレイ用）
+  const isMyTurn = currentPlayer === myPlayerKey;
+
   // 重複リクエスト防止用のフラグ
   const isFetching = useRef(false);
 
@@ -105,6 +109,29 @@ function App() {
     isFetching.current = true;
     try {
       const data = await apiGet('/api/board');
+
+      // 🥷 デバッグ：game_status の内容をコンソールに出力
+      console.log('[DEBUG] board response game_status:', JSON.stringify(data.game_status));
+
+      // 🥷 防御コード：finished を検知したら全データを安全な初期値にセット
+      if (data.game_status && data.game_status.state === "finished") {
+        setGameStatus(data.game_status);
+        setAllScores(data.all_scores || {});
+        setTitleOwners(data.title_owners || {});
+        setBuildings(data.buildings || {});
+        setRoads(data.roads || {});
+        setBots(data.bots || {});
+        setBoardData(data.board || []);
+        setHackerPos(data.hacker_position);
+        setMapId(data.map_id || "STAGE_01_BEGINNER");
+        if (data.inventory) setInventory(data.inventory[currentPlayer] || null);
+        if (data.trade_rates) setTradeRates(data.trade_rates[currentPlayer] || null);
+        if (data.cards) setCards(data.cards[currentPlayer] || []);
+        if (data.player_types) setPlayerTypes(data.player_types);
+        setLoading(false);
+        return;
+      }
+
       setBuildings(data.buildings || {});
       setRoads(data.roads || {});
       setBots(data.bots || {});
@@ -180,6 +207,49 @@ function App() {
     }
   }, [playingRoomId, gameStatus.state]);
 
+  // 🥷 追加：軽量ステータスAPIによる finished 検知（2秒間隔）
+  useEffect(() => {
+    if (playingRoomId && (gameStatus.state === 'init_roll' || gameStatus.state === 'setup' || gameStatus.state === 'playing')) {
+      let cancelled = false;
+      const pollStatus = async () => {
+        try {
+          const res = await fetch(`/api/rooms/${playingRoomId}/status`);
+          if (!res.ok) {
+            // 404 などで部屋が消えた → 相手が退出したとみなしゲーム終了
+            if (!cancelled) {
+              setGameStatus({
+                state: "finished",
+                winner: null,
+                reason: "相手が退出したため、ゲームを終了します。",
+                current_player: myPlayerKey,
+                turn_order: [],
+                setup_turn: 0,
+                target_score: 0
+              });
+            }
+            return;
+          }
+          const statusData = await res.json();
+          if (!cancelled && statusData.state === "finished") {
+            fetchData();
+          }
+        } catch (err) {
+          // ネットワークエラーなどでも同様に終了扱い
+          if (!cancelled) {
+            setGameStatus(prev => ({
+              ...prev,
+              state: "finished",
+              winner: null,
+              reason: "相手が退出したため、ゲームを終了します。"
+            }));
+          }
+        }
+      };
+      const interval = setInterval(pollStatus, 2000);
+      return () => { cancelled = true; clearInterval(interval); };
+    }
+  }, [playingRoomId, gameStatus.state, myPlayerKey]);
+
   // ===== 状態更新 =====
   const handleStateUpdate = (newInventory, newRates, newBuildings, newScore, newCards, newGameStatus) => {
     if (newInventory && newInventory[currentPlayer]) setInventory({ ...newInventory[currentPlayer] });
@@ -215,14 +285,11 @@ function App() {
 
   // ===== ターン終了 =====
   const handleEndTurn = async (isForcedTimeout = false) => {
-    const isHumanTurn = gameStatus.current_player === myPlayerKey;
-    const isPlayingMode = gameStatus.state === "playing";
-
-    if (!isForcedTimeout && !isHumanTurn) {
+    if (!isMyTurn && !isForcedTimeout) {
       alert("[ ERROR ] 現在は敵対企業のターンです。待機してください。");
       return;
     }
-    if (!isForcedTimeout && isHumanTurn && isPlayingMode && !hasRolledDice) {
+    if (!isForcedTimeout && isMyTurn && gameStatus.state === "playing" && !hasRolledDice) {
       alert("[ ERROR ] ターンを終了する前にサイコロを振ってください！");
       return;
     }
@@ -236,7 +303,7 @@ function App() {
       setEventLog(null);
       setIsTradeOpen(false);
       setActionMode('BUILD');
-      fetchData(); // 即時反映
+      fetchData();
     } catch (err) { console.error("ターン終了処理中にエラー:", err); }
   };
 
@@ -275,13 +342,13 @@ function App() {
       const now = Date.now() / 1000;
       const diff = Math.max(0, Math.floor(gameStatus.turn_end_time - now));
       setTimeLeft(diff);
-      if (diff === 0 && gameStatus.current_player === myPlayerKey) {
+      if (diff === 0 && isMyTurn) {
         clearInterval(timerId);
         handleEndTurn(true);
       }
     }, 1000);
     return () => clearInterval(timerId);
-  }, [gameStatus.turn_end_time, gameStatus.current_player, myPlayerKey]);
+  }, [gameStatus.turn_end_time, isMyTurn]);
 
   useEffect(() => { setDice(null); }, [gameStatus.current_player]);
 
@@ -325,6 +392,7 @@ function App() {
 
   // ===== サイコロ =====
   const handleRollDice = async () => {
+    if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     if (isRolling || hasRolledDice) return;
     setIsRolling(true); setDice(null); setEventLog(null);
     try {
@@ -345,6 +413,7 @@ function App() {
 
   // ===== ハッキング =====
   const handleHackResources = async () => {
+    if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     try {
       const data = await apiPost('/api/hack_resources', { player: currentPlayer });
       handleStateUpdate(data.inventory, data.trade_rates, null, data.score, null, data.game_status);
@@ -353,6 +422,7 @@ function App() {
 
   // ===== トレード =====
   const handleTrade = async () => {
+    if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     if (offerRes === receiveRes) { alert("[ ERROR ] 同じ資源は取引できません。"); return; }
     try {
       const data = await apiPost('/api/trade', { offer_res: offerRes, receive_res: receiveRes, player: currentPlayer });
@@ -363,6 +433,7 @@ function App() {
 
   // ===== カードドロー =====
   const handleDrawCard = async (deckType) => {
+    if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     if (!inventory) return;
     if (deckType === "WATCH") {
       if (!inventory.NATURE || inventory.NATURE < 10.0) { alert("[ ERROR ] NATURE (🌿) が 10.0 必要です！"); return; }
@@ -380,6 +451,7 @@ function App() {
 
   // ===== カード使用 =====
   const handleUseCard = async (card) => {
+    if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     if (card.type === "PATENT") { alert("[ INFO ] 特許カードは持っているだけで企業価値(+10万シェア)に貢献します。"); return; }
     if (card.name.includes("発見") || card.type === "WATCH") { alert(`【 生物データアーカイブ 】\n\n${card.desc}\n\n※このカードはパッシブカードです。持っているだけでレア度に応じたスコアが自動加算されます。`); return; }
     if (card.type === "ZERO_DAY") {
@@ -407,12 +479,32 @@ function App() {
 
   // ===== リセット・タイトル戻り =====
   const handleResetSystem = async () => {
+    if (playingRoomId && loggedInUser) {
+      try {
+        await fetch(`/api/rooms/${playingRoomId}/leave`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ room_id: playingRoomId, user_id: loggedInUser.user_id }),
+        });
+      } catch (err) { console.error('退出APIの呼び出しに失敗:', err); }
+    }
     try { await apiPost('/api/reset', {}); window.location.reload(); } catch (err) { console.error(err); }
   };
 
   const handleExitToTitle = async () => {
     if (!window.confirm("タイトル画面に戻りますか？")) return;
     try {
+      if (playingRoomId && loggedInUser) {
+        try {
+          await fetch(`/api/rooms/${playingRoomId}/leave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_id: playingRoomId, user_id: loggedInUser.user_id }),
+          });
+        } catch (err) {
+          console.error('退出APIの呼び出しに失敗しました:', err);
+        }
+      }
       await apiPost('/api/reset', {});
       setGameStatus({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 });
       setInitRolls({});
@@ -478,131 +570,149 @@ function App() {
 
   // ===== ゲーム本編 =====
   return (
-    <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: pColor, fontFamily: '"Courier New", Courier, monospace', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-      
-      {/* マップ選択（ソロのみ） */}
-      {gameStatus.state === "map_selection" && selectedMode !== 'CASUAL' && (
-        <MapSelector onSelectMap={handleSelectMap} pColor={pColor} />
-      )}
+    <ErrorBoundary>
+      <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: pColor, fontFamily: '"Courier New", Courier, monospace', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        
+        {/* マップ選択（ソロのみ） */}
+        {gameStatus.state === "map_selection" && selectedMode !== 'CASUAL' && (
+          <MapSelector onSelectMap={handleSelectMap} pColor={pColor} />
+        )}
 
-      {/* 順番決め */}
-      {gameStatus.state === "init_roll" && (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 3rem)', textShadow: '0 0 15px #00ffcc', marginBottom: '40px', textAlign: 'center' }}>&gt; SYSTEM BOOT: INITIATIVE SEQUENCE</h1>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%' }}>
-            {PLAYERS.map(p => {
-              const hasRolled = initRolls[p] !== undefined;
-              const isCPU = playerTypes[p] !== 'human';
-              const isMe = p === myPlayerKey;
-              const showButton = !hasRolled && !isCPU && isMe;
-              return (
-                <div key={p} style={{ width: '100%', maxWidth: '400px', padding: '20px', border: `2px solid ${PLAYER_COLORS[p]}`, borderRadius: '10px', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.8)', boxShadow: hasRolled ? `0 0 20px ${PLAYER_COLORS[p]}55` : 'none' }}>
-                  <h2 style={{ color: PLAYER_COLORS[p], margin: '0 0 15px 0' }}>{p}</h2>
-                  {hasRolled ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '12px', margin: '10px 0' }}>
-                      <span style={{ fontSize: '1.8rem', color: '#fff' }}>{diceFaces[initRolls[p].dice[0]]} + {diceFaces[initRolls[p].dice[1]]} =</span>
-                      <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff', marginLeft: '10px' }}>{initRolls[p].total}</span>
-                    </div>
-                  ) : showButton ? (
-                    <button onClick={() => handleInitRoll(p)} style={{ padding: '15px', width: '100%', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: PLAYER_COLORS[p], color: '#000', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>ROLL DICE</button>
-                  ) : (
-                    <p style={{ color: '#888' }}>待機中...</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ゲーム本編 (setup/playing/finished) */}
-      {(gameStatus.state === "setup" || gameStatus.state === "playing" || gameStatus.state === "finished") && (
-        <>
-          {gameStatus.state === "finished" && (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-              <h1 style={{ color: gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055', fontSize: '4rem', textShadow: `0 0 30px ${gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055'}`, margin: '0 0 20px 0', animation: 'blink 1.5s infinite' }}>
-                {gameStatus.winner === currentPlayer ? "[ VICTORY ]" : "[ DEFEATED ]"}
-              </h1>
-              <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #333', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
-                <h3 style={{ color: '#aaa', margin: '0 0 15px 0' }}>FINAL STANDINGS</h3>
-                {Object.entries(allScores || {}).map(([pId, sData]) => {
-                  const playerColor = PLAYER_COLORS[pId] || '#ffffff';
-                  return (
-                    <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', width: '300px', margin: '8px 0', fontSize: '1.2rem' }}>
-                      <span style={{ color: playerColor, fontWeight: 'bold' }}>{pId}</span>
-                      <span style={{ color: '#fff' }}>{sData.total} SCORES</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p style={{ color: '#ffffff', fontSize: '1.2rem', marginTop: '10px' }}>勝利条件: <strong>{gameStatus.target_score || 100} SCORES</strong> 到達により決着</p>
-              <p style={{ color: '#aaaaaa', fontSize: '1.2rem', marginTop: '10px' }}>
-                WINNER: <strong style={{ color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff', textShadow: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? `0 0 10px ${PLAYER_COLORS[gameStatus.winner]}` : 'none' }}>{gameStatus.winner || "NONE"}</strong>
-              </p>
-              <button onClick={handleResetSystem} style={{ marginTop: '30px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
+        {/* 順番決め */}
+        {gameStatus.state === "init_roll" && (
+          <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 3rem)', textShadow: '0 0 15px #00ffcc', marginBottom: '40px', textAlign: 'center' }}>&gt; SYSTEM BOOT: INITIATIVE SEQUENCE</h1>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%' }}>
+              {PLAYERS.map(p => {
+                const hasRolled = initRolls[p] !== undefined;
+                const isCPU = playerTypes[p] !== 'human';
+                const isMe = p === myPlayerKey;
+                const showButton = !hasRolled && !isCPU && isMe;
+                return (
+                  <div key={p} style={{ width: '100%', maxWidth: '400px', padding: '20px', border: `2px solid ${PLAYER_COLORS[p]}`, borderRadius: '10px', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.8)', boxShadow: hasRolled ? `0 0 20px ${PLAYER_COLORS[p]}55` : 'none' }}>
+                    <h2 style={{ color: PLAYER_COLORS[p], margin: '0 0 15px 0' }}>{p}</h2>
+                    {hasRolled ? (
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '12px', margin: '10px 0' }}>
+                        <span style={{ fontSize: '1.8rem', color: '#fff' }}>{diceFaces[initRolls[p].dice[0]]} + {diceFaces[initRolls[p].dice[1]]} =</span>
+                        <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff', marginLeft: '10px' }}>{initRolls[p].total}</span>
+                      </div>
+                    ) : showButton ? (
+                      <button onClick={() => handleInitRoll(p)} style={{ padding: '15px', width: '100%', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: PLAYER_COLORS[p], color: '#000', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>ROLL DICE</button>
+                    ) : (
+                      <p style={{ color: '#888' }}>待機中...</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
+        )}
 
-          <PlayerStatus 
-            currentPlayer={currentPlayer} pColor={pColor} timeLeft={timeLeft} gameStatus={gameStatus} 
-            score={score} allScores={allScores} title_owners={title_owners} handleEndTurn={handleEndTurn} 
-            inventory={inventory} tradeRates={tradeRates} currentBCounts={currentBCounts} MAX_STOCKS={MAX_STOCKS} 
-          />
-
-          <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative' }}>
-            {gameStatus.current_player !== myPlayerKey && (
-              <div onClick={() => alert("[ ERROR ] 現在は敵対企業のターンです。")} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 50 }} />
-            )}
-
-            {gameStatus.state === "setup" && (
-              <div style={{ width: '800px', padding: '15px', marginBottom: '15px', backgroundColor: pColor + '33', border: `2px solid ${pColor}`, borderRadius: '5px', textAlign: 'center' }}>
-                <h2 style={{ margin: 0, color: '#fff', textShadow: `0 0 10px ${pColor}` }}>【 初期配置フェーズ (TURN {gameStatus.setup_turn + 1}/8) 】</h2>
-                <p style={{ margin: '10px 0 0 0', color: '#ccc', fontWeight: 'bold' }}>拠点(DC)を1つと、それに繋がる道(ROAD)を1本、無料で配置してください。<br/>配置が終わったら右上の [ END TURN ] を押して次の企業へ回します。</p>
+        {/* ゲーム本編 (setup/playing/finished) */}
+        {(gameStatus.state === "setup" || gameStatus.state === "playing" || gameStatus.state === "finished") && (
+          <>
+            {gameStatus.state === "finished" && (
+              <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                {/* 退出による終了かどうかで表示を分岐 */}
+                {gameStatus.reason && gameStatus.reason.includes("退出") ? (
+                  <>
+                    <h1 style={{ color: '#ffcc00', fontSize: '4rem', textShadow: '0 0 30px #ffcc00', margin: '0 0 20px 0', animation: 'blink 1.5s infinite' }}>
+                      [ OPPONENT LEFT ]
+                    </h1>
+                    <p style={{ color: '#aaa', fontSize: '1.2rem', marginBottom: '2rem' }}>
+                      相手プレイヤーが退出したため、あなたの勝利となりました。
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h1 style={{ color: gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055', fontSize: '4rem', textShadow: `0 0 30px ${gameStatus.winner === currentPlayer ? '#00ffcc' : '#ff0055'}`, margin: '0 0 20px 0', animation: 'blink 1.5s infinite' }}>
+                      {gameStatus.winner === currentPlayer ? "[ VICTORY ]" : "[ DEFEATED ]"}
+                    </h1>
+                    <p style={{ color: '#ffffff', fontSize: '1.2rem', marginTop: '10px' }}>勝利条件: <strong>{gameStatus.target_score || 100} SCORES</strong> 到達により決着</p>
+                    <p style={{ color: '#aaaaaa', fontSize: '1.2rem', marginTop: '10px' }}>
+                      WINNER: <strong style={{ color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff', textShadow: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? `0 0 10px ${PLAYER_COLORS[gameStatus.winner]}` : 'none' }}>{gameStatus.winner || "NONE"}</strong>
+                    </p>
+                  </>
+                )}
+                <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #333', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
+                  <h3 style={{ color: '#aaa', margin: '0 0 15px 0' }}>FINAL STANDINGS</h3>
+                  {Object.entries(allScores || {}).map(([pId, sData]) => {
+                    const playerColor = PLAYER_COLORS[pId] || '#ffffff';
+                    return (
+                      <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', width: '300px', margin: '8px 0', fontSize: '1.2rem' }}>
+                        <span style={{ color: playerColor, fontWeight: 'bold' }}>{pId}</span>
+                        <span style={{ color: '#fff' }}>{sData.total} SCORES</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button onClick={handleResetSystem} style={{ marginTop: '30px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
               </div>
             )}
 
-            <ControlPanel 
-              gameStatus={gameStatus} pColor={pColor} actionMode={actionMode} setActionMode={setActionMode} 
-              activeCard={activeCard} setActiveCard={setActiveCard} hasRolledDice={hasRolledDice} 
-              isTradeOpen={isTradeOpen} setIsTradeOpen={setIsTradeOpen} handleDrawCard={handleDrawCard} 
-              offerRes={offerRes} setOfferRes={setOfferRes} receiveRes={receiveRes} setReceiveRes={setReceiveRes} 
-              tradeRates={tradeRates} handleTrade={handleTrade} isRolling={isRolling} handleRollDice={handleRollDice} 
-              handleHackResources={handleHackResources} dice={dice} eventLog={eventLog} turnLogs={turnLogs} 
+            <PlayerStatus 
+              currentPlayer={currentPlayer} pColor={pColor} timeLeft={timeLeft} gameStatus={gameStatus} 
+              score={score} allScores={allScores} title_owners={title_owners} handleEndTurn={handleEndTurn} 
+              inventory={inventory} tradeRates={tradeRates} currentBCounts={currentBCounts} MAX_STOCKS={MAX_STOCKS}
+              isMyTurn={isMyTurn}
             />
 
-            <HexMap 
-              currentPlayer={currentPlayer}
-              activeNumber={dice ? dice.total : null}
-              actionMode={actionMode} 
-              onStateUpdate={handleStateUpdate}
-              refreshData={fetchData}
-              onModeChange={setActionMode} 
-              activeCard={activeCard}
-              setEventLog={setEventLog}
-              hasRolledDice={hasRolledDice}
-              gameStatus={gameStatus} 
-              // 🥷 追加 props
-              boardData={boardData}
-              buildings={buildings}
-              roads={roads}
-              bots={bots}
-              hackerPos={hackerPos}
-              mapId={mapId}
-              myPlayerKey={myPlayerKey}
-              playingRoomId={playingRoomId}
-            />
+            <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative' }}>
+              {!isMyTurn && gameStatus.state !== "finished" && (
+                <div onClick={() => alert("[ ERROR ] 現在は敵対企業のターンです。")} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 50 }} />
+              )}
+
+              {gameStatus.state === "setup" && (
+                <div style={{ width: '800px', padding: '15px', marginBottom: '15px', backgroundColor: pColor + '33', border: `2px solid ${pColor}`, borderRadius: '5px', textAlign: 'center' }}>
+                  <h2 style={{ margin: 0, color: '#fff', textShadow: `0 0 10px ${pColor}` }}>【 初期配置フェーズ (TURN {gameStatus.setup_turn + 1}/8) 】</h2>
+                  <p style={{ margin: '10px 0 0 0', color: '#ccc', fontWeight: 'bold' }}>拠点(DC)を1つと、それに繋がる道(ROAD)を1本、無料で配置してください。<br/>配置が終わったら右上の [ END TURN ] を押して次の企業へ回します。</p>
+                </div>
+              )}
+
+              <ControlPanel 
+                gameStatus={gameStatus} pColor={pColor} actionMode={actionMode} setActionMode={setActionMode} 
+                activeCard={activeCard} setActiveCard={setActiveCard} hasRolledDice={hasRolledDice} 
+                isTradeOpen={isTradeOpen} setIsTradeOpen={setIsTradeOpen} handleDrawCard={handleDrawCard} 
+                offerRes={offerRes} setOfferRes={setOfferRes} receiveRes={receiveRes} setReceiveRes={setReceiveRes} 
+                tradeRates={tradeRates} handleTrade={handleTrade} isRolling={isRolling} handleRollDice={handleRollDice} 
+                handleHackResources={handleHackResources} dice={dice} eventLog={eventLog} turnLogs={turnLogs} 
+                isMyTurn={isMyTurn}
+              />
+
+              <HexMap 
+                currentPlayer={currentPlayer}
+                activeNumber={dice ? dice.total : null}
+                actionMode={actionMode} 
+                onStateUpdate={handleStateUpdate}
+                refreshData={fetchData}
+                onModeChange={setActionMode} 
+                activeCard={activeCard}
+                setEventLog={setEventLog}
+                hasRolledDice={hasRolledDice}
+                gameStatus={gameStatus} 
+                boardData={boardData}
+                buildings={buildings}
+                roads={roads}
+                bots={bots}
+                hackerPos={hackerPos}
+                mapId={mapId}
+                myPlayerKey={myPlayerKey}
+                playingRoomId={playingRoomId}
+                isMyTurn={isMyTurn}
+              />
+              
+              <CardHand cards={cards} actionMode={actionMode} handleUseCard={handleUseCard} />
+            </main>
             
-            <CardHand cards={cards} actionMode={actionMode} handleUseCard={handleUseCard} />
-          </main>
-          
-          <style>{`@keyframes blink { 50% { opacity: 0.5; } }`}</style>
-          <footer style={{ padding: '1rem', borderTop: `1px dotted ${pColor}`, textAlign: 'center', fontSize: '0.8rem', opacity: 0.8, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
-            <span>&gt; SYSTEM SECURE. SURVIVAL DX.</span>
-            <button onClick={handleExitToTitle} style={{ backgroundColor: 'transparent', color: '#ff0055', border: '1px solid #ff0055', padding: '2px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '3px', transition: '0.3s' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#ff005522'} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>[ EXIT TO TITLE ]</button>
-          </footer>
-        </>
-      )}
-    </div>
+            <style>{`@keyframes blink { 50% { opacity: 0.5; } }`}</style>
+            <footer style={{ padding: '1rem', borderTop: `1px dotted ${pColor}`, textAlign: 'center', fontSize: '0.8rem', opacity: 0.8, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
+              <span>&gt; SYSTEM SECURE. SURVIVAL DX.</span>
+              <button onClick={handleExitToTitle} style={{ backgroundColor: 'transparent', color: '#ff0055', border: '1px solid #ff0055', padding: '2px 10px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '3px', transition: '0.3s' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#ff005522'} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}>[ EXIT TO TITLE ]</button>
+            </footer>
+          </>
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }
 
