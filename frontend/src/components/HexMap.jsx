@@ -23,13 +23,13 @@ const HexMap = ({
   hackerPos,
   mapId,
   myPlayerKey,
-  playingRoomId, // 🥷 ルームIDを追加
+  playingRoomId,
+  coastalVertices, // ★ props から直接受け取る
 }) => {
   const canvasRef = useRef(null);
   const [verticesCoords, setVerticesCoords] = useState([]);
   const [edgesCoords, setEdgesCoords] = useState([]);
   const [hexCenters, setHexCenters] = useState([]);
-  const [coastalVertices, setCoastalVertices] = useState([]);
   const [selectedBot, setSelectedBot] = useState(null);
 
   const stageConfig = STAGE_DATA.find(s => s.id === mapId) || STAGE_DATA[0];
@@ -46,13 +46,6 @@ const HexMap = ({
     }
     return path;
   };
-
-  // 親から受け取った coastalVertices を反映
-  useEffect(() => {
-    if (coastalVertices.length === 0 && boardData && boardData.coastal_vertices) {
-      setCoastalVertices(boardData.coastal_vertices || []);
-    }
-  }, [boardData]);
 
   // 描画処理
   useEffect(() => {
@@ -130,6 +123,19 @@ const HexMap = ({
         prevPoint = currentPoint;
       }
       ctx.closePath();
+
+      // ★ 閉じる辺（最後の頂点 → 最初の頂点）を追加
+      if (firstPoint && prevPoint) {
+        const edgeId = [prevPoint.id, firstPoint.id].sort().join('_');
+        const midX = (prevPoint.x + firstPoint.x) / 2;
+        const midY = (prevPoint.y + firstPoint.y) / 2;
+        if (!tempEdges.has(edgeId)) {
+          tempEdges.set(edgeId, { id: edgeId, v1: prevPoint, v2: firstPoint, midX, midY, sectors: [hexSector] });
+        } else {
+          if (!tempEdges.get(edgeId).sectors.includes(hexSector))
+            tempEdges.get(edgeId).sectors.push(hexSector);
+        }
+      }
 
       const pCounts = {};
       hexVertices.forEach(vId => {
