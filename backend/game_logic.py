@@ -136,6 +136,11 @@ def update_all_titles(state, buildings, cards, roads, combat_wins):
 
 
 def calculate_yields(total: int, current_board: list, hacker_position: str, buildings: dict, inventory: dict, center_x: int, center_y: int, hex_size: int, building_yields: dict, season_event: dict = None, hacker_vault: dict = None):
+    """
+    サイコロの出目 total に一致するマスから資源を産出する。
+    NATURE マスは毎ターン自動採掘（collect_nature_yields）に移行したため、
+    ここでは OCEAN / DARK と同様にスキップする。
+    """
     yields = []
 
     if hacker_vault is None:
@@ -147,6 +152,7 @@ def calculate_yields(total: int, current_board: list, hacker_position: str, buil
             is_hacked = (hex_id == hacker_position)
             sector_type = hex_data["sector"]
 
+            # NATURE, OCEAN, DARK はスキップ
             if sector_type in ["NATURE", "OCEAN", "DARK"]:
                 continue
 
