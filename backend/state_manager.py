@@ -26,7 +26,8 @@ class GameSession:
         self.inventory = {p: {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0} for p in self.PLAYERS}
         self.trade_rates = {p: {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0} for p in self.PLAYERS}
         self.cards = {p: [] for p in self.PLAYERS}
-        self.player_types = {p: "human" if p == "Player1" else random.choice(["com_speeder", "com_builder", "com_fighter", "com_gambler", "com_gemini"]) for p in self.PLAYERS}
+        # 👤 COM Gemini 統一：全CPUをGeminiに固定
+        self.player_types = {p: "human" if p == "Player1" else "com_gemini" for p in self.PLAYERS}
         
         # ゲーム進行ステータス
         self.game_status = {
@@ -51,6 +52,37 @@ class GameSession:
         # 🥷 追加：マルチプレイ用（joined_players は rooms.py で設定される）
         self.joined_players = []
         self.is_started = False
+
+    # ============================================================
+    # 🌿 NATURE 自動採掘（毎ターン、手番プレイヤーの占有しているNATUREマス1つにつき +10.0）
+    # ============================================================
+    def collect_nature_yields_for_player(self, player_id: str):
+        """
+        指定されたプレイヤーが占有しているすべての NATURE マスから、
+        1 マスにつき NATURE 10.0 を付与する（playing フェーズのみ）。
+        """
+        if self.game_status.get("state") != "playing":
+            return
+
+        for hex_data in self.current_board:
+            if hex_data.get("sector") != "NATURE":
+                continue
+
+            cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
+            cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
+
+            # このプレイヤーの隣接建物数をカウント
+            building_count = 0
+            for b_id, b_info in self.buildings.items():
+                if b_info["player"] != player_id:
+                    continue
+                bx, by = map(int, b_id.split(','))
+                if math.hypot(cx - bx, cy - by) < HEX_SIZE + 5:
+                    building_count += 1
+
+            # 2 つ以上の建物で占有していれば NATURE 10.0 を付与
+            if building_count >= 2 and player_id in self.inventory:
+                self.inventory[player_id]["NATURE"] += 10.0
 
     # 🥷 修正：プレイヤー退出処理（マルチプレイ用）
     # 部屋の削除は行わず、ゲームの強制終了のみを行う
@@ -99,7 +131,8 @@ class GameSession:
         if is_game_active:
             # 退出者を CPU に置き換える
             if target_player_key in self.player_types:
-                self.player_types[target_player_key] = "cpu"
+                # 👤 COM Gemini 統一：退出者の置き換えもGeminiに
+                self.player_types[target_player_key] = "com_gemini"
                 self.inventory[target_player_key] = {
                     "POWER": 0.0, "DATA": 0.0, "SILICON": 0.0,
                     "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0
@@ -467,10 +500,10 @@ class GameSession:
                 self.game_status["turn_end_time"] = calculate_deadline(60)
             else:
                 self.game_status["turn_end_time"] = None
-            com_pool = ["com_gemini"] 
+            # 👤 COM Gemini 統一：全CPUをGeminiに
             for p in sorted_players:
                 if self.player_types.get(p, "human") != "human":
-                    self.player_types[p] = random.choice(com_pool)
+                    self.player_types[p] = "com_gemini"
         return {"success": True, "init_rolls": self.init_rolls}
 
     # 🥷 追加6：ターン終了処理（フェーズ進行・シーズンイベント・勝利判定）
@@ -595,11 +628,15 @@ class GameSession:
     def execute_roll_dice(self):
         if self.game_status["state"] == "setup": 
             return {"error": "CANNOT_ROLL_IN_SETUP"}
+        
+        # 🌿 NATURE 自動採掘：自分のターン開始時に、占有しているNATUREから資源を獲得
+        current_player = self.game_status["current_player"]
+        self.collect_nature_yields_for_player(current_player)
+        
         dice1, dice2 = random.randint(1, 6), random.randint(1, 6)
         total = dice1 + dice2
         event_log = None
         event_type = None
-        current_player = self.game_status["current_player"]
         if not hasattr(self, "hacker_vault") or self.hacker_vault is None:
             self.hacker_vault = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0}
         if dice1 == dice2:
@@ -651,7 +688,9 @@ class GameSession:
     # 🥷 追加9：COM（NPC）のターン実行ロジック
     def execute_com_turn(self, player_id: str):
         import constants, game_logic
-        from com_ai import com_setup, com_speeder, com_builder, com_fighter, com_gambler, com_gemini
+        # 👤 COM Gemini 統一：Geminiだけをインポート
+        from com_ai import com_setup, com_gemini
+        
         if self.game_status["current_player"] != player_id: 
             return {"error": "NOT_COM_TURN"}
         current_type = self.player_types.get(player_id, "human")
@@ -659,20 +698,17 @@ class GameSession:
             return {"error": "PLAYER_IS_HUMAN"}
         if self.game_status["state"] not in ["playing", "setup"]: 
             return {"error": "COM_ONLY_ACTIVE_IN_PLAYING_OR_SETUP_STATE"}
+        
+        # 🌿 NATURE 自動採掘：COMのターン開始時に、占有しているNATUREから資源を獲得
+        if self.game_status["state"] == "playing":
+            self.collect_nature_yields_for_player(player_id)
+        
+        # 👤 COM Gemini 統一：setupはcom_setup、それ以外はGeminiだけを使用
         if self.game_status["state"] == "setup":
             result = com_setup.execute_setup_turn(player_id, self, constants)
-        elif current_type == "com_speeder":
-            result = com_speeder.execute_turn(player_id, self, game_logic, constants)
-        elif current_type == "com_builder":
-            result = com_builder.execute_turn(player_id, self, game_logic, constants)
-        elif current_type == "com_fighter": 
-            result = com_fighter.execute_turn(player_id, self, game_logic, constants)
-        elif current_type == "com_gambler":
-            result = com_gambler.execute_turn(player_id, self, game_logic, constants)
-        elif current_type == "com_gemini":
-            result = com_gemini.execute_turn(player_id, self, game_logic, constants)
         else:
-            result = com_speeder.execute_turn(player_id, self, game_logic, constants)
+            result = com_gemini.execute_turn(player_id, self, game_logic, constants)
+        
         score = game_logic.get_score(player_id, self.buildings, self.cards, self.roads, self.bots, self.combat_wins)
         import map_layouts
         target_score = map_layouts.MAP_CATALOG.get(self.current_map_id, map_layouts.MAP_CATALOG["STAGE_01_BEGINNER"])["winning_score"]
@@ -724,7 +760,8 @@ class GameSession:
             self.inventory[p] = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0}
             self.trade_rates[p] = {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0}
             self.cards[p] = []
-            self.player_types[p] = "human" if p == "Player1" else random.choice(["com_speeder", "com_builder", "com_fighter", "com_gambler", "com_gemini"])
+            # 👤 COM Gemini 統一：リセット時もGeminiに固定
+            self.player_types[p] = "human" if p == "Player1" else "com_gemini"
         return {"success": True}
 
     # 🥷 追加11：マップの自動生成ロジック
