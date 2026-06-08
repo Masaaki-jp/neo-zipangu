@@ -154,6 +154,10 @@ def build_standard_response(session, extra_data: dict = None):
         "all_scores": session.scores,
         "score": session.scores.get("Player1", {}),
         "title_owners": title_owners,
+        # ★ 海岸線情報と頂点座標をレスポンスに追加
+        "coastal_vertices": list(getattr(session, "coastal_vertices", set())),
+        "vertex_coords": getattr(session, "vertex_coords", {}),
+        "player_types": getattr(session, "player_types", {}),
     }
 
     if extra_data:

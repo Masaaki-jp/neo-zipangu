@@ -38,7 +38,6 @@ const HexMap = ({
   const viewMode = stageConfig.viewMode || "fixed";
   const currentZoom = stageConfig.zoom || 1.0;
 
-  // 🥷 APIのURLに room_id を付与するヘルパー
   const apiUrl = (path) => {
     if (playingRoomId) {
       const separator = path.includes('?') ? '&' : '?';

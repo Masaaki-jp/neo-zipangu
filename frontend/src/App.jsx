@@ -54,6 +54,7 @@ function App() {
   const [bots, setBots] = useState({});
   const [hackerPos, setHackerPos] = useState(null);
   const [mapId, setMapId] = useState("STAGE_01_BEGINNER");
+  const [coastalVertices, setCoastalVertices] = useState([]);  // 海岸線の頂点IDリスト
 
   const currentPlayer = gameStatus.current_player || "Player1";
   const pColor = PLAYER_COLORS[currentPlayer];
@@ -112,6 +113,9 @@ function App() {
 
       // 🥷 デバッグ：game_status の内容をコンソールに出力
       console.log('[DEBUG] board response game_status:', JSON.stringify(data.game_status));
+
+      // ★ 海岸線の頂点リストを常に保存
+      setCoastalVertices(data.coastal_vertices || []);
 
       // 🥷 防御コード：finished を検知したら全データを安全な初期値にセット
       if (data.game_status && data.game_status.state === "finished") {
@@ -517,6 +521,7 @@ function App() {
       setWaitingRoomId(null);
       setPlayingRoomId(null);
       setMyPlayerKey("Player1");
+      setCoastalVertices([]);  // 海岸線情報もクリア
     } catch (err) { console.error("緊急脱出に失敗:", err); }
   };
 
@@ -699,6 +704,7 @@ function App() {
                 myPlayerKey={myPlayerKey}
                 playingRoomId={playingRoomId}
                 isMyTurn={isMyTurn}
+                coastalVertices={coastalVertices}   // ★ 海岸線情報を渡す
               />
               
               <CardHand cards={cards} actionMode={actionMode} handleUseCard={handleUseCard} />
