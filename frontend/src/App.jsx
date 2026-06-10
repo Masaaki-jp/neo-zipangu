@@ -299,7 +299,12 @@ function App() {
     }
     setTimeLeft(60);
     try {
-      const data = await apiPost('/api/end_turn', { vertex_id: "", player: currentPlayer });
+      // ★ 強制タイムアウト時は forced_timeout フラグを送信
+      const data = await apiPost('/api/end_turn', {
+        vertex_id: "",
+        player: currentPlayer,
+        forced_timeout: isForcedTimeout
+      });
       setGameStatus(data.game_status);
       setScore(data.scores[currentPlayer]);
       setHasRolledDice(false);

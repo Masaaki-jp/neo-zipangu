@@ -32,7 +32,8 @@ def _init_roll(session, req: InitRollRequest):
     return main.build_standard_response(session, {"status": "success", "init_rolls": result["init_rolls"]})
 
 def _end_turn(session, req: BuildRequest):
-    result = session.execute_end_turn(req.player)
+    # ★ 強制タイムアウトフラグを execute_end_turn に渡す
+    result = session.execute_end_turn(req.player, forced_timeout=req.forced_timeout)
     if "error" in result:
         print(f"[DEBUG] end_turn error for {req.player}: {result['error']}")
         raise HTTPException(status_code=400, detail=result["error"])
