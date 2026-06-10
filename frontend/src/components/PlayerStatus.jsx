@@ -59,7 +59,7 @@ const PlayerStatus = ({
               [ TIMER: {timeLeft.toString().padStart(2, '0')}s ]
             </div>
             <button 
-              onClick={handleEndTurn}
+              onClick={() => handleEndTurn()}
               disabled={!isMyTurn} // 🥷 修正：自分のターンでなければ無効化
               style={{ 
                 marginTop: '5px', 
