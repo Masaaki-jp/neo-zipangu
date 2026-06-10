@@ -26,8 +26,8 @@ class GameSession:
         self.inventory = {p: {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0} for p in self.PLAYERS}
         self.trade_rates = {p: {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0} for p in self.PLAYERS}
         self.cards = {p: [] for p in self.PLAYERS}
-        # 👤 COM Gemini 統一：全CPUをGeminiに固定
-        self.player_types = {p: "human" if p == "Player1" else "com_gemini" for p in self.PLAYERS}
+        # 👤 COM 統一：全CPUを統一COM（com.py）に固定
+        self.player_types = {p: "human" if p == "Player1" else "com" for p in self.PLAYERS}
         
         # ゲーム進行ステータス
         self.game_status = {
@@ -122,6 +122,7 @@ class GameSession:
             self.game_status["state"] = "finished"
             self.game_status["winner"] = winner_key
             self.game_status["reason"] = "相手プレイヤーが退出したため、ゲームを終了します。"
+            self.game_status["turn_end_time"] = None  # ★ フリーズ防止：タイムアウト監視を停止
             # finished 時に current_player を winner にしておく（クライアントのUI制御用）
             if winner_key:
                 self.game_status["current_player"] = winner_key
@@ -131,8 +132,8 @@ class GameSession:
         if is_game_active:
             # 退出者を CPU に置き換える
             if target_player_key in self.player_types:
-                # 👤 COM Gemini 統一：退出者の置き換えもGeminiに
-                self.player_types[target_player_key] = "com_gemini"
+                # 👤 COM 統一：退出者の置き換えも統一COMに
+                self.player_types[target_player_key] = "com"
                 self.inventory[target_player_key] = {
                     "POWER": 0.0, "DATA": 0.0, "SILICON": 0.0,
                     "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0
@@ -500,10 +501,10 @@ class GameSession:
                 self.game_status["turn_end_time"] = calculate_deadline(60)
             else:
                 self.game_status["turn_end_time"] = None
-            # 👤 COM Gemini 統一：全CPUをGeminiに
+            # 👤 COM 統一：全CPUを統一COMに
             for p in sorted_players:
                 if self.player_types.get(p, "human") != "human":
-                    self.player_types[p] = "com_gemini"
+                    self.player_types[p] = "com"
         return {"success": True, "init_rolls": self.init_rolls}
 
     # 🥷 追加6：ターン終了処理（フェーズ進行・シーズンイベント・勝利判定）
@@ -685,11 +686,11 @@ class GameSession:
             "event_log": event_log
         }
 
-    # 🥷 追加9：COM（NPC）のターン実行ロジック
+    # 🥷 追加9：COM（NPC）のターン実行ロジック（統一AI）
     def execute_com_turn(self, player_id: str):
         import constants, game_logic
-        # 👤 COM Gemini 統一：Geminiだけをインポート
-        from com_ai import com_setup, com_gemini
+        # 👤 COM 統一：com.py のみを使用
+        from com_ai import com
         
         if self.game_status["current_player"] != player_id: 
             return {"error": "NOT_COM_TURN"}
@@ -703,11 +704,11 @@ class GameSession:
         if self.game_status["state"] == "playing":
             self.collect_nature_yields_for_player(player_id)
         
-        # 👤 COM Gemini 統一：setupはcom_setup、それ以外はGeminiだけを使用
+        # 👤 統一COM：setup も playing も com.py が処理
         if self.game_status["state"] == "setup":
-            result = com_setup.execute_setup_turn(player_id, self, constants)
+            result = com.execute_setup_turn(player_id, self, constants)
         else:
-            result = com_gemini.execute_turn(player_id, self, game_logic, constants)
+            result = com.execute_turn(player_id, self, game_logic, constants)
         
         score = game_logic.get_score(player_id, self.buildings, self.cards, self.roads, self.bots, self.combat_wins)
         import map_layouts
@@ -760,8 +761,8 @@ class GameSession:
             self.inventory[p] = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0}
             self.trade_rates[p] = {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0}
             self.cards[p] = []
-            # 👤 COM Gemini 統一：リセット時もGeminiに固定
-            self.player_types[p] = "human" if p == "Player1" else "com_gemini"
+            # 👤 COM 統一：リセット時も統一COMに固定
+            self.player_types[p] = "human" if p == "Player1" else "com"
         return {"success": True}
 
     # 🥷 追加11：マップの自動生成ロジック
