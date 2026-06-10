@@ -84,12 +84,10 @@ class GameSession:
             if building_count >= 2 and player_id in self.inventory:
                 self.inventory[player_id]["NATURE"] += 10.0
 
-    # 🥷 修正：プレイヤー退出処理（マルチプレイ用）
-    # 部屋の削除は行わず、ゲームの強制終了のみを行う
+    # 🥷 修正：カジュアル対戦では離脱即解散（勝敗なし・全員ロビーへ）
     def remove_player(self, user_id: str):
         """指定されたユーザーIDのプレイヤーをゲームから取り除く。
-        残り人間プレイヤーが1人以下ならゲームを強制終了する。
-        残り2人以上なら退出者をCPUに置き換えて継続する。
+        カジュアル対戦のアクティブゲーム中は、離脱者が出たら即ルーム解散。
         """
         joined = getattr(self, "joined_players", [])
         if not joined:
@@ -116,58 +114,15 @@ class GameSession:
         game_state = self.game_status.get("state", "map_selection")
         is_game_active = game_state in ("init_roll", "setup", "playing")
 
-        # ゲーム中かつ残り人間が1人以下 → 即座にゲーム終了（ターン進行より先に判定）
-        if is_game_active and len(remaining_humans) <= 1:
-            winner_key = remaining_humans[0]["player_key"] if remaining_humans else None
-            self.game_status["state"] = "finished"
-            self.game_status["winner"] = winner_key
-            self.game_status["reason"] = "相手プレイヤーが退出したため、ゲームを終了します。"
-            self.game_status["turn_end_time"] = None  # ★ フリーズ防止：タイムアウト監視を停止
-            # finished 時に current_player を winner にしておく（クライアントのUI制御用）
-            if winner_key:
-                self.game_status["current_player"] = winner_key
-            return {"status": "game_abandoned", "winner": winner_key}
-
-        # 以下、残り2人以上の場合のみ実行される（ゲーム継続）
+        # ★ カジュアル対戦では、誰かが抜けたら即解散（勝敗なし）
         if is_game_active:
-            # 退出者を CPU に置き換える
-            if target_player_key in self.player_types:
-                # 👤 COM 統一：退出者の置き換えも統一COMに
-                self.player_types[target_player_key] = "com"
-                self.inventory[target_player_key] = {
-                    "POWER": 0.0, "DATA": 0.0, "SILICON": 0.0,
-                    "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0
-                }
+            self.game_status["state"] = "finished"
+            self.game_status["winner"] = None          # 勝者なし
+            self.game_status["reason"] = "相手が退出したため、ルームを解散します。"
+            self.game_status["turn_end_time"] = None   # タイマー停止
+            return {"status": "game_disbanded"}
 
-            # 退出者が現在の手番だった場合、ターンを次に進める
-            if self.game_status.get("current_player") == target_player_key:
-                if game_state == "init_roll":
-                    if target_player_key not in self.init_rolls:
-                        d1, d2 = random.randint(1, 6), random.randint(1, 6)
-                        self.roll_counter += 1
-                        self.init_rolls[target_player_key] = {
-                            "total": d1 + d2,
-                            "order": self.roll_counter,
-                            "dice": [d1, d2]
-                        }
-                    if len(self.init_rolls) == 4:
-                        sorted_players = sorted(
-                            self.init_rolls.keys(),
-                            key=lambda p: (-self.init_rolls[p]["total"], self.init_rolls[p]["order"])
-                        )
-                        self.game_status["turn_order"] = sorted_players
-                        self.game_status["current_turn_index"] = 0
-                        self.game_status["current_player"] = sorted_players[0]
-                        self.game_status["state"] = "setup"
-                        self.game_status["setup_turn"] = 0
-                        first_p = self.game_status["current_player"]
-                        if self.player_types.get(first_p, "human") == "human":
-                            self.game_status["turn_end_time"] = calculate_deadline(60)
-                        else:
-                            self.game_status["turn_end_time"] = None
-                elif game_state in ("setup", "playing"):
-                    self._advance_turn()
-
+        # ゲームが始まっていなければ、ただの退室として扱う
         return {"status": "success", "remaining_humans": len(remaining_humans)}
 
     # 🥷 内部ヘルパー：ターンを次のプレイヤーに進める
