@@ -508,7 +508,7 @@ class GameSession:
         return {"success": True, "init_rolls": self.init_rolls}
 
     # 🥷 追加6：ターン終了処理（フェーズ進行・シーズンイベント・勝利判定）
-    def execute_end_turn(self, player_id: str):
+    def execute_end_turn(self, player_id: str, forced_timeout: bool = False):
         if self.game_status["current_player"] != player_id: 
             return {"error": "NOT_YOUR_TURN"}
         for b in self.bots.values(): 
@@ -520,7 +520,8 @@ class GameSession:
             st = self.game_status["setup_turn"]
             expected_count = 1 if st < 4 else 2
             deadline = self.game_status.get("turn_end_time")
-            is_timeout = is_time_up(deadline)
+            # ★ クライアントからの強制タイムアウトもタイムアウト扱いにする
+            is_timeout = is_time_up(deadline) or forced_timeout
             if not is_timeout:
                 if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
                     return {"error": "MUST_BUILD_HUB_AND_ROAD"}

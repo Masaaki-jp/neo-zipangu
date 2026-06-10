@@ -7,6 +7,7 @@ class BuildRequest(BaseModel):
     vertex_id: str
     player: str
     upgrade_to: str = "DATA_CENTER"
+    forced_timeout: bool = False  # タイマー切れによる強制ターン終了フラグ
 
 
 class RoadRequest(BaseModel):
