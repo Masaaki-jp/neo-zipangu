@@ -54,7 +54,7 @@ function App() {
   const [bots, setBots] = useState({});
   const [hackerPos, setHackerPos] = useState(null);
   const [mapId, setMapId] = useState("STAGE_01_BEGINNER");
-  const [coastalVertices, setCoastalVertices] = useState([]);  // 海岸線の頂点IDリスト
+  const [coastalVertices, setCoastalVertices] = useState([]);
 
   const currentPlayer = gameStatus.current_player || "Player1";
   const pColor = PLAYER_COLORS[currentPlayer];
@@ -104,6 +104,34 @@ function App() {
     }
   };
 
+  // ★ ロビーに戻る（カジュアル解散時など）
+  const handleGoToLobby = async () => {
+    try {
+      if (playingRoomId && loggedInUser) {
+        await fetch(`/api/rooms/${playingRoomId}/leave`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ room_id: playingRoomId, user_id: loggedInUser.user_id }),
+        });
+      }
+    } catch (err) {
+      console.error('退出APIの呼び出しに失敗:', err);
+    }
+    // 状態をリセットしてロビーへ（selectedMode は CASUAL のまま）
+    setGameStatus({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 });
+    setInitRolls({});
+    setDice(null);
+    setInventory(null);
+    setCards([]);
+    setScore({ total: 0, titles: [] });
+    setHasRolledDice(false);
+    setEventLog(null);
+    setPlayingRoomId(null);
+    setWaitingRoomId(null);
+    setMyPlayerKey("Player1");
+    setCoastalVertices([]);
+  };
+
   // ===== データ取得（重複防止 & HexMap用データ追加）=====
   const fetchData = async () => {
     if (isFetching.current) return;
@@ -111,14 +139,22 @@ function App() {
     try {
       const data = await apiGet('/api/board');
 
-      // 🥷 デバッグ：game_status の内容をコンソールに出力
       console.log('[DEBUG] board response game_status:', JSON.stringify(data.game_status));
 
-      // ★ 海岸線の頂点リストを常に保存
       setCoastalVertices(data.coastal_vertices || []);
 
-      // 🥷 防御コード：finished を検知したら全データを安全な初期値にセット
+      // ★ 解散（カジュアル退出）の場合は即座にポップアップ → ロビーへ
       if (data.game_status && data.game_status.state === "finished") {
+        if (data.game_status.reason && data.game_status.reason.includes("解散")) {
+          // 排他フラグを先に解放（リダイレクト先で再フェッチできるように）
+          isFetching.current = false;
+          setLoading(false);
+          alert("Errorによりルームが削除されました");
+          handleGoToLobby();
+          return;
+        }
+
+        // 解散以外の finished（スコア到達など）
         setGameStatus(data.game_status);
         setAllScores(data.all_scores || {});
         setTitleOwners(data.title_owners || {});
@@ -219,33 +255,23 @@ function App() {
         try {
           const res = await fetch(`/api/rooms/${playingRoomId}/status`);
           if (!res.ok) {
-            // 404 などで部屋が消えた → 相手が退出したとみなしゲーム終了
+            // 404 などで部屋が消えた → 即ポップアップ → ロビー
             if (!cancelled) {
-              setGameStatus({
-                state: "finished",
-                winner: null,
-                reason: "相手が退出したため、ゲームを終了します。",
-                current_player: myPlayerKey,
-                turn_order: [],
-                setup_turn: 0,
-                target_score: 0
-              });
+              alert("Errorによりルームが削除されました");
+              handleGoToLobby();
             }
             return;
           }
           const statusData = await res.json();
           if (!cancelled && statusData.state === "finished") {
+            // fetchData 内で解散理由をチェックしてポップアップ＋ロビー遷移する
             fetchData();
           }
         } catch (err) {
-          // ネットワークエラーなどでも同様に終了扱い
+          // ネットワークエラー → 即ポップアップ → ロビー
           if (!cancelled) {
-            setGameStatus(prev => ({
-              ...prev,
-              state: "finished",
-              winner: null,
-              reason: "相手が退出したため、ゲームを終了します。"
-            }));
+            alert("Errorによりルームが削除されました");
+            handleGoToLobby();
           }
         }
       };
@@ -299,7 +325,6 @@ function App() {
     }
     setTimeLeft(60);
     try {
-      // ★ 強制タイムアウト時は forced_timeout フラグを送信
       const data = await apiPost('/api/end_turn', {
         vertex_id: "",
         player: currentPlayer,
@@ -526,7 +551,7 @@ function App() {
       setWaitingRoomId(null);
       setPlayingRoomId(null);
       setMyPlayerKey("Player1");
-      setCoastalVertices([]);  // 海岸線情報もクリア
+      setCoastalVertices([]);
     } catch (err) { console.error("緊急脱出に失敗:", err); }
   };
 
@@ -632,6 +657,7 @@ function App() {
                     <p style={{ color: '#aaa', fontSize: '1.2rem', marginBottom: '2rem' }}>
                       相手プレイヤーが退出したため、あなたの勝利となりました。
                     </p>
+                    <button onClick={handleResetSystem} style={{ marginTop: '30px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
                   </>
                 ) : (
                   <>
@@ -642,21 +668,21 @@ function App() {
                     <p style={{ color: '#aaaaaa', fontSize: '1.2rem', marginTop: '10px' }}>
                       WINNER: <strong style={{ color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff', textShadow: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? `0 0 10px ${PLAYER_COLORS[gameStatus.winner]}` : 'none' }}>{gameStatus.winner || "NONE"}</strong>
                     </p>
+                    <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #333', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
+                      <h3 style={{ color: '#aaa', margin: '0 0 15px 0' }}>FINAL STANDINGS</h3>
+                      {Object.entries(allScores || {}).map(([pId, sData]) => {
+                        const playerColor = PLAYER_COLORS[pId] || '#ffffff';
+                        return (
+                          <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', width: '300px', margin: '8px 0', fontSize: '1.2rem' }}>
+                            <span style={{ color: playerColor, fontWeight: 'bold' }}>{pId}</span>
+                            <span style={{ color: '#fff' }}>{sData.total} SCORES</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button onClick={handleResetSystem} style={{ marginTop: '30px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
                   </>
                 )}
-                <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #333', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
-                  <h3 style={{ color: '#aaa', margin: '0 0 15px 0' }}>FINAL STANDINGS</h3>
-                  {Object.entries(allScores || {}).map(([pId, sData]) => {
-                    const playerColor = PLAYER_COLORS[pId] || '#ffffff';
-                    return (
-                      <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', width: '300px', margin: '8px 0', fontSize: '1.2rem' }}>
-                        <span style={{ color: playerColor, fontWeight: 'bold' }}>{pId}</span>
-                        <span style={{ color: '#fff' }}>{sData.total} SCORES</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <button onClick={handleResetSystem} style={{ marginTop: '30px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
               </div>
             )}
 
@@ -709,7 +735,7 @@ function App() {
                 myPlayerKey={myPlayerKey}
                 playingRoomId={playingRoomId}
                 isMyTurn={isMyTurn}
-                coastalVertices={coastalVertices}   // ★ 海岸線情報を渡す
+                coastalVertices={coastalVertices}
               />
               
               <CardHand cards={cards} actionMode={actionMode} handleUseCard={handleUseCard} />
