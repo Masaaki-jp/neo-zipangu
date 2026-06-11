@@ -1,74 +1,88 @@
 # database.py
-import sqlite3
 import uuid
+import os
+import firebase_admin
+from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
-DB_FILE = "neo_zipangu.db"
+# Firestore クライアントを初期化（既に main.py で初期化済みなら再初期化されない）
+if not firebase_admin._apps:
+    cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if cred_path:
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+    else:
+        firebase_admin.initialize_app()
 
-def get_db():
-    """データベース接続を取得する"""
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row # カラム名でデータにアクセスできるようにする
-    return conn
+db = firestore.client()
 
 def init_db():
-    """テーブルが存在しなければ作成する（初期化）"""
-    with get_db() as conn:
-        # 1. ユーザーテーブル
-        # 💡将来のGoogle Play決済を見据え、free_tokens（無償）とpaid_tokens（有償）を分離
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
-                login_id TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                display_name TEXT NOT NULL,
-                rank_points INTEGER DEFAULT 1000,
-                free_tokens INTEGER DEFAULT 0,
-                paid_tokens INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # 2. 試合履歴テーブル（将来の戦績振り返り用）
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS match_history (
-                match_id TEXT PRIMARY KEY,
-                winner_id TEXT,
-                map_id TEXT,
-                match_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        conn.commit()
+    """
+    テーブル作成の代わりに、Firestore ではコレクションは自動生成されるため
+    ここでは単に接続確認だけ行う（必要に応じてインデックス作成などを行う）。
+    """
+    # 接続確認（ダミー読み込み）
+    _ = db.collection("users").limit(1).get()
+    print("[Firestore] Database connected.")
 
-# --- 以降はデータベースを操作するための便利関数 ---
+# --- Firestore 操作用のラッパー関数 ---
 
 def create_user(login_id: str, password_hash: str, display_name: str):
-    """新規ユーザーを登録する"""
-    with get_db() as conn:
-        try:
-            user_id = str(uuid.uuid4())
-            conn.execute(
-                "INSERT INTO users (user_id, login_id, password_hash, display_name) VALUES (?, ?, ?, ?)",
-                (user_id, login_id, password_hash, display_name)
-            )
-            conn.commit()
-            return {"success": True, "user_id": user_id}
-        except sqlite3.IntegrityError:
-            return {"error": "LOGIN_ID_ALREADY_EXISTS"}
+    """
+    新規ユーザーを Firestore に登録する。
+    login_id の一意性はアプリケーション層でチェックする。
+    """
+    # login_id の重複チェック（トランザクションは不要だが、チェック後に作成される可能性があるため
+    # 本番ではトランザクションを使用するのが安全。ここでは簡易的に先に存在確認。）
+    existing = get_user_by_login_id(login_id)
+    if existing:
+        return {"error": "LOGIN_ID_ALREADY_EXISTS"}
+
+    user_id = str(uuid.uuid4())
+    user_data = {
+        "login_id": login_id,
+        "password_hash": password_hash,
+        "display_name": display_name,
+        "rank_points": 1000,
+        "free_tokens": 0,
+        "paid_tokens": 0,
+        "created_at": SERVER_TIMESTAMP
+    }
+    db.collection("users").document(user_id).set(user_data)
+    return {"success": True, "user_id": user_id}
 
 def get_user_by_login_id(login_id: str):
-    """ログインIDからユーザー情報を取得する"""
-    with get_db() as conn:
-        cursor = conn.execute("SELECT * FROM users WHERE login_id = ?", (login_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
+    """
+    login_id でユーザーを検索し、見つかったドキュメントを辞書で返す。
+    存在しない場合は None を返す。
+    """
+    docs = db.collection("users").where("login_id", "==", login_id).limit(1).stream()
+    for doc in docs:
+        user = doc.to_dict()
+        user["user_id"] = doc.id  # ドキュメントIDを user_id として追加
+        return user
+    return None
+
+def get_user_by_id(user_id: str):
+    """
+    ユーザーID（ドキュメントID）でユーザーを取得する。
+    存在しない場合は None を返す。
+    """
+    doc = db.collection("users").document(user_id).get()
+    if doc.exists:
+        user = doc.to_dict()
+        user["user_id"] = doc.id
+        return user
+    return None
 
 def update_user_after_match(user_id: str, rank_diff: int, token_reward: int):
-    """試合終了後にランクポイントと無償トークンを付与する"""
-    with get_db() as conn:
-        conn.execute('''
-            UPDATE users 
-            SET rank_points = rank_points + ?,
-                free_tokens = free_tokens + ?
-            WHERE user_id = ?
-        ''', (rank_diff, token_reward, user_id))
-        conn.commit()
+    """
+    試合終了後にランクポイントと無償トークンを加算する。
+    値の増分は正でも負でも可。
+    """
+    user_ref = db.collection("users").document(user_id)
+    # Firestore の Increment を使ってアトミックに加算
+    user_ref.update({
+        "rank_points": firestore.Increment(rank_diff),
+        "free_tokens": firestore.Increment(token_reward)
+    })
