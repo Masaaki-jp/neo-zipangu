@@ -1,7 +1,7 @@
 // frontend/src/components/WaitingRoom.jsx
 import React, { useState, useEffect } from 'react';
 
-export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
+export default function WaitingRoom({ user, roomId, mapName, onLeave, onGameStart }) {
   const [players, setPlayers] = useState([]);
   const [isHost, setIsHost] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -83,6 +83,9 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
     }
   };
 
+  // ★ mapName が渡されていれば表示、なければデフォルト
+  const stageDisplay = mapName || 'Default Stage';
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -94,6 +97,10 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
       alignItems: 'center'
     }}>
       <h2 style={{ color: '#4caf50' }}>ROOM: {roomId}</h2>
+      {/* ★ ステージ名表示 */}
+      <div style={{ color: '#00ffcc', marginBottom: '1rem', fontSize: '1.1rem', letterSpacing: '1px' }}>
+        🗺️ {stageDisplay}
+      </div>
       <div style={{ width: '100%', maxWidth: '400px', marginTop: '2rem' }}>
         {players.map((p, idx) => (
           <div key={idx} style={{ padding: '0.5rem', borderBottom: '1px solid #333' }}>
