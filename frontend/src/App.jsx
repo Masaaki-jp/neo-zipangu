@@ -56,6 +56,10 @@ function App() {
   const [mapId, setMapId] = useState("STAGE_01_BEGINNER");
   const [coastalVertices, setCoastalVertices] = useState([]);
 
+  // ★ 順番決めカウントダウン用
+  const [initRollDeadline, setInitRollDeadline] = useState(null);
+  const [initRollTimeLeft, setInitRollTimeLeft] = useState(10);
+
   const currentPlayer = gameStatus.current_player || "Player1";
   const pColor = PLAYER_COLORS[currentPlayer];
 
@@ -130,6 +134,8 @@ function App() {
     setWaitingRoomId(null);
     setMyPlayerKey("Player1");
     setCoastalVertices([]);
+    setInitRollDeadline(null);
+    setInitRollTimeLeft(10);
   };
 
   // ===== データ取得（重複防止 & HexMap用データ追加）=====
@@ -149,7 +155,7 @@ function App() {
           // 排他フラグを先に解放（リダイレクト先で再フェッチできるように）
           isFetching.current = false;
           setLoading(false);
-          alert("Errorによりルームが削除されました");
+          alert("準備が完了していないプレイヤーがいたため、ルームを解散しました。");
           handleGoToLobby();
           return;
         }
@@ -263,9 +269,15 @@ function App() {
             return;
           }
           const statusData = await res.json();
-          if (!cancelled && statusData.state === "finished") {
-            // fetchData 内で解散理由をチェックしてポップアップ＋ロビー遷移する
-            fetchData();
+          if (!cancelled) {
+            // ★ 順番決めの締切時刻を常に最新に保つ
+            if (statusData.init_roll_deadline) {
+              setInitRollDeadline(statusData.init_roll_deadline);
+            }
+            if (statusData.state === "finished") {
+              // fetchData 内で解散理由をチェックしてポップアップ＋ロビー遷移する
+              fetchData();
+            }
           }
         } catch (err) {
           // ネットワークエラー → 即ポップアップ → ロビー
@@ -279,6 +291,20 @@ function App() {
       return () => { cancelled = true; clearInterval(interval); };
     }
   }, [playingRoomId, gameStatus.state, myPlayerKey]);
+
+  // ★ 順番決めカウントダウンタイマー（1秒ごとに更新）
+  useEffect(() => {
+    if (gameStatus.state === 'init_roll' && initRollDeadline) {
+      const timer = setInterval(() => {
+        const now = Date.now() / 1000;
+        const left = Math.max(0, Math.floor(initRollDeadline - now));
+        setInitRollTimeLeft(left);
+      }, 200);
+      return () => clearInterval(timer);
+    } else {
+      setInitRollTimeLeft(10);
+    }
+  }, [gameStatus.state, initRollDeadline]);
 
   // ===== 状態更新 =====
   const handleStateUpdate = (newInventory, newRates, newBuildings, newScore, newCards, newGameStatus) => {
@@ -616,7 +642,22 @@ function App() {
         {/* 順番決め */}
         {gameStatus.state === "init_roll" && (
           <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-            <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 3rem)', textShadow: '0 0 15px #00ffcc', marginBottom: '40px', textAlign: 'center' }}>&gt; SYSTEM BOOT: INITIATIVE SEQUENCE</h1>
+            <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 3rem)', textShadow: '0 0 15px #00ffcc', marginBottom: '20px', textAlign: 'center' }}>&gt; SYSTEM BOOT: INITIATIVE SEQUENCE</h1>
+            
+            {/* ★ カウントダウンタイマー */}
+            {playingRoomId && (
+              <div style={{ 
+                fontSize: '2.5rem', 
+                fontWeight: 'bold', 
+                color: initRollTimeLeft <= 3 ? '#ff0055' : '#00ffcc', 
+                textShadow: `0 0 20px ${initRollTimeLeft <= 3 ? '#ff0055' : '#00ffcc'}`,
+                marginBottom: '30px',
+                animation: initRollTimeLeft <= 3 ? 'blink 0.5s infinite' : 'none'
+              }}>
+                {initRollTimeLeft}s
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%' }}>
               {PLAYERS.map(p => {
                 const hasRolled = initRolls[p] !== undefined;

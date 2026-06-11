@@ -28,6 +28,14 @@ def _get_or_generate_board(session):
 def _init_roll(session, req: InitRollRequest):
     result = session.execute_init_roll(req.player)
     if "error" in result:
+        # ★ INIT_TIMEOUT の場合は部屋を削除する（呼び出し元に委ねるため特別なHTTPエラーは不要）
+        if result["error"] == "INIT_TIMEOUT":
+            # タイムアウト時は game_status.state が "finished" に変わっている
+            # そのままレスポンスを返す（フロントエンドで解散を検知させる）
+            return main.build_standard_response(session, {
+                "status": "timeout",
+                "reason": session.game_status.get("reason", "")
+            })
         raise HTTPException(status_code=400, detail=result["error"])
     return main.build_standard_response(session, {"status": "success", "init_rolls": result["init_rolls"]})
 
@@ -168,7 +176,12 @@ def get_or_generate_board(room_id: str = Query("SOLO_CPU_ROOM")):
 @router.post("/api/init_roll")
 def init_roll(req: InitRollRequest, room_id: str = Query("SOLO_CPU_ROOM")):
     session = main.room_manager.get_or_create_room(room_id)
-    return _init_roll(session, req)
+    result_data = _init_roll(session, req)
+    # ★ タイムアウトによる解散が発生した場合、部屋を削除
+    if result_data.get("status") == "timeout":
+        if room_id != "SOLO_CPU_ROOM":
+            main.room_manager.delete_room(room_id)
+    return result_data
 
 @router.post("/api/end_turn")
 def end_turn(req: BuildRequest, room_id: str = Query("SOLO_CPU_ROOM")):
