@@ -9,6 +9,7 @@ import ModeSelectionScreen from './components/ModeSelectionScreen';
 import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
 import ErrorBoundary from './components/ErrorBoundary';
+import { STAGE_DATA } from './maps/stageData';  // ★ ステージ名の参照用
 
 const diceFaces = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅' };
 const MAX_STOCKS = { LOCAL_HUB: 5, DATA_CENTER: 4, GATEWAY: 3, MEGA_HQ: 2 };
@@ -59,6 +60,10 @@ function App() {
   // ★ 順番決めカウントダウン用
   const [initRollDeadline, setInitRollDeadline] = useState(null);
   const [initRollTimeLeft, setInitRollTimeLeft] = useState(10);
+
+  // ★ カジュアルマップ選択用
+  const [casualMapSelection, setCasualMapSelection] = useState(false);
+  const [selectedCasualMapId, setSelectedCasualMapId] = useState(null); // 選択されたマップID（ルーム作成前）
 
   const currentPlayer = gameStatus.current_player || "Player1";
   const pColor = PLAYER_COLORS[currentPlayer];
@@ -136,6 +141,8 @@ function App() {
     setCoastalVertices([]);
     setInitRollDeadline(null);
     setInitRollTimeLeft(10);
+    setCasualMapSelection(false);
+    setSelectedCasualMapId(null);
   };
 
   // ===== データ取得（重複防止 & HexMap用データ追加）=====
@@ -152,7 +159,6 @@ function App() {
       // ★ 解散（カジュアル退出）の場合は即座にポップアップ → ロビーへ
       if (data.game_status && data.game_status.state === "finished") {
         if (data.game_status.reason && data.game_status.reason.includes("解散")) {
-          // 排他フラグを先に解放（リダイレクト先で再フェッチできるように）
           isFetching.current = false;
           setLoading(false);
           alert("準備が完了していないプレイヤーがいたため、ルームを解散しました。");
@@ -160,7 +166,6 @@ function App() {
           return;
         }
 
-        // 解散以外の finished（スコア到達など）
         setGameStatus(data.game_status);
         setAllScores(data.all_scores || {});
         setTitleOwners(data.title_owners || {});
@@ -261,7 +266,6 @@ function App() {
         try {
           const res = await fetch(`/api/rooms/${playingRoomId}/status`);
           if (!res.ok) {
-            // 404 などで部屋が消えた → 即ポップアップ → ロビー
             if (!cancelled) {
               alert("Errorによりルームが削除されました");
               handleGoToLobby();
@@ -270,17 +274,14 @@ function App() {
           }
           const statusData = await res.json();
           if (!cancelled) {
-            // ★ 順番決めの締切時刻を常に最新に保つ
             if (statusData.init_roll_deadline) {
               setInitRollDeadline(statusData.init_roll_deadline);
             }
             if (statusData.state === "finished") {
-              // fetchData 内で解散理由をチェックしてポップアップ＋ロビー遷移する
               fetchData();
             }
           }
         } catch (err) {
-          // ネットワークエラー → 即ポップアップ → ロビー
           if (!cancelled) {
             alert("Errorによりルームが削除されました");
             handleGoToLobby();
@@ -292,7 +293,7 @@ function App() {
     }
   }, [playingRoomId, gameStatus.state, myPlayerKey]);
 
-  // ★ 順番決めカウントダウンタイマー（1秒ごとに更新）
+  // ★ 順番決めカウントダウンタイマー
   useEffect(() => {
     if (gameStatus.state === 'init_roll' && initRollDeadline) {
       const timer = setInterval(() => {
@@ -423,6 +424,34 @@ function App() {
         setHasRolledDice(false);
       }
     } catch (error) { console.error("マップ初期化エラー:", error); }
+  };
+
+  // ★ カジュアルマップ選択後、ルームを作成して待機室へ
+  const handleCasualMapSelected = async (mapId) => {
+    try {
+      const res = await fetch('/api/rooms/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: loggedInUser.user_id,
+          display_name: loggedInUser.display_name,
+          map_id: mapId
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSelectedCasualMapId(mapId);
+        setWaitingRoomId(data.room_id);
+        setCasualMapSelection(false);
+      } else {
+        alert('ルームの作成に失敗しました: ' + (data.detail || ''));
+        setCasualMapSelection(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('通信エラー');
+      setCasualMapSelection(false);
+    }
   };
 
   // ===== 順番決めのCOM自動ロール (CPUのみ) =====
@@ -589,6 +618,12 @@ function App() {
   };
   const currentBCounts = bCounts();
 
+  // ★ マップIDからステージ名を取得
+  const getStageName = (id) => {
+    const stage = STAGE_DATA.find(s => s.id === id);
+    return stage ? stage.name : id;
+  };
+
   //=== 画面遷移 ===
   if (isCheckingLogin) {
     return <div style={{ height: '100vh', backgroundColor: '#1a1a2e', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>システムに接続中...</div>;
@@ -599,13 +634,30 @@ function App() {
   if (!selectedMode) {
     return <ModeSelectionScreen user={loggedInUser} onSelectMode={(mode) => setSelectedMode(mode)} />;
   }
-  // カジュアル待合室
+
+  // ★ カジュアルマップ選択画面
+  if (selectedMode === 'CASUAL' && casualMapSelection && !waitingRoomId && !playingRoomId) {
+    return (
+      <MapSelector
+        onSelectMap={(mapId) => handleCasualMapSelected(mapId)}
+        pColor="#00ffcc"
+      />
+    );
+  }
+
+  // カジュアル待合室（マップ選択後にルーム作成された状態）
   if (selectedMode === 'CASUAL' && !playingRoomId && waitingRoomId) {
+    const stageName = getStageName(selectedCasualMapId || "STAGE_01_BEGINNER");
     return (
       <WaitingRoom
         user={loggedInUser}
         roomId={waitingRoomId}
-        onLeave={() => { setWaitingRoomId(null); setSelectedMode(null); }}
+        mapName={stageName}
+        onLeave={() => {
+          setWaitingRoomId(null);
+          setSelectedCasualMapId(null);
+          setSelectedMode(null);
+        }}
         onGameStart={(roomId, myKey) => {
           setPlayingRoomId(roomId);
           setMyPlayerKey(myKey);
@@ -614,9 +666,20 @@ function App() {
       />
     );
   }
-  // カジュアルロビー
-  if (selectedMode === 'CASUAL' && !waitingRoomId && !playingRoomId) {
-    return <LobbyScreen user={loggedInUser} onBack={() => setSelectedMode(null)} onEnterRoom={(roomId) => setWaitingRoomId(roomId)} />;
+
+  // カジュアルロビー（マップ選択前、一覧表示）
+  if (selectedMode === 'CASUAL' && !waitingRoomId && !playingRoomId && !casualMapSelection) {
+    return (
+      <LobbyScreen
+        user={loggedInUser}
+        onBack={() => setSelectedMode(null)}
+        onEnterRoom={(roomId, mapId) => {
+          setWaitingRoomId(roomId);
+          if (mapId) setSelectedCasualMapId(mapId);
+        }}
+        onCreateRoom={() => setCasualMapSelection(true)}
+      />
+    );
   }
 
   // マルチプレイでデータ未取得の場合はローディング表示
@@ -644,7 +707,6 @@ function App() {
           <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
             <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 3rem)', textShadow: '0 0 15px #00ffcc', marginBottom: '20px', textAlign: 'center' }}>&gt; SYSTEM BOOT: INITIATIVE SEQUENCE</h1>
             
-            {/* ★ カウントダウンタイマー */}
             {playingRoomId && (
               <div style={{ 
                 fontSize: '2.5rem', 
@@ -689,7 +751,6 @@ function App() {
           <>
             {gameStatus.state === "finished" && (
               <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                {/* 退出による終了かどうかで表示を分岐 */}
                 {gameStatus.reason && gameStatus.reason.includes("退出") ? (
                   <>
                     <h1 style={{ color: '#ffcc00', fontSize: '4rem', textShadow: '0 0 30px #ffcc00', margin: '0 0 20px 0', animation: 'blink 1.5s infinite' }}>

@@ -16,6 +16,7 @@ router = APIRouter()
 class CreateRoomRequest(BaseModel):
     user_id: str
     display_name: str
+    map_id: str = "STAGE_01_BEGINNER"  # ★ 追加：カジュアル対戦で選択されたステージID
 
 
 class JoinRoomRequest(BaseModel):
@@ -41,7 +42,8 @@ def get_rooms():
         room_list.append({
             "room_id": r_id,
             "player_count": len(joined),
-            "status": "waiting" if len(joined) < 4 else "playing"
+            "status": "waiting" if len(joined) < 4 else "playing",
+            "map_id": getattr(session, "current_map_id", "STAGE_01_BEGINNER")  # ★ 追加：選択されたマップIDを公開
         })
     return {"rooms": room_list}
 
@@ -54,7 +56,9 @@ def create_room(req: CreateRoomRequest):
     # 部屋の情報を初期設定（ホストを参加者リストの1人目に入れる）
     session.joined_players = [{"user_id": req.user_id, "display_name": req.display_name}]
     session.is_started = False
-    return {"status": "success", "room_id": room_id}
+    # ★ 追加：選択されたマップをセッションに保存
+    session.current_map_id = req.map_id
+    return {"status": "success", "room_id": room_id, "map_id": req.map_id}
 
 
 @router.post("/api/rooms/join")
@@ -147,7 +151,7 @@ def start_room_game(room_id: str, user_id: str = Query(...)):
         else:
             session.player_types[key] = "cpu"
 
-    # マップIDがなければデフォルトをセット
+    # マップIDがなければデフォルトをセット（create_room で設定済みのはずだが念のため）
     if not getattr(session, "current_map_id", None):
         session.current_map_id = "STAGE_01_BEGINNER"
 
@@ -192,10 +196,11 @@ def get_room_state(room_id: str):
     session = room_manager.rooms.get(room_id)
     if not session:
         raise HTTPException(status_code=404, detail="ROOM_NOT_FOUND")
-    # ★ 部屋の参加者情報と、init_roll_deadline を一緒に返す
+    # ★ 部屋の参加者情報、init_roll_deadline、そして current_map_id を返す
     return main.build_standard_response(session, {
         "joined_players": getattr(session, "joined_players", []),
-        "init_roll_deadline": getattr(session, "init_roll_deadline", None)  # ★ 追加
+        "init_roll_deadline": getattr(session, "init_roll_deadline", None),
+        "map_id": getattr(session, "current_map_id", "STAGE_01_BEGINNER")
     })
 
 
@@ -209,10 +214,11 @@ def get_room_status(room_id: str):
     if not session:
         raise HTTPException(status_code=404, detail="ROOM_NOT_FOUND")
     
-    # ★ reason と init_roll_deadline も返す（解散理由・カウントダウン表示用）
+    # ★ reason、init_roll_deadline、map_id も返す
     return {
         "state": session.game_status.get("state", "unknown"),
         "winner": session.game_status.get("winner"),
         "reason": session.game_status.get("reason", ""),
-        "init_roll_deadline": getattr(session, "init_roll_deadline", None)
+        "init_roll_deadline": getattr(session, "init_roll_deadline", None),
+        "map_id": getattr(session, "current_map_id", "STAGE_01_BEGINNER")
     }
