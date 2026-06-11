@@ -8,6 +8,7 @@ from state_manager import room_manager
 import main  # build_standard_response を使うため
 import random
 import string
+import time  # ★ 追加：init_roll_deadline設定用
 
 router = APIRouter()
 
@@ -160,6 +161,9 @@ def start_room_game(room_id: str, user_id: str = Query(...)):
     session.init_rolls = {}
     session.joined_players = joined
 
+    # ★ 追加：順番決めの10秒カウントダウンを開始
+    session.init_roll_deadline = time.time() + 10
+
     # CPUのイニシアチブロールを事前に実行
     import random as rand
     order_counter = 0
@@ -188,8 +192,11 @@ def get_room_state(room_id: str):
     session = room_manager.rooms.get(room_id)
     if not session:
         raise HTTPException(status_code=404, detail="ROOM_NOT_FOUND")
-    # 部屋の参加者情報を一緒に返す
-    return main.build_standard_response(session, {"joined_players": getattr(session, "joined_players", [])})
+    # ★ 部屋の参加者情報と、init_roll_deadline を一緒に返す
+    return main.build_standard_response(session, {
+        "joined_players": getattr(session, "joined_players", []),
+        "init_roll_deadline": getattr(session, "init_roll_deadline", None)  # ★ 追加
+    })
 
 
 # 🥷 追加：軽量ステータスAPI（マルチプレイの退出検知用）
@@ -202,7 +209,10 @@ def get_room_status(room_id: str):
     if not session:
         raise HTTPException(status_code=404, detail="ROOM_NOT_FOUND")
     
+    # ★ reason と init_roll_deadline も返す（解散理由・カウントダウン表示用）
     return {
         "state": session.game_status.get("state", "unknown"),
-        "winner": session.game_status.get("winner")
+        "winner": session.game_status.get("winner"),
+        "reason": session.game_status.get("reason", ""),
+        "init_roll_deadline": getattr(session, "init_roll_deadline", None)
     }

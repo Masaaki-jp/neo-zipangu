@@ -2,6 +2,7 @@
 
 import random
 import math
+import time  # ★ 追加：タイムアウト判定用
 from constants import CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK, MAX_BUILDINGS, COSTS, HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS
 from game_logic import pay_cost
 from nature_data import WATCH_DEFS, get_watch_card_info
@@ -43,6 +44,9 @@ class GameSession:
         self.init_rolls = {}
         self.roll_counter = 0
         self.card_counter_id = 0
+
+        # ★ 追加：順番決めの10秒カウントダウン用
+        self.init_roll_deadline = None
         
         # 🥷 称号とスコア（game_state との二重管理をここに統合！）
         self.title_owners = {"💎": None, "🦉": None, "🚀": None, "🐳": None, "🗺️": None, "🎖️": None}
@@ -120,6 +124,7 @@ class GameSession:
             self.game_status["winner"] = None          # 勝者なし
             self.game_status["reason"] = "相手が退出したため、ルームを解散します。"
             self.game_status["turn_end_time"] = None   # タイマー停止
+            self.init_roll_deadline = None             # ★ タイマーも停止
             return {"status": "game_disbanded"}
 
         # ゲームが始まっていなければ、ただの退室として扱う
@@ -437,13 +442,28 @@ class GameSession:
         self.hacker_position = hex_id
         return {"success": True}
 
-    # 🥷 追加5：ゲーム開始時の順番決めダイス
+    # ★★★ 修正：ゲーム開始時の順番決めダイス（10秒タイムアウト付き） ★★★
     def execute_init_roll(self, player_id: str):
+        # ① すでにロール済みなら拒否
         if player_id in self.init_rolls: 
             return {"error": "ALREADY_ROLLED"}
+
+        # ② ★ 10秒タイムアウトチェック（カジュアル対戦のみ発動）
+        if self.init_roll_deadline is not None:
+            if time.time() > self.init_roll_deadline:
+                # タイムアウト発生 → 解散
+                self.game_status["state"] = "finished"
+                self.game_status["winner"] = None
+                self.game_status["reason"] = "準備が完了していないプレイヤーがいたため、ルームを解散しました。"
+                self.init_roll_deadline = None  # 二重発動防止
+                return {"error": "INIT_TIMEOUT"}  # 呼び出し元（rooms.py）で部屋削除する
+
+        # ③ 通常のロール処理
         d1, d2 = random.randint(1, 6), random.randint(1, 6)
         self.roll_counter += 1
         self.init_rolls[player_id] = {"total": d1 + d2, "order": self.roll_counter, "dice": [d1, d2]}
+
+        # ④ 全員揃ったら setup へ
         if len(self.init_rolls) == 4:
             sorted_players = sorted(self.init_rolls.keys(), key=lambda p: (-self.init_rolls[p]["total"], self.init_rolls[p]["order"]))
             self.game_status["turn_order"] = sorted_players
@@ -451,6 +471,7 @@ class GameSession:
             self.game_status["current_player"] = sorted_players[0]
             self.game_status["state"] = "setup"
             self.game_status["setup_turn"] = 0
+            self.init_roll_deadline = None  # ★ タイマー解除
             current_p = self.game_status["current_player"]
             if self.player_types.get(current_p, "human") == "human":
                 self.game_status["turn_end_time"] = calculate_deadline(60)
@@ -706,6 +727,7 @@ class GameSession:
         self.init_rolls.clear()
         self.roll_counter = 0
         self.coastal_vertices.clear()
+        self.init_roll_deadline = None  # ★ タイマーもリセット
         self.title_owners = {"💎": None, "🦉": None, "🚀": None, "🐳": None, "🗺️": None, "🎖️": None}
         self.combat_wins = {p: 0 for p in self.PLAYERS}
         self.game_status.update({

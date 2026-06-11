@@ -1,10 +1,11 @@
+// frontend/src/components/WaitingRoom.jsx
 import React, { useState, useEffect } from 'react';
 
 export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
   const [players, setPlayers] = useState([]);
   const [isHost, setIsHost] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [isLeaving, setIsLeaving] = useState(false); // 🥷 退室中の二重クリック防止
+  const [isLeaving, setIsLeaving] = useState(false);
 
   const fetchRoomState = async () => {
     try {
@@ -12,14 +13,12 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
       if (res.ok) {
         const data = await res.json();
 
-        // ゲームが開始されたかチェック
         if (
           data.game_status &&
           (data.game_status.state === 'init_roll' ||
             data.game_status.state === 'setup' ||
             data.game_status.state === 'playing')
         ) {
-          // 自分のプレイヤー番号を取得してからゲーム画面へ
           const joined = data.joined_players || [];
           const me = joined.find(p => p.user_id === user.user_id);
           const myKey = me?.player_key || 'Player1';
@@ -29,7 +28,6 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
 
         const joined = data.joined_players || [];
         setPlayers(joined);
-        // ホスト判定（最初の参加者）
         setIsHost(joined.length > 0 && joined[0].user_id === user.user_id);
       }
     } catch (err) {
@@ -43,9 +41,8 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
     return () => clearInterval(interval);
   }, []);
 
-  // 🥷 修正：退出APIを呼び出してから退室する
   const handleLeaveRoom = async () => {
-    if (isLeaving) return; // 二重クリック防止
+    if (isLeaving) return;
     setIsLeaving(true);
     try {
       await fetch(`/api/rooms/${roomId}/leave`, {
@@ -60,7 +57,7 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
       console.error('退出APIの呼び出しに失敗しました:', err);
     } finally {
       setIsLeaving(false);
-      onLeave(); // 成功・失敗にかかわらず画面は戻す
+      onLeave();
     }
   };
 
@@ -71,7 +68,6 @@ export default function WaitingRoom({ user, roomId, onLeave, onGameStart }) {
         method: 'POST'
       });
       if (res.ok) {
-        // 開始後に自分のプレイヤー番号を取得
         const stateRes = await fetch(`/api/rooms/${roomId}/state`);
         const stateData = await stateRes.json();
         const joined = stateData.joined_players || [];
