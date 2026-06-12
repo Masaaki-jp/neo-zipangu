@@ -8,8 +8,9 @@ import LoginScreen from './components/LoginScreen';
 import ModeSelectionScreen from './components/ModeSelectionScreen';
 import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
+import RankedMatchmakingScreen from './components/RankedMatchmakingScreen'; // ★ 追加
 import ErrorBoundary from './components/ErrorBoundary';
-import { STAGE_DATA } from './maps/stageData';  // ★ ステージ名の参照用
+import { STAGE_DATA } from './maps/stageData';
 
 const diceFaces = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅' };
 const MAX_STOCKS = { LOCAL_HUB: 5, DATA_CENTER: 4, GATEWAY: 3, MEGA_HQ: 2 };
@@ -63,7 +64,7 @@ function App() {
 
   // ★ カジュアルマップ選択用
   const [casualMapSelection, setCasualMapSelection] = useState(false);
-  const [selectedCasualMapId, setSelectedCasualMapId] = useState(null); // 選択されたマップID（ルーム作成前）
+  const [selectedCasualMapId, setSelectedCasualMapId] = useState(null);
 
   const currentPlayer = gameStatus.current_player || "Player1";
   const pColor = PLAYER_COLORS[currentPlayer];
@@ -77,7 +78,7 @@ function App() {
   // ===== API ヘルパー =====
   const apiPost = async (path, body) => {
     let url = path;
-    if (selectedMode === 'CASUAL' && playingRoomId) {
+    if ((selectedMode === 'CASUAL' || selectedMode === 'RANKED') && playingRoomId) {
       const separator = path.includes('?') ? '&' : '?';
       url = `${path}${separator}room_id=${playingRoomId}`;
     }
@@ -98,7 +99,7 @@ function App() {
 
   const apiGet = async (path) => {
     let url = path;
-    if (selectedMode === 'CASUAL' && playingRoomId) {
+    if ((selectedMode === 'CASUAL' || selectedMode === 'RANKED') && playingRoomId) {
       const separator = path.includes('?') ? '&' : '?';
       url = `${path}${separator}room_id=${playingRoomId}`;
     }
@@ -126,7 +127,6 @@ function App() {
     } catch (err) {
       console.error('退出APIの呼び出しに失敗:', err);
     }
-    // 状態をリセットしてロビーへ（selectedMode は CASUAL のまま）
     setGameStatus({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 });
     setInitRolls({});
     setDice(null);
@@ -145,6 +145,17 @@ function App() {
     setSelectedCasualMapId(null);
   };
 
+  // ★ ランクマッチキャンセル時の処理
+  const handleRankedCancel = () => {
+    setSelectedMode(null);
+  };
+
+  // ★ ランクマッチ成立時の処理
+  const handleRankedMatchFound = (roomId, playerKey) => {
+    setPlayingRoomId(roomId);
+    setMyPlayerKey(playerKey);
+  };
+
   // ===== データ取得（重複防止 & HexMap用データ追加）=====
   const fetchData = async () => {
     if (isFetching.current) return;
@@ -156,7 +167,6 @@ function App() {
 
       setCoastalVertices(data.coastal_vertices || []);
 
-      // ★ 解散（カジュアル退出）の場合は即座にポップアップ → ロビーへ
       if (data.game_status && data.game_status.state === "finished") {
         if (data.game_status.reason && data.game_status.reason.includes("解散")) {
           isFetching.current = false;
@@ -248,7 +258,6 @@ function App() {
     }
   }, [gameStatus.current_player]);
 
-  // 🥷 マルチプレイ中の同期ポーリング（setup / playing 中、5秒ごとに状態を取得）
   useEffect(() => {
     if (playingRoomId && (gameStatus.state === 'setup' || gameStatus.state === 'playing')) {
       const interval = setInterval(() => {
@@ -258,7 +267,6 @@ function App() {
     }
   }, [playingRoomId, gameStatus.state]);
 
-  // 🥷 追加：軽量ステータスAPIによる finished 検知（2秒間隔）
   useEffect(() => {
     if (playingRoomId && (gameStatus.state === 'init_roll' || gameStatus.state === 'setup' || gameStatus.state === 'playing')) {
       let cancelled = false;
@@ -293,7 +301,6 @@ function App() {
     }
   }, [playingRoomId, gameStatus.state, myPlayerKey]);
 
-  // ★ 順番決めカウントダウンタイマー
   useEffect(() => {
     if (gameStatus.state === 'init_roll' && initRollDeadline) {
       const timer = setInterval(() => {
@@ -426,7 +433,6 @@ function App() {
     } catch (error) { console.error("マップ初期化エラー:", error); }
   };
 
-  // ★ カジュアルマップ選択後、ルームを作成して待機室へ
   const handleCasualMapSelected = async (mapId) => {
     try {
       const res = await fetch('/api/rooms/create', {
@@ -465,7 +471,6 @@ function App() {
     }
   }, [gameStatus.state, initRolls, playerTypes]);
 
-  // ===== マルチプレイ時の順番決め同期ポーリング =====
   useEffect(() => {
     if (gameStatus.state === "init_roll" && playingRoomId) {
       const interval = setInterval(async () => {
@@ -618,7 +623,6 @@ function App() {
   };
   const currentBCounts = bCounts();
 
-  // ★ マップIDからステージ名を取得
   const getStageName = (id) => {
     const stage = STAGE_DATA.find(s => s.id === id);
     return stage ? stage.name : id;
@@ -635,7 +639,18 @@ function App() {
     return <ModeSelectionScreen user={loggedInUser} onSelectMode={(mode) => setSelectedMode(mode)} />;
   }
 
-  // ★ カジュアルマップ選択画面
+  // ★ ランクマッチ待機画面
+  if (selectedMode === 'RANKED' && !playingRoomId) {
+    return (
+      <RankedMatchmakingScreen
+        accessToken={loggedInUser.access_token}
+        onCancel={handleRankedCancel}
+        onMatchFound={handleRankedMatchFound}
+      />
+    );
+  }
+
+  // カジュアルマップ選択画面
   if (selectedMode === 'CASUAL' && casualMapSelection && !waitingRoomId && !playingRoomId) {
     return (
       <MapSelector
@@ -645,7 +660,7 @@ function App() {
     );
   }
 
-  // カジュアル待合室（マップ選択後にルーム作成された状態）
+  // カジュアル待合室
   if (selectedMode === 'CASUAL' && !playingRoomId && waitingRoomId) {
     const stageName = getStageName(selectedCasualMapId || "STAGE_01_BEGINNER");
     return (
@@ -667,7 +682,7 @@ function App() {
     );
   }
 
-  // カジュアルロビー（マップ選択前、一覧表示）
+  // カジュアルロビー
   if (selectedMode === 'CASUAL' && !waitingRoomId && !playingRoomId && !casualMapSelection) {
     return (
       <LobbyScreen
@@ -682,7 +697,6 @@ function App() {
     );
   }
 
-  // マルチプレイでデータ未取得の場合はローディング表示
   if (playingRoomId && loading) {
     return (
       <div style={{ height: '100vh', backgroundColor: '#1a1a2e', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
@@ -697,12 +711,10 @@ function App() {
     <ErrorBoundary>
       <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: pColor, fontFamily: '"Courier New", Courier, monospace', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         
-        {/* マップ選択（ソロのみ） */}
-        {gameStatus.state === "map_selection" && selectedMode !== 'CASUAL' && (
+        {gameStatus.state === "map_selection" && selectedMode !== 'CASUAL' && selectedMode !== 'RANKED' && (
           <MapSelector onSelectMap={handleSelectMap} pColor={pColor} />
         )}
 
-        {/* 順番決め */}
         {gameStatus.state === "init_roll" && (
           <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
             <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 3rem)', textShadow: '0 0 15px #00ffcc', marginBottom: '20px', textAlign: 'center' }}>&gt; SYSTEM BOOT: INITIATIVE SEQUENCE</h1>
@@ -746,7 +758,6 @@ function App() {
           </div>
         )}
 
-        {/* ゲーム本編 (setup/playing/finished) */}
         {(gameStatus.state === "setup" || gameStatus.state === "playing" || gameStatus.state === "finished") && (
           <>
             {gameStatus.state === "finished" && (
