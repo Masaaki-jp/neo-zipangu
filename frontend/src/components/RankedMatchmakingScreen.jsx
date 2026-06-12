@@ -2,31 +2,32 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 /**
- * ランクマッチ専用のマッチメイキング待機画面（デバッグ版）
+ * ランクマッチ専用のマッチメイキング待機画面（Cookie認証対応版）
  *
  * Props:
  *   onCancel          : キャンセルボタン押下時に呼ばれるコールバック
  *   onMatchFound      : マッチングが成立したら (roomId, playerKey) を引数に呼ばれる
- *   accessToken       : 認証トークン (API呼び出し時に Authorization ヘッダへセット)
+ *   ※ accessToken は不要（認証はCookieで自動送信）
  */
-export default function RankedMatchmakingScreen({ onCancel, onMatchFound, accessToken }) {
+export default function RankedMatchmakingScreen({ onCancel, onMatchFound }) {
   const [playerCount, setPlayerCount] = useState(0);
   const [waitTime, setWaitTime] = useState(0);
   const [isLeaving, setIsLeaving] = useState(false);
   const [debugMsg, setDebugMsg] = useState(''); // ★ 画面にデバッグ情報を表示する用
   const pollingRef = useRef(null);
 
-  // 共通の fetch オプション
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${accessToken}`
-  };
-
-  // デバッグ用：API呼び出しをラップしてログ出力
-  const debugFetch = async (url, options) => {
-    console.log(`[RankedDebug] ${options?.method || 'GET'} ${url}`);
+  // デバッグ用：API呼び出しをラップしてログ出力（Cookie認証対応）
+  const debugFetch = async (url, options = {}) => {
+    console.log(`[RankedDebug] ${options.method || 'GET'} ${url}`);
     try {
-      const res = await fetch(url, options);
+      const res = await fetch(url, {
+        ...options,
+        credentials: 'include', // ★ Cookie を自動送信
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+      });
       const clone = res.clone();
       const data = await clone.json().catch(() => null);
       console.log(`[RankedDebug] ${url} status: ${res.status}`, data);
@@ -45,7 +46,6 @@ export default function RankedMatchmakingScreen({ onCancel, onMatchFound, access
       try {
         const res = await debugFetch('/api/ranked/join_queue', {
           method: 'POST',
-          headers: authHeaders,
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
@@ -68,9 +68,7 @@ export default function RankedMatchmakingScreen({ onCancel, onMatchFound, access
 
       // 1. 待機状況の更新
       try {
-        const statusRes = await debugFetch('/api/ranked/queue_status', {
-          headers: authHeaders,
-        });
+        const statusRes = await debugFetch('/api/ranked/queue_status');
         if (statusRes.ok) {
           const data = await statusRes.json();
           setPlayerCount(data.player_count);
@@ -82,9 +80,7 @@ export default function RankedMatchmakingScreen({ onCancel, onMatchFound, access
 
       // 2. マッチング成立の確認
       try {
-        const matchRes = await debugFetch('/api/ranked/check_match', {
-          headers: authHeaders,
-        });
+        const matchRes = await debugFetch('/api/ranked/check_match');
         if (matchRes.ok) {
           const matchData = await matchRes.json();
           console.log('check_match response:', matchData);
@@ -106,7 +102,6 @@ export default function RankedMatchmakingScreen({ onCancel, onMatchFound, access
       if (!cancelled) return;
       debugFetch('/api/ranked/leave_queue', {
         method: 'POST',
-        headers: authHeaders,
       }).catch(err => console.error('leave_queue エラー:', err));
     };
   }, []);
@@ -118,7 +113,6 @@ export default function RankedMatchmakingScreen({ onCancel, onMatchFound, access
     try {
       await debugFetch('/api/ranked/leave_queue', {
         method: 'POST',
-        headers: authHeaders,
       });
       setDebugMsg('キューから離脱しました。');
     } catch (err) {

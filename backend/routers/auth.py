@@ -1,5 +1,6 @@
 # routers/auth.py
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse  # ★ 追加
 from schemas import RegisterRequest, LoginRequest
 from database import create_user, get_user_by_login_id
 from core.security import pwd_context, verify_password, create_access_token
@@ -27,16 +28,25 @@ def login_user(req: LoginRequest):
     if not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="INVALID_PASSWORD")
     token = create_access_token({"sub": user["user_id"]})
-    return {
+
+    # ★ Cookie にトークンをセット
+    response = JSONResponse({
         "status": "success",
-        "access_token": token,
-        "token_type": "bearer",
         "user_id": user["user_id"],
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
         "paid_tokens": user["paid_tokens"]
-    }
+    })
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=False,  # 本番では True に変更すること
+        max_age=60 * 60 * 24 * 7  # 7日間
+    )
+    return response
 
 
 @router.post("/api/guest_login")
@@ -51,7 +61,9 @@ def guest_login():
         raise HTTPException(status_code=500, detail="GUEST_CREATION_FAILED")
     user = get_user_by_login_id(login_id)
     token = create_access_token({"sub": user["user_id"]})
-    return {
+
+    # ★ Cookie にトークンをセット
+    response = JSONResponse({
         "status": "success",
         "user_id": user["user_id"],
         "login_id": login_id,
@@ -59,7 +71,14 @@ def guest_login():
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
-        "paid_tokens": user["paid_tokens"],
-        "access_token": token,
-        "token_type": "bearer"
-    }
+        "paid_tokens": user["paid_tokens"]
+    })
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=60 * 60 * 24 * 7
+    )
+    return response
