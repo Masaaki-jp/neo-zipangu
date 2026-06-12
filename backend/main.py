@@ -7,7 +7,7 @@ import string
 import uuid
 import hashlib
 
-# Firebase Admin (使っていないが、後日使うかもしれないので残す)
+# Firebase Admin
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
@@ -26,7 +26,7 @@ db = firestore.client()
 import database
 database.init_db()
 
-# 認証関連（共通関数は core.security に移譲済み）
+# 認証関連
 from core.security import pwd_context, verify_password, create_access_token, SECRET_KEY, ALGORITHM
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -57,7 +57,6 @@ from schemas import (
     BuildRequest, RoadRequest, MoveRequest, TradeRequest,
     HackerRequest, CardRequest, UseCardRequest, InitRollRequest, ResetRequest
 )
-# ComExecuteRequest は schemas に追加し、ここではもう定義しない
 from constants import (
     HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS, MAX_BUILDINGS,
     COSTS, CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK
@@ -82,7 +81,7 @@ from nature_data import WATCH_DEFS, get_watch_card_info
 from countdown import calculate_deadline, is_time_up
 
 # FastAPI アプリケーション
-app = FastAPI(title="Neo Zipang Core API", version="1.9.0-beta")
+app = FastAPI(title="Neo Zipang Core API", version="1.10.0-beta")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # --------------------------------------------------
@@ -92,11 +91,16 @@ from routers.auth import router as auth_router
 from routers.game import router as game_router
 from routers.solo import router as solo_router
 from routers.rooms import router as rooms_router
+from routers.ranked import router as ranked_router, start_matchmaking_background  # ★ 追加
 
 app.include_router(auth_router)
 app.include_router(game_router)
 app.include_router(solo_router)
 app.include_router(rooms_router)
+app.include_router(ranked_router)  # ★ 追加
+
+# ★ マッチメイキングのバックグラウンドスレッドを起動
+start_matchmaking_background()
 
 # --------------------------------------------------
 # 全API共通のレスポンスジェネレータ
@@ -154,7 +158,6 @@ def build_standard_response(session, extra_data: dict = None):
         "all_scores": session.scores,
         "score": session.scores.get("Player1", {}),
         "title_owners": title_owners,
-        # ★ 海岸線情報と頂点座標をレスポンスに追加
         "coastal_vertices": list(getattr(session, "coastal_vertices", set())),
         "vertex_coords": getattr(session, "vertex_coords", {}),
         "player_types": getattr(session, "player_types", {}),
@@ -191,7 +194,6 @@ def enforce_time_limit(session):
     if is_time_up(deadline):
         raise HTTPException(status_code=408, detail="TURN_TIMEOUT")
 
-# ヘルスチェック（単純なエンドポイントはそのまま）
 @app.get("/health")
 def health_check():
     return {"status": "operational"}

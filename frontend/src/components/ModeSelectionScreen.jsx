@@ -1,10 +1,8 @@
 import React from 'react';
 
 export default function ModeSelectionScreen({ user, onSelectMode }) {
-  // 開発中のボタンを押した時のアラート
-  const handleWipClick = (modeName) => {
-    alert(`${modeName}は現在開発中です！今後のアップデート（マルチプレイ実装）をお待ちください🥷`);
-  };
+  // ゲストユーザーかどうか
+  const isGuest = user?.login_id?.startsWith('guest_');
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem' }}>
@@ -43,7 +41,7 @@ export default function ModeSelectionScreen({ user, onSelectMode }) {
           <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>AIと戦い、戦略を磨く（ステージ選択へ）</div>
         </button>
 
-        {/* ② カジュアル対戦（変更後） */}
+        {/* ② カジュアル対戦 */}
         <button 
           onClick={() => onSelectMode('CASUAL')}
           style={{ padding: '1.5rem', backgroundColor: '#0f3460', color: 'white', border: '2px solid #4caf50', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.3s', boxShadow: '0 4px 6px rgba(76,175,80,0.2)' }}
@@ -54,14 +52,42 @@ export default function ModeSelectionScreen({ user, onSelectMode }) {
           <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>ルームを作って見知らぬ人や友達と遊ぶ</div>
         </button>
 
-        {/* ③ ランク対戦（未実装・連携必須） */}
+        {/* ③ ランク対戦（ゲストは不可） */}
         <button 
-          onClick={() => handleWipClick('ランク対戦')}
-          style={{ padding: '1.5rem', backgroundColor: '#222', color: '#888', border: '2px solid #444', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', position: 'relative' }}
+          onClick={() => {
+            if (isGuest) {
+              alert("ゲストはランク対戦に参加できません。アカウント登録してください。");
+            } else {
+              onSelectMode('RANKED');
+            }
+          }}
+          disabled={isGuest}
+          style={{ 
+            padding: '1.5rem', 
+            backgroundColor: isGuest ? '#222' : '#0f3460', 
+            color: isGuest ? '#666' : 'white', 
+            border: `2px solid ${isGuest ? '#444' : '#ffaa00'}`, 
+            borderRadius: '8px', 
+            cursor: isGuest ? 'not-allowed' : 'pointer', 
+            fontSize: '1.2rem', 
+            fontWeight: 'bold', 
+            transition: 'all 0.3s', 
+            boxShadow: isGuest ? 'none' : '0 4px 6px rgba(255,170,0,0.2)' 
+          }}
+          onMouseOver={(e) => {
+            if (!isGuest) e.target.style.backgroundColor = '#1a4b8c';
+          }}
+          onMouseOut={(e) => {
+            if (!isGuest) e.target.style.backgroundColor = '#0f3460';
+          }}
         >
-          ⚔️ ランク対戦 🔒
-          <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem', fontWeight: 'normal' }}>猛者たちと競い合い、上位を目指す</div>
-          <div style={{ fontSize: '0.7rem', color: '#e94560', marginTop: '0.5rem' }}>※参加にはアカウント連携が必要です</div>
+          ⚔️ ランク対戦 {isGuest ? '🔒' : ''}
+          <div style={{ fontSize: '0.8rem', color: isGuest ? '#555' : '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>
+            {isGuest ? 'ゲストは参加できません' : 'ランクが近いプレイヤーと自動マッチング'}
+          </div>
+          <div style={{ fontSize: '0.7rem', color: isGuest ? '#e94560' : '#ffaa00', marginTop: '0.5rem' }}>
+            {isGuest ? '※アカウント登録が必要です' : '※ログイン済みのため、すぐに参加できます'}
+          </div>
         </button>
 
       </div>
