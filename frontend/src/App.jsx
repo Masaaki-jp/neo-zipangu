@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（Cookie 認証対応版・全文）
+// frontend/src/App.jsx（ランク変動表示対応版・全文）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -67,6 +67,9 @@ function App() {
   const [casualMapSelection, setCasualMapSelection] = useState(false);
   const [selectedCasualMapId, setSelectedCasualMapId] = useState(null);
 
+  // ★ ランク変動表示用（バックエンドから受け取る）
+  const [rankDeltas, setRankDeltas] = useState({});
+
   const currentPlayer = gameStatus.current_player || "Player1";
   const pColor = PLAYER_COLORS[currentPlayer];
   const isMyTurn = currentPlayer === myPlayerKey;
@@ -133,6 +136,7 @@ function App() {
     setInitRollTimeLeft(10);
     setCasualMapSelection(false);
     setSelectedCasualMapId(null);
+    setRankDeltas({});
   };
 
   const handleRankedCancel = () => setSelectedMode(null);
@@ -149,6 +153,11 @@ function App() {
       const data = await apiGet('/api/board');
       console.log('[DEBUG] board response game_status:', JSON.stringify(data.game_status));
       setCoastalVertices(data.coastal_vertices || []);
+
+      // ★ ランク変動情報を常に最新に保つ
+      if (data.rank_deltas) {
+        setRankDeltas(data.rank_deltas);
+      }
 
       if (data.game_status && data.game_status.state === "finished") {
         if (data.game_status.reason && data.game_status.reason.includes("解散")) {
@@ -546,6 +555,7 @@ function App() {
       setPlayingRoomId(null);
       setMyPlayerKey("Player1");
       setCoastalVertices([]);
+      setRankDeltas({});
     } catch (err) { console.error("緊急脱出に失敗:", err); }
   };
 
@@ -714,17 +724,34 @@ function App() {
                     <p style={{ color: '#aaaaaa', fontSize: '1.2rem', marginTop: '10px' }}>
                       WINNER: <strong style={{ color: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? PLAYER_COLORS[gameStatus.winner] : '#fff', textShadow: (gameStatus.winner && PLAYER_COLORS[gameStatus.winner]) ? `0 0 10px ${PLAYER_COLORS[gameStatus.winner]}` : 'none' }}>{gameStatus.winner || "NONE"}</strong>
                     </p>
-                    <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #333', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
+                    <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #333', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px', minWidth: '350px' }}>
                       <h3 style={{ color: '#aaa', margin: '0 0 15px 0' }}>FINAL STANDINGS</h3>
                       {Object.entries(allScores || {}).map(([pId, sData]) => {
                         const playerColor = PLAYER_COLORS[pId] || '#ffffff';
+                        const delta = rankDeltas?.[pId] || 0;
                         return (
-                          <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', width: '300px', margin: '8px 0', fontSize: '1.2rem' }}>
+                          <div key={pId} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', margin: '8px 0', fontSize: '1.2rem' }}>
                             <span style={{ color: playerColor, fontWeight: 'bold' }}>{pId}</span>
                             <span style={{ color: '#fff' }}>{sData.total} SCORES</span>
+                            {selectedMode === 'RANKED' && (
+                              <span style={{ 
+                                color: delta > 0 ? '#00ffcc' : delta < 0 ? '#ff0055' : '#888',
+                                fontWeight: 'bold',
+                                fontSize: '1rem',
+                                minWidth: '80px',
+                                textAlign: 'right'
+                              }}>
+                                {delta > 0 ? '▲' : delta < 0 ? '▼' : ''} {Math.abs(delta)} RP
+                              </span>
+                            )}
                           </div>
                         );
                       })}
+                      {selectedMode === 'RANKED' && Object.keys(rankDeltas).length > 0 && (
+                        <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #333', fontSize: '0.8rem', color: '#888' }}>
+                          ランク変動はサーバーに即時反映されました。
+                        </div>
+                      )}
                     </div>
                     <button onClick={handleResetSystem} style={{ marginTop: '30px', padding: '15px 40px', fontSize: '1.2rem', backgroundColor: '#00ffcc', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,255,204,0.5)' }}>[ INITIALIZE SYSTEM ]</button>
                   </>

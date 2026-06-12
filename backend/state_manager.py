@@ -2,11 +2,12 @@
 
 import random
 import math
-import time  # ★ 追加：タイムアウト判定用
+import time
 from constants import CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK, MAX_BUILDINGS, COSTS, HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS
-from game_logic import pay_cost
+from game_logic import pay_cost, calculate_rank_deltas  # ★ 追加
 from nature_data import WATCH_DEFS, get_watch_card_info
 from countdown import calculate_deadline, is_time_up
+import database  # ★ 追加
 
 class GameSession:
     def __init__(self):
@@ -57,14 +58,14 @@ class GameSession:
         self.joined_players = []
         self.is_started = False
 
+        # ★ 追加：ランク対戦用の属性
+        self.is_ranked = False
+        self.rank_deltas = {}  # ゲーム終了時に計算されるランク変動
+
     # ============================================================
     # 🌿 NATURE 自動採掘（毎ターン、手番プレイヤーの占有しているNATUREマス1つにつき +10.0）
     # ============================================================
     def collect_nature_yields_for_player(self, player_id: str):
-        """
-        指定されたプレイヤーが占有しているすべての NATURE マスから、
-        1 マスにつき NATURE 10.0 を付与する（playing フェーズのみ）。
-        """
         if self.game_status.get("state") != "playing":
             return
 
@@ -75,7 +76,6 @@ class GameSession:
             cx = CENTER_X + HEX_SIZE * math.sqrt(3) * (hex_data["q"] + hex_data["r"] / 2)
             cy = CENTER_Y + HEX_SIZE * (3 / 2) * hex_data["r"]
 
-            # このプレイヤーの隣接建物数をカウント
             building_count = 0
             for b_id, b_info in self.buildings.items():
                 if b_info["player"] != player_id:
@@ -84,20 +84,15 @@ class GameSession:
                 if math.hypot(cx - bx, cy - by) < HEX_SIZE + 5:
                     building_count += 1
 
-            # 2 つ以上の建物で占有していれば NATURE 10.0 を付与
             if building_count >= 2 and player_id in self.inventory:
                 self.inventory[player_id]["NATURE"] += 10.0
 
     # 🥷 修正：カジュアル対戦では離脱即解散（勝敗なし・全員ロビーへ）
     def remove_player(self, user_id: str):
-        """指定されたユーザーIDのプレイヤーをゲームから取り除く。
-        カジュアル対戦のアクティブゲーム中は、離脱者が出たら即ルーム解散。
-        """
         joined = getattr(self, "joined_players", [])
         if not joined:
             return {"status": "empty_room"}
 
-        # 退出者が誰の player_key を持っているか特定
         target_player_key = None
         for p in joined:
             if p["user_id"] == user_id:
@@ -107,32 +102,27 @@ class GameSession:
         if not target_player_key:
             return {"status": "not_found"}
 
-        # joined_players から人間プレイヤーのみを抽出（CPU は除く）
         human_players = [p for p in joined if not p["user_id"].startswith("cpu_")]
         remaining_humans = [p for p in human_players if p["user_id"] != user_id]
 
-        # CPU プレイヤーはそのまま残す
         cpu_players = [p for p in joined if p["user_id"].startswith("cpu_")]
         self.joined_players = remaining_humans + cpu_players
 
         game_state = self.game_status.get("state", "map_selection")
         is_game_active = game_state in ("init_roll", "setup", "playing")
 
-        # ★ カジュアル対戦では、誰かが抜けたら即解散（勝敗なし）
         if is_game_active:
             self.game_status["state"] = "finished"
-            self.game_status["winner"] = None          # 勝者なし
+            self.game_status["winner"] = None
             self.game_status["reason"] = "相手が退出したため、ルームを解散します。"
-            self.game_status["turn_end_time"] = None   # タイマー停止
-            self.init_roll_deadline = None             # ★ タイマーも停止
+            self.game_status["turn_end_time"] = None
+            self.init_roll_deadline = None
             return {"status": "game_disbanded"}
 
-        # ゲームが始まっていなければ、ただの退室として扱う
         return {"status": "success", "remaining_humans": len(remaining_humans)}
 
     # 🥷 内部ヘルパー：ターンを次のプレイヤーに進める
     def _advance_turn(self):
-        """ターンを次のプレイヤーに進める（退出時の自動スキップ用）"""
         state = self.game_status.get("state")
         if state == "setup":
             self.game_status["setup_turn"] += 1
@@ -370,6 +360,9 @@ class GameSession:
             self.game_status["state"] = "finished"
             self.game_status["winner"] = best_player
             self.game_status["reason"] = f"ANNIHILATION: {loser} の全拠点が陥落し、倒産しました！"
+            # ★ ランク対戦の場合、ランク変動を計算しDBに反映
+            if self.is_ranked:
+                self.apply_rank_rewards()
 
     # 🥷 追加2：ボットの移動と戦闘（サイコロバトル）
     def execute_move_bot(self, player_id: str, from_vertex: str, to_vertex: str):
@@ -444,26 +437,21 @@ class GameSession:
 
     # ★★★ 修正：ゲーム開始時の順番決めダイス（10秒タイムアウト付き） ★★★
     def execute_init_roll(self, player_id: str):
-        # ① すでにロール済みなら拒否
         if player_id in self.init_rolls: 
             return {"error": "ALREADY_ROLLED"}
 
-        # ② ★ 10秒タイムアウトチェック（カジュアル対戦のみ発動）
         if self.init_roll_deadline is not None:
             if time.time() > self.init_roll_deadline:
-                # タイムアウト発生 → 解散
                 self.game_status["state"] = "finished"
                 self.game_status["winner"] = None
                 self.game_status["reason"] = "準備が完了していないプレイヤーがいたため、ルームを解散しました。"
-                self.init_roll_deadline = None  # 二重発動防止
-                return {"error": "INIT_TIMEOUT"}  # 呼び出し元（rooms.py）で部屋削除する
+                self.init_roll_deadline = None
+                return {"error": "INIT_TIMEOUT"}
 
-        # ③ 通常のロール処理
         d1, d2 = random.randint(1, 6), random.randint(1, 6)
         self.roll_counter += 1
         self.init_rolls[player_id] = {"total": d1 + d2, "order": self.roll_counter, "dice": [d1, d2]}
 
-        # ④ 全員揃ったら setup へ
         if len(self.init_rolls) == 4:
             sorted_players = sorted(self.init_rolls.keys(), key=lambda p: (-self.init_rolls[p]["total"], self.init_rolls[p]["order"]))
             self.game_status["turn_order"] = sorted_players
@@ -471,13 +459,12 @@ class GameSession:
             self.game_status["current_player"] = sorted_players[0]
             self.game_status["state"] = "setup"
             self.game_status["setup_turn"] = 0
-            self.init_roll_deadline = None  # ★ タイマー解除
+            self.init_roll_deadline = None
             current_p = self.game_status["current_player"]
             if self.player_types.get(current_p, "human") == "human":
                 self.game_status["turn_end_time"] = calculate_deadline(60)
             else:
                 self.game_status["turn_end_time"] = None
-            # 👤 COM 統一：全CPUを統一COMに
             for p in sorted_players:
                 if self.player_types.get(p, "human") != "human":
                     self.player_types[p] = "com"
@@ -496,7 +483,6 @@ class GameSession:
             st = self.game_status["setup_turn"]
             expected_count = 1 if st < 4 else 2
             deadline = self.game_status.get("turn_end_time")
-            # ★ クライアントからの強制タイムアウトもタイムアウト扱いにする
             is_timeout = is_time_up(deadline) or forced_timeout
             if not is_timeout:
                 if len(my_bldgs) < expected_count or len(my_roads) < expected_count:
@@ -530,6 +516,9 @@ class GameSession:
                 self.game_status["winner"] = player_id
                 self.game_status["reason"] = "SCORE_REACHED"
                 self.game_status["target_score"] = target_score
+                # ★ ランク対戦の場合、ランク変動を計算しDBに反映
+                if self.is_ranked:
+                    self.apply_rank_rewards()
             else:
                 next_idx = (self.game_status["current_turn_index"] + 1) % 4
                 self.game_status["current_turn_index"] = next_idx
@@ -547,6 +536,65 @@ class GameSession:
             else:
                 self.game_status["turn_end_time"] = None
         return {"status": "success"}
+
+    # ★ 追加：ランク対戦の報酬計算とDB反映
+    def apply_rank_rewards(self):
+        """ゲーム終了時にランク変動を計算し、各プレイヤーのFirestoreデータを更新する"""
+        print(f"[RANK] apply_rank_rewards called, is_ranked={self.is_ranked}, joined_players={self.joined_players}")
+        
+        # 全プレイヤーの最終スコアを取得（game_logic.get_score を使用）
+        from game_logic import get_score
+        scores = {}
+        for p in self.PLAYERS:
+            s = get_score(p, self.buildings, self.cards, self.roads, self.bots, self.combat_wins)
+            scores[p] = s["total"]
+
+        print(f"[RANK] scores: {scores}")
+
+        # 人間プレイヤーの現在のランクポイントを取得
+        player_rank_points = {}
+        human_players = [j for j in self.joined_players if j["player_key"] in self.PLAYERS and not j["user_id"].startswith("cpu_")]
+        print(f"[RANK] human_players: {human_players}")
+        
+        for j in human_players:
+            uid = j["user_id"]
+            pkey = j["player_key"]
+            user_doc = database.get_user_by_id(uid)
+            if user_doc:
+                player_rank_points[pkey] = user_doc.get("rank_points", 500)
+                print(f"[RANK] {pkey} (uid={uid}) current rank_points: {player_rank_points[pkey]}")
+
+        # CPUが含まれているか判定
+        has_cpu = any(
+            j["user_id"].startswith("cpu_") for j in self.joined_players
+        ) or any(
+            self.player_types.get(p, "human") != "human" for p in self.PLAYERS
+        )
+        print(f"[RANK] has_cpu: {has_cpu}")
+
+        # ランク変動を計算
+        deltas = calculate_rank_deltas(scores, player_rank_points, is_cpu_game=has_cpu)
+        print(f"[RANK] calculated deltas: {deltas}")
+
+        # Firestoreのユーザーデータを更新
+        for j in human_players:
+            uid = j["user_id"]
+            pkey = j["player_key"]
+            delta = deltas.get(pkey, 0)
+            # トークン報酬（1位:10, 2位:5, 3位:2, 4位:0）
+            token_rewards = {"1": 10, "2": 5, "3": 2, "4": 0}
+            rank = None
+            sorted_players = sorted(scores.keys(), key=lambda p: scores[p], reverse=True)
+            for i, player in enumerate(sorted_players, start=1):
+                if player == pkey:
+                    rank = str(i)
+                    break
+            token_reward = token_rewards.get(rank, 0)
+            print(f"[RANK] Updating {uid} (player={pkey}): delta={delta}, token_reward={token_reward}")
+            database.update_user_after_match(uid, delta, token_reward)
+
+        self.rank_deltas = deltas  # フロントエンドに返すために保存
+        print(f"[RANK] Final rank_deltas: {self.rank_deltas}")
 
     # 🥷 追加7：カードの使用（特殊効果の実行）
     def execute_use_card(self, player_id: str, card_id: str, target_id: str = None, target_val: int = None):
@@ -607,7 +655,6 @@ class GameSession:
         if self.game_status["state"] == "setup": 
             return {"error": "CANNOT_ROLL_IN_SETUP"}
         
-        # 🌿 NATURE 自動採掘：自分のターン開始時に、占有しているNATUREから資源を獲得
         current_player = self.game_status["current_player"]
         self.collect_nature_yields_for_player(current_player)
         
@@ -666,7 +713,6 @@ class GameSession:
     # 🥷 追加9：COM（NPC）のターン実行ロジック（統一AI）
     def execute_com_turn(self, player_id: str):
         import constants, game_logic
-        # 👤 COM 統一：com.py のみを使用
         from com_ai import com
         
         if self.game_status["current_player"] != player_id: 
@@ -677,11 +723,9 @@ class GameSession:
         if self.game_status["state"] not in ["playing", "setup"]: 
             return {"error": "COM_ONLY_ACTIVE_IN_PLAYING_OR_SETUP_STATE"}
         
-        # 🌿 NATURE 自動採掘：COMのターン開始時に、占有しているNATUREから資源を獲得
         if self.game_status["state"] == "playing":
             self.collect_nature_yields_for_player(player_id)
         
-        # 👤 統一COM：setup も playing も com.py が処理
         if self.game_status["state"] == "setup":
             result = com.execute_setup_turn(player_id, self, constants)
         else:
@@ -695,6 +739,9 @@ class GameSession:
             self.game_status["winner"] = player_id
             self.game_status["reason"] = "SCORE_REACHED"
             self.game_status["target_score"] = target_score
+            # ★ ランク対戦の場合、ランク変動を計算しDBに反映
+            if self.is_ranked:
+                self.apply_rank_rewards()
         if self.game_status["state"] == "playing" and self.game_status.get("current_turn_index") == 0:
             import random
             self.game_status["season_event"] = {
@@ -727,7 +774,7 @@ class GameSession:
         self.init_rolls.clear()
         self.roll_counter = 0
         self.coastal_vertices.clear()
-        self.init_roll_deadline = None  # ★ タイマーもリセット
+        self.init_roll_deadline = None
         self.title_owners = {"💎": None, "🦉": None, "🚀": None, "🐳": None, "🗺️": None, "🎖️": None}
         self.combat_wins = {p: 0 for p in self.PLAYERS}
         self.game_status.update({
@@ -739,8 +786,10 @@ class GameSession:
             self.inventory[p] = {"POWER": 0.0, "DATA": 0.0, "SILICON": 0.0, "HARD": 0.0, "POLYMER": 0.0, "NUCLEAR": 0.0, "NATURE": 0.0}
             self.trade_rates[p] = {"POWER": 40.0, "DATA": 40.0, "SILICON": 40.0, "HARD": 40.0, "POLYMER": 40.0, "NUCLEAR": 40.0}
             self.cards[p] = []
-            # 👤 COM 統一：リセット時も統一COMに固定
             self.player_types[p] = "human" if p == "Player1" else "com"
+        # ★ ランク対戦フラグもリセット
+        self.is_ranked = False
+        self.rank_deltas = {}
         return {"success": True}
 
     # 🥷 追加11：マップの自動生成ロジック

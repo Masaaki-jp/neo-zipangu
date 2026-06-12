@@ -175,6 +175,7 @@ def build_standard_response(session, extra_data: dict = None):
         "coastal_vertices": list(getattr(session, "coastal_vertices", set())),
         "vertex_coords": getattr(session, "vertex_coords", {}),
         "player_types": getattr(session, "player_types", {}),
+        "rank_deltas": getattr(session, "rank_deltas", {}),   # ★ 追加：ランク変動情報
     }
 
     if extra_data:

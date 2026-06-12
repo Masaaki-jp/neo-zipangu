@@ -200,3 +200,64 @@ def check_and_explore_dark_hexes(current_board: list, roads: dict, center_x: int
                     hex_data["sector"] = random.choice(["POWER", "DATA", "SILICON", "HARD", "POLYMER", "NUCLEAR"])
                     hex_data["number"] = random.choice([2, 3, 4, 5, 6, 8, 9, 10, 11, 12])
                     break
+
+
+# ── ランク対戦用の新規関数 ──
+def calculate_rank_deltas(scores: dict, player_rank_points: dict, is_cpu_game: bool = False) -> dict:
+    """
+    試合結果に基づいて各プレイヤーのランクポイント増減を計算する。
+
+    Parameters
+    ----------
+    scores : dict
+        {player_key: total_score}
+    player_rank_points : dict
+        {player_key: current_rank_points}  （人間プレイヤーのみ）
+    is_cpu_game : bool
+        CPUプレイヤーが含まれる場合は True（減衰率 50%）
+
+    Returns
+    -------
+    dict
+        {player_key: delta}
+    """
+    # スコアで降順ソート
+    sorted_players = sorted(scores.keys(), key=lambda p: scores[p], reverse=True)
+
+    # 基本増減テーブル
+    base_deltas = {1: 40, 2: 10, 3: -10, 4: -40}
+
+    # 参加している人間プレイヤーの平均ランクを計算
+    human_players = [p for p in sorted_players if p in player_rank_points]
+    if not human_players:
+        return {}  # 全員 CPU なら変動なし
+
+    avg_rank = sum(player_rank_points[p] for p in human_players) / len(human_players)
+
+    deltas = {}
+    for rank, player in enumerate(sorted_players, start=1):
+        if player not in player_rank_points:
+            continue  # CPU はスキップ
+
+        delta = base_deltas[rank]
+        my_rank = player_rank_points[player]
+
+        # ランク差補正（自分のランクと平均ランクを比較）
+        if my_rank < avg_rank:  # 自分が格下
+            if delta > 0:       # 勝利
+                delta = int(delta * 1.5)
+            else:               # 敗北
+                delta = int(delta * 0.5)  # 格下が負けても大きく減らさない
+        elif my_rank > avg_rank:  # 自分が格上
+            if delta < 0:         # 敗北
+                delta = int(delta * 1.5)
+            else:                 # 勝利
+                delta = int(delta * 0.5)  # 格上が勝ってもあまり増やさない
+
+        # CPU 減衰
+        if is_cpu_game:
+            delta = int(delta * 0.5)
+
+        deltas[player] = delta
+
+    return deltas
