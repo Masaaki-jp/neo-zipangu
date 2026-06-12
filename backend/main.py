@@ -1,6 +1,7 @@
 # main.py
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
 import random
 import math
 import string
@@ -30,11 +31,18 @@ database.init_db()
 from core.security import pwd_context, verify_password, create_access_token, SECRET_KEY, ALGORITHM
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-from fastapi.security import OAuth2PasswordBearer
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
+# OAuth2 スキーム（auto_error=False で Cookie フォールバックを可能にする）
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login", auto_error=False)
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
+    """Authorization ヘッダーまたは Cookie からトークンを取得し、ユーザーを返す"""
+    # 1. ヘッダーになければ Cookie を試す
+    if not token:
+        token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
@@ -81,8 +89,14 @@ from nature_data import WATCH_DEFS, get_watch_card_info
 from countdown import calculate_deadline, is_time_up
 
 # FastAPI アプリケーション
-app = FastAPI(title="Neo Zipang Core API", version="1.10.0-beta")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app = FastAPI(title="Neo Zipang Core API", version="1.11.0-beta")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --------------------------------------------------
 # ルーターの登録
@@ -91,15 +105,15 @@ from routers.auth import router as auth_router
 from routers.game import router as game_router
 from routers.solo import router as solo_router
 from routers.rooms import router as rooms_router
-from routers.ranked import router as ranked_router, start_matchmaking_background  # ★ 追加
+from routers.ranked import router as ranked_router, start_matchmaking_background
 
 app.include_router(auth_router)
 app.include_router(game_router)
 app.include_router(solo_router)
 app.include_router(rooms_router)
-app.include_router(ranked_router)  # ★ 追加
+app.include_router(ranked_router)
 
-# ★ マッチメイキングのバックグラウンドスレッドを起動
+# マッチメイキングのバックグラウンドスレッドを起動
 start_matchmaking_background()
 
 # --------------------------------------------------

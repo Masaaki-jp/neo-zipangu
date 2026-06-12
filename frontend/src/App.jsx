@@ -1,3 +1,4 @@
+// frontend/src/App.jsx（Cookie 認証対応版・全文）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -8,7 +9,7 @@ import LoginScreen from './components/LoginScreen';
 import ModeSelectionScreen from './components/ModeSelectionScreen';
 import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
-import RankedMatchmakingScreen from './components/RankedMatchmakingScreen'; // ★ 追加
+import RankedMatchmakingScreen from './components/RankedMatchmakingScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -68,33 +69,31 @@ function App() {
 
   const currentPlayer = gameStatus.current_player || "Player1";
   const pColor = PLAYER_COLORS[currentPlayer];
-
-  // 🥷 自分のターンかどうか（マルチプレイ用）
   const isMyTurn = currentPlayer === myPlayerKey;
-
-  // 重複リクエスト防止用のフラグ
   const isFetching = useRef(false);
 
-  // ===== API ヘルパー =====
+  // ===== 共通 fetch オプション（Cookie 送信） =====
+  const fetchWithCred = async (url, options = {}) => {
+    const res = await fetch(url, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.detail || 'API error');
+    return data;
+  };
+
   const apiPost = async (path, body) => {
     let url = path;
     if ((selectedMode === 'CASUAL' || selectedMode === 'RANKED') && playingRoomId) {
       const separator = path.includes('?') ? '&' : '?';
       url = `${path}${separator}room_id=${playingRoomId}`;
     }
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'API error');
-      return data;
-    } catch (err) {
-      console.error(`API POST ${path} failed:`, err);
-      throw err;
-    }
+    return fetchWithCred(url, { method: 'POST', body: JSON.stringify(body) });
   };
 
   const apiGet = async (path) => {
@@ -103,24 +102,15 @@ function App() {
       const separator = path.includes('?') ? '&' : '?';
       url = `${path}${separator}room_id=${playingRoomId}`;
     }
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'API error');
-      return data;
-    } catch (err) {
-      console.error(`API GET ${path} failed:`, err);
-      throw err;
-    }
+    return fetchWithCred(url);
   };
 
   // ★ ロビーに戻る（カジュアル解散時など）
   const handleGoToLobby = async () => {
     try {
       if (playingRoomId && loggedInUser) {
-        await fetch(`/api/rooms/${playingRoomId}/leave`, {
+        await fetchWithCred(`/api/rooms/${playingRoomId}/leave`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ room_id: playingRoomId, user_id: loggedInUser.user_id }),
         });
       }
@@ -145,26 +135,19 @@ function App() {
     setSelectedCasualMapId(null);
   };
 
-  // ★ ランクマッチキャンセル時の処理
-  const handleRankedCancel = () => {
-    setSelectedMode(null);
-  };
-
-  // ★ ランクマッチ成立時の処理
+  const handleRankedCancel = () => setSelectedMode(null);
   const handleRankedMatchFound = (roomId, playerKey) => {
     setPlayingRoomId(roomId);
     setMyPlayerKey(playerKey);
   };
 
-  // ===== データ取得（重複防止 & HexMap用データ追加）=====
+  // ===== データ取得 =====
   const fetchData = async () => {
     if (isFetching.current) return;
     isFetching.current = true;
     try {
       const data = await apiGet('/api/board');
-
       console.log('[DEBUG] board response game_status:', JSON.stringify(data.game_status));
-
       setCoastalVertices(data.coastal_vertices || []);
 
       if (data.game_status && data.game_status.state === "finished") {
@@ -175,7 +158,6 @@ function App() {
           handleGoToLobby();
           return;
         }
-
         setGameStatus(data.game_status);
         setAllScores(data.all_scores || {});
         setTitleOwners(data.title_owners || {});
@@ -225,18 +207,15 @@ function App() {
       const savedPw = localStorage.getItem('nz_password');
       if (savedId && savedPw) {
         try {
-          const res = await fetch('/api/login', {
+          await fetchWithCred('/api/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ login_id: savedId, password: savedPw }),
-          });
-          if (res.ok) {
-            const data = await res.json();
+          }).then(data => {
             setLoggedInUser(data);
-          } else {
+          }).catch(() => {
             localStorage.removeItem('nz_login_id');
             localStorage.removeItem('nz_password');
-          }
+          });
         } catch (err) { console.error('Auto login failed:', err); }
       }
       setIsCheckingLogin(false);
@@ -246,23 +225,16 @@ function App() {
 
   // ===== ゲーム開始時のデータ読み込み =====
   useEffect(() => {
-    if (playingRoomId) {
-      setLoading(true);
-      fetchData();
-    }
+    if (playingRoomId) { setLoading(true); fetchData(); }
   }, [playingRoomId]);
 
   useEffect(() => {
-    if (gameStatus.state !== "map_selection") {
-      fetchData();
-    }
+    if (gameStatus.state !== "map_selection") fetchData();
   }, [gameStatus.current_player]);
 
   useEffect(() => {
     if (playingRoomId && (gameStatus.state === 'setup' || gameStatus.state === 'playing')) {
-      const interval = setInterval(() => {
-        fetchData();
-      }, 5000);
+      const interval = setInterval(fetchData, 5000);
       return () => clearInterval(interval);
     }
   }, [playingRoomId, gameStatus.state]);
@@ -272,28 +244,13 @@ function App() {
       let cancelled = false;
       const pollStatus = async () => {
         try {
-          const res = await fetch(`/api/rooms/${playingRoomId}/status`);
-          if (!res.ok) {
-            if (!cancelled) {
-              alert("Errorによりルームが削除されました");
-              handleGoToLobby();
-            }
-            return;
-          }
-          const statusData = await res.json();
+          const data = await fetchWithCred(`/api/rooms/${playingRoomId}/status`);
           if (!cancelled) {
-            if (statusData.init_roll_deadline) {
-              setInitRollDeadline(statusData.init_roll_deadline);
-            }
-            if (statusData.state === "finished") {
-              fetchData();
-            }
+            if (data.init_roll_deadline) setInitRollDeadline(data.init_roll_deadline);
+            if (data.state === "finished") fetchData();
           }
         } catch (err) {
-          if (!cancelled) {
-            alert("Errorによりルームが削除されました");
-            handleGoToLobby();
-          }
+          if (!cancelled) { alert("Errorによりルームが削除されました"); handleGoToLobby(); }
         }
       };
       const interval = setInterval(pollStatus, 2000);
@@ -304,8 +261,7 @@ function App() {
   useEffect(() => {
     if (gameStatus.state === 'init_roll' && initRollDeadline) {
       const timer = setInterval(() => {
-        const now = Date.now() / 1000;
-        const left = Math.max(0, Math.floor(initRollDeadline - now));
+        const left = Math.max(0, Math.floor(initRollDeadline - Date.now() / 1000));
         setInitRollTimeLeft(left);
       }, 200);
       return () => clearInterval(timer);
@@ -339,43 +295,29 @@ function App() {
       if (data.status === 'success') {
         setInitRolls(data.init_rolls);
         setGameStatus(data.game_status);
-        if (data.game_status.state === 'setup') {
-          fetchData();
-          setHasRolledDice(true);
-        }
+        if (data.game_status.state === 'setup') { fetchData(); setHasRolledDice(true); }
       }
     } catch (err) { console.error(err); }
   };
 
   // ===== ターン終了 =====
   const handleEndTurn = async (isForcedTimeout = false) => {
-    if (!isMyTurn && !isForcedTimeout) {
-      alert("[ ERROR ] 現在は敵対企業のターンです。待機してください。");
-      return;
-    }
+    if (!isMyTurn && !isForcedTimeout) { alert("[ ERROR ] 現在は敵対企業のターンです。"); return; }
     if (!isForcedTimeout && isMyTurn && gameStatus.state === "playing" && !hasRolledDice) {
-      alert("[ ERROR ] ターンを終了する前にサイコロを振ってください！");
-      return;
+      alert("[ ERROR ] ターンを終了する前にサイコロを振ってください！"); return;
     }
     setTimeLeft(60);
     try {
-      const data = await apiPost('/api/end_turn', {
-        vertex_id: "",
-        player: currentPlayer,
-        forced_timeout: isForcedTimeout
-      });
+      const data = await apiPost('/api/end_turn', { vertex_id: "", player: currentPlayer, forced_timeout: isForcedTimeout });
       setGameStatus(data.game_status);
       setScore(data.scores[currentPlayer]);
-      setHasRolledDice(false);
-      setDice(null);
-      setEventLog(null);
-      setIsTradeOpen(false);
-      setActionMode('BUILD');
+      setHasRolledDice(false); setDice(null); setEventLog(null);
+      setIsTradeOpen(false); setActionMode('BUILD');
       fetchData();
     } catch (err) { console.error("ターン終了処理中にエラー:", err); }
   };
 
-  // ===== COMターン自動実行 (CPUのみ) =====
+  // ===== COMターン自動実行 =====
   useEffect(() => {
     const isCPU = playerTypes[gameStatus.current_player] !== 'human';
     if ((gameStatus.state === "playing" || gameStatus.state === "setup") && isCPU) {
@@ -435,17 +377,11 @@ function App() {
 
   const handleCasualMapSelected = async (mapId) => {
     try {
-      const res = await fetch('/api/rooms/create', {
+      const data = await fetchWithCred('/api/rooms/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: loggedInUser.user_id,
-          display_name: loggedInUser.display_name,
-          map_id: mapId
-        })
+        body: JSON.stringify({ user_id: loggedInUser.user_id, display_name: loggedInUser.display_name, map_id: mapId }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      if (data.status === 'success') {
         setSelectedCasualMapId(mapId);
         setWaitingRoomId(data.room_id);
         setCasualMapSelection(false);
@@ -460,7 +396,7 @@ function App() {
     }
   };
 
-  // ===== 順番決めのCOM自動ロール (CPUのみ) =====
+  // ===== 順番決めのCOM自動ロール =====
   useEffect(() => {
     if (gameStatus.state === "init_roll") {
       const nextCPU = PLAYERS.find(p => playerTypes[p] !== 'human' && !initRolls[p]);
@@ -575,9 +511,8 @@ function App() {
   const handleResetSystem = async () => {
     if (playingRoomId && loggedInUser) {
       try {
-        await fetch(`/api/rooms/${playingRoomId}/leave`, {
+        await fetchWithCred(`/api/rooms/${playingRoomId}/leave`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ room_id: playingRoomId, user_id: loggedInUser.user_id }),
         });
       } catch (err) { console.error('退出APIの呼び出しに失敗:', err); }
@@ -590,9 +525,8 @@ function App() {
     try {
       if (playingRoomId && loggedInUser) {
         try {
-          await fetch(`/api/rooms/${playingRoomId}/leave`, {
+          await fetchWithCred(`/api/rooms/${playingRoomId}/leave`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ room_id: playingRoomId, user_id: loggedInUser.user_id }),
           });
         } catch (err) {
@@ -639,11 +573,10 @@ function App() {
     return <ModeSelectionScreen user={loggedInUser} onSelectMode={(mode) => setSelectedMode(mode)} />;
   }
 
-  // ★ ランクマッチ待機画面
+  // ★ ランクマッチ待機画面（accessToken は不要）
   if (selectedMode === 'RANKED' && !playingRoomId) {
     return (
       <RankedMatchmakingScreen
-        accessToken={loggedInUser.access_token}
         onCancel={handleRankedCancel}
         onMatchFound={handleRankedMatchFound}
       />
