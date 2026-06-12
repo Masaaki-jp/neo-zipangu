@@ -1,4 +1,4 @@
-# routers/ranked.py （トランザクション修正版）
+# routers/ranked.py （トランザクション修正版 + is_ranked フラグ追加）
 """
 ランク対戦マッチメイキング用APIエンドポイント
 ※ Firestore トランザクションの「読み取り→書き込み」順序違反を修正
@@ -153,13 +153,13 @@ def _perform_matching():
         user_info = {}  # uid -> user_data
         for p in selected:
             uid = p["data"]["user_id"]
-            if uid not in human_ids:  # 重複防止
+            if uid not in human_ids:
                 human_ids.append(uid)
                 user_doc = db.collection("users").document(uid).get(transaction=transaction)
                 if user_doc.exists:
                     user_info[uid] = user_doc.to_dict()
                 else:
-                    user_info[uid] = None  # 存在しない場合は後でCPU扱い
+                    user_info[uid] = None
 
         # ここから書き込みフェーズ
         for p in selected:
@@ -171,6 +171,10 @@ def _perform_matching():
 
         room_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
         session = room_manager.get_or_create_room(room_id)
+        
+        # ★ ランク対戦フラグを設定
+        session.is_ranked = True
+
         joined = []
         for idx, uid in enumerate(human_ids):
             pkey = f"Player{idx+1}"

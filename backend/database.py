@@ -32,8 +32,7 @@ def create_user(login_id: str, password_hash: str, display_name: str):
     新規ユーザーを Firestore に登録する。
     login_id の一意性はアプリケーション層でチェックする。
     """
-    # login_id の重複チェック（トランザクションは不要だが、チェック後に作成される可能性があるため
-    # 本番ではトランザクションを使用するのが安全。ここでは簡易的に先に存在確認。）
+    # login_id の重複チェック
     existing = get_user_by_login_id(login_id)
     if existing:
         return {"error": "LOGIN_ID_ALREADY_EXISTS"}
@@ -43,7 +42,7 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         "login_id": login_id,
         "password_hash": password_hash,
         "display_name": display_name,
-        "rank_points": 1000,
+        "rank_points": 500,  # ★ 初期値を500に修正（アイアン中位）
         "free_tokens": 0,
         "paid_tokens": 0,
         "created_at": SERVER_TIMESTAMP
