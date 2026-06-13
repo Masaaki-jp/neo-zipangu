@@ -1,7 +1,7 @@
 // frontend/src/components/StoreScreen.jsx
 import React, { useState } from 'react';
 
-// 購入可能なアイコン一覧（絵文字 + 名前）
+// 購入可能なアイコン一覧
 const AVAILABLE_ICONS = [
   { emoji: '🏠️', name: 'ハウス' },
   { emoji: '🏭️', name: '工場' },
@@ -14,14 +14,12 @@ const AVAILABLE_ICONS = [
 export default function StoreScreen({ user, onBack }) {
   const [message, setMessage] = useState('');
   const [isBuying, setIsBuying] = useState(false);
-  const ownedIcon = user.owned_icon || null; // Firestore から取得
-  const freeTokens = user.free_tokens;
+  const [ownedIcons, setOwnedIcons] = useState(user.owned_icons || []);
+  const [equippedIcon, setEquippedIcon] = useState(user.equipped_icon || null);
+  const [freeTokens, setFreeTokens] = useState(user.free_tokens || 0);
 
+  // 購入処理
   const handlePurchase = async (icon) => {
-    if (ownedIcon === icon) {
-      setMessage('すでに所有しています。');
-      return;
-    }
     if (freeTokens < 30) {
       setMessage('トークンが不足しています。');
       return;
@@ -39,9 +37,9 @@ export default function StoreScreen({ user, onBack }) {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(`購入完了！ 残りトークン: ${data.free_tokens}`);
-        // 親コンポーネントにユーザー情報の更新を通知（必要に応じて）
-        // onBack などでモード選択画面に戻る
+        setOwnedIcons(data.owned_icons);
+        setFreeTokens(data.free_tokens);
+        setMessage(`${icon} を購入しました！`);
       } else {
         setMessage(data.detail || '購入に失敗しました');
       }
@@ -49,6 +47,31 @@ export default function StoreScreen({ user, onBack }) {
       setMessage('通信エラー');
     } finally {
       setIsBuying(false);
+    }
+  };
+
+  // 装備処理
+  const handleEquip = async (icon) => {
+    if (equippedIcon === icon) {
+      setMessage('すでに装備中です。');
+      return;
+    }
+    try {
+      const res = await fetch('/api/store/equip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ icon }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEquippedIcon(data.equipped_icon);
+        setMessage(`${icon} を装備しました！`);
+      } else {
+        setMessage(data.detail || '装備に失敗しました');
+      }
+    } catch (err) {
+      setMessage('通信エラー');
     }
   };
 
@@ -64,52 +87,92 @@ export default function StoreScreen({ user, onBack }) {
         <div style={{ color: '#00ffcc', marginBottom: '1rem', fontWeight: 'bold', backgroundColor: '#333', padding: '0.5rem 1rem', borderRadius: '4px' }}>{message}</div>
       )}
 
-      <div style={{ marginBottom: '2rem', color: '#aaa', textAlign: 'center' }}>
-        購入したアイコンは、すべての拠点（HUB/DC/HQ）とボットに使用されます。<br />
-        GATEWAY（港）は常に ⚓️ 固定です。
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', width: '100%', maxWidth: '800px' }}>
-        {AVAILABLE_ICONS.map(({ emoji, name }) => {
-          const isOwned = ownedIcon === emoji;
-          return (
-            <div key={emoji} style={{
-              backgroundColor: '#16213e',
-              padding: '1.5rem',
-              borderRadius: '8px',
-              textAlign: 'center',
-              border: isOwned ? '2px solid #ffcc00' : '1px solid #333',
-              opacity: isOwned ? 0.6 : 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <div style={{ fontSize: '3rem' }}>{emoji}</div>
-              <div style={{ fontSize: '0.9rem', color: '#ccc' }}>{name}</div>
-              {isOwned ? (
-                <div style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '0.8rem' }}>使用中</div>
-              ) : (
+      {/* 所持アイコン一覧（装備選択） */}
+      <div style={{ width: '100%', maxWidth: '800px', marginBottom: '2rem' }}>
+        <h2 style={{ color: '#aaa', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>所持アイコン</h2>
+        {ownedIcons.length === 0 ? (
+          <div style={{ color: '#888' }}>まだアイコンを購入していません。</div>
+        ) : (
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {ownedIcons.map(icon => (
+              <div key={icon} style={{
+                backgroundColor: '#16213e',
+                padding: '1rem',
+                borderRadius: '8px',
+                border: equippedIcon === icon ? '2px solid #ffcc00' : '1px solid #333',
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}>
+                <div style={{ fontSize: '3rem' }}>{icon}</div>
                 <button
-                  onClick={() => handlePurchase(emoji)}
-                  disabled={isBuying}
+                  onClick={() => handleEquip(icon)}
+                  disabled={equippedIcon === icon}
                   style={{
-                    padding: '0.5rem 1.5rem',
-                    backgroundColor: isBuying ? '#555' : '#e94560',
+                    marginTop: '0.5rem',
+                    padding: '0.3rem 1rem',
+                    backgroundColor: equippedIcon === icon ? '#555' : '#4caf50',
                     color: 'white',
                     border: 'none',
                     borderRadius: '4px',
-                    cursor: isBuying ? 'not-allowed' : 'pointer',
+                    cursor: equippedIcon === icon ? 'not-allowed' : 'pointer',
                     fontWeight: 'bold',
-                    marginTop: '0.5rem'
+                    fontSize: '0.8rem'
                   }}
                 >
-                  30 トークンで購入
+                  {equippedIcon === icon ? '使用中' : '装備する'}
                 </button>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 購入可能なアイコン一覧 */}
+      <div style={{ width: '100%', maxWidth: '800px' }}>
+        <h2 style={{ color: '#aaa', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>ショップ</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
+          {AVAILABLE_ICONS.map(({ emoji, name }) => {
+            const isOwned = ownedIcons.includes(emoji);
+            return (
+              <div key={emoji} style={{
+                backgroundColor: '#16213e',
+                padding: '1rem',
+                borderRadius: '8px',
+                textAlign: 'center',
+                border: isOwned ? '2px solid #ffcc00' : '1px solid #333',
+                opacity: isOwned ? 0.6 : 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <div style={{ fontSize: '3rem' }}>{emoji}</div>
+                <div style={{ fontSize: '0.9rem', color: '#ccc' }}>{name}</div>
+                {isOwned ? (
+                  <div style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '0.8rem' }}>購入済み</div>
+                ) : (
+                  <button
+                    onClick={() => handlePurchase(emoji)}
+                    disabled={isBuying}
+                    style={{
+                      padding: '0.5rem 1.5rem',
+                      backgroundColor: isBuying ? '#555' : '#e94560',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: isBuying ? 'not-allowed' : 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    30 トークン
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
