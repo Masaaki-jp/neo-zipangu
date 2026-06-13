@@ -9,7 +9,10 @@ export default function ModeSelectionScreen({ user, onSelectMode }) {
       {/* ヘッダー：プレイヤー情報ダッシュボード */}
       <div style={{ width: '100%', maxWidth: '800px', backgroundColor: '#16213e', padding: '1.5rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', boxShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#e94560', fontSize: '1.5rem' }}>{user.display_name}</h2>
+          <h2 style={{ margin: 0, color: '#e94560', fontSize: '1.5rem' }}>
+            {user.equipped_profile_icon && <span style={{ marginRight: '8px', fontSize: '2rem' }}>{user.equipped_profile_icon}</span>}
+            {user.display_name}
+          </h2>
           <div style={{ fontSize: '0.85rem', color: '#888', marginTop: '4px' }}>ID: {user.login_id}</div>
         </div>
         <div style={{ display: 'flex', gap: '2rem', textAlign: 'center' }}>

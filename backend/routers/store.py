@@ -9,16 +9,27 @@ router = APIRouter()
 
 class PurchaseRequest(BaseModel):
     icon: str
-    icon_type: str = "building"  # "building" or "bot"
+    icon_type: str = "building"  # "building" | "bot" | "profile"
 
 class EquipRequest(BaseModel):
     icon: str
-    icon_type: str = "building"  # "building" or "bot"
+    icon_type: str = "building"  # "building" | "bot" | "profile"
+
+# アイコンの種類に応じたフィールド名を返すヘルパー
+def _get_icon_fields(icon_type: str):
+    if icon_type == "building":
+        return "owned_building_icons", "equipped_building_icon"
+    elif icon_type == "bot":
+        return "owned_bot_icons", "equipped_bot_icon"
+    elif icon_type == "profile":
+        return "owned_profile_icons", "equipped_profile_icon"
+    else:
+        raise HTTPException(status_code=400, detail=f"INVALID_ICON_TYPE: {icon_type}")
 
 @router.post("/api/store/purchase")
 def purchase_icon(req: PurchaseRequest, current_user: dict = Depends(get_current_user)):
     icon = req.icon.strip()
-    icon_type = req.icon_type  # "building" or "bot"
+    icon_type = req.icon_type
     user_id = current_user["user_id"]
     user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
@@ -28,8 +39,8 @@ def purchase_icon(req: PurchaseRequest, current_user: dict = Depends(get_current
     user_data = user_doc.to_dict()
     free_tokens = user_data.get("free_tokens", 0)
     
-    # 所有アイコンはタイプ別に管理
-    owned_field = "owned_building_icons" if icon_type == "building" else "owned_bot_icons"
+    # タイプに応じた所有フィールドと装備フィールドを取得
+    owned_field, _ = _get_icon_fields(icon_type)
     owned_icons = user_data.get(owned_field, [])
 
     PRICE = 30
@@ -54,7 +65,7 @@ def purchase_icon(req: PurchaseRequest, current_user: dict = Depends(get_current
 @router.post("/api/store/equip")
 def equip_icon(req: EquipRequest, current_user: dict = Depends(get_current_user)):
     icon = req.icon.strip()
-    icon_type = req.icon_type  # "building" or "bot"
+    icon_type = req.icon_type
     user_id = current_user["user_id"]
     user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
@@ -62,14 +73,14 @@ def equip_icon(req: EquipRequest, current_user: dict = Depends(get_current_user)
         raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
     
     user_data = user_doc.to_dict()
-    owned_field = "owned_building_icons" if icon_type == "building" else "owned_bot_icons"
+    # タイプに応じた所有フィールドと装備フィールドを取得
+    owned_field, equip_field = _get_icon_fields(icon_type)
     owned_icons = user_data.get(owned_field, [])
 
     if icon not in owned_icons:
         raise HTTPException(status_code=400, detail="NOT_OWNED")
 
     # 装備アイコンを更新
-    equip_field = "equipped_building_icon" if icon_type == "building" else "equipped_bot_icon"
     user_ref.update({equip_field: icon})
 
     return {
