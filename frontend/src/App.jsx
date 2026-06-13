@@ -11,7 +11,7 @@ import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
 import RankedMatchmakingScreen from './components/RankedMatchmakingScreen';
 import StoreScreen from './components/StoreScreen';
-import WatchBook from './components/WatchBook'; // ★ 追加：生物図鑑
+import WatchBook from './components/WatchBook';
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -588,8 +588,14 @@ function App() {
   // ★ ストア画面
   if (selectedMode === 'STORE') {
     const handleStoreUserUpdate = (updatedFields) => {
-      setLoggedInUser(prev => ({ ...prev, ...updatedFields }));
+      // StoreScreen が /api/user/me から取得した完全なオブジェクトを渡してくるので、それをそのまま使う
+      if (updatedFields.user_id) {
+        setLoggedInUser(updatedFields);
+      } else {
+        setLoggedInUser(prev => ({ ...prev, ...updatedFields }));
+      }
     };
+    // key を削除することで不要な再マウントを防ぎ、React の効率的な差分更新に任せる
     return (
       <StoreScreen
         user={loggedInUser}
@@ -785,7 +791,7 @@ function App() {
               score={score} allScores={allScores} title_owners={title_owners} handleEndTurn={handleEndTurn} 
               inventory={inventory} tradeRates={tradeRates} currentBCounts={currentBCounts} MAX_STOCKS={MAX_STOCKS}
               isMyTurn={isMyTurn}
-              profileIcon={loggedInUser?.equipped_profile_icon} // ★ プロフィールアイコンを渡す
+              profileIcon={loggedInUser?.equipped_profile_icon}
             />
 
             <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative' }}>

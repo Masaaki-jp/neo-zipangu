@@ -29,7 +29,6 @@ def login_user(req: LoginRequest):
         raise HTTPException(status_code=400, detail="INVALID_PASSWORD")
     token = create_access_token({"sub": user["user_id"]})
 
-    # ★ Cookie にトークンをセット
     response = JSONResponse({
         "status": "success",
         "user_id": user["user_id"],
@@ -37,12 +36,12 @@ def login_user(req: LoginRequest):
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
         "paid_tokens": user["paid_tokens"],
-        # ★ 追加：拠点・BOTのカスタマイズ情報
         "owned_building_icons": user.get("owned_building_icons", []),
         "owned_bot_icons": user.get("owned_bot_icons", []),
-        "equipped_building_icon": user.get("equipped_building_icon", None),
-        "equipped_bot_icon": user.get("equipped_bot_icon", None),
-        # ★ 追加：生物図鑑の発見済みリスト
+        "owned_profile_icons": user.get("owned_profile_icons", []),   # ★ 追加
+        "equipped_building_icon": user.get("equipped_building_icon"),
+        "equipped_bot_icon": user.get("equipped_bot_icon"),
+        "equipped_profile_icon": user.get("equipped_profile_icon"),   # ★ 追加
         "discovered_species": user.get("discovered_species", []),
     })
     response.set_cookie(
@@ -50,8 +49,8 @@ def login_user(req: LoginRequest):
         value=token,
         httponly=True,
         samesite="lax",
-        secure=False,  # 本番では True に変更すること
-        max_age=60 * 60 * 24 * 7  # 7日間
+        secure=False,
+        max_age=60 * 60 * 24 * 7
     )
     return response
 
@@ -69,7 +68,6 @@ def guest_login():
     user = get_user_by_login_id(login_id)
     token = create_access_token({"sub": user["user_id"]})
 
-    # ★ Cookie にトークンをセット
     response = JSONResponse({
         "status": "success",
         "user_id": user["user_id"],
@@ -79,12 +77,12 @@ def guest_login():
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
         "paid_tokens": user["paid_tokens"],
-        # ★ 追加：拠点・BOTのカスタマイズ情報
         "owned_building_icons": user.get("owned_building_icons", []),
         "owned_bot_icons": user.get("owned_bot_icons", []),
-        "equipped_building_icon": user.get("equipped_building_icon", None),
-        "equipped_bot_icon": user.get("equipped_bot_icon", None),
-        # ★ 追加：生物図鑑の発見済みリスト
+        "owned_profile_icons": user.get("owned_profile_icons", []),   # ★ 追加
+        "equipped_building_icon": user.get("equipped_building_icon"),
+        "equipped_bot_icon": user.get("equipped_bot_icon"),
+        "equipped_profile_icon": user.get("equipped_profile_icon"),   # ★ 追加
         "discovered_species": user.get("discovered_species", []),
     })
     response.set_cookie(
