@@ -1,7 +1,6 @@
 import React from 'react';
 
 export default function ModeSelectionScreen({ user, onSelectMode }) {
-  // ゲストユーザーかどうか
   const isGuest = user?.login_id?.startsWith('guest_');
 
   return (
@@ -30,7 +29,7 @@ export default function ModeSelectionScreen({ user, onSelectMode }) {
       {/* モード選択ボタン群 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', maxWidth: '400px' }}>
         
-        {/* ① CPU対戦（実装済み） */}
+        {/* ① CPU対戦 */}
         <button 
           onClick={() => onSelectMode('CPU')}
           style={{ padding: '1.5rem', backgroundColor: '#0f3460', color: 'white', border: '2px solid #e94560', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.3s', boxShadow: '0 4px 6px rgba(233,69,96,0.2)' }}
@@ -88,6 +87,17 @@ export default function ModeSelectionScreen({ user, onSelectMode }) {
           <div style={{ fontSize: '0.7rem', color: isGuest ? '#e94560' : '#ffaa00', marginTop: '0.5rem' }}>
             {isGuest ? '※アカウント登録が必要です' : '※ログイン済みのため、すぐに参加できます'}
           </div>
+        </button>
+
+        {/* ④ トークンストア */}
+        <button 
+          onClick={() => onSelectMode('STORE')}
+          style={{ padding: '1.5rem', backgroundColor: '#0f3460', color: 'white', border: '2px solid #ffcc00', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.3s', boxShadow: '0 4px 6px rgba(255,204,0,0.2)' }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#1a4b8c'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#0f3460'}
+        >
+          🛒 トークンストア
+          <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>アイコンやカラーをカスタマイズ</div>
         </button>
 
       </div>
