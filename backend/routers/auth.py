@@ -1,6 +1,6 @@
 # routers/auth.py
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse  # ★ 追加
+from fastapi.responses import JSONResponse
 from schemas import RegisterRequest, LoginRequest
 from database import create_user, get_user_by_login_id
 from core.security import pwd_context, verify_password, create_access_token
@@ -36,7 +36,12 @@ def login_user(req: LoginRequest):
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
-        "paid_tokens": user["paid_tokens"]
+        "paid_tokens": user["paid_tokens"],
+        # ★ 追加：拠点・BOTのカスタマイズ情報
+        "owned_building_icons": user.get("owned_building_icons", []),
+        "owned_bot_icons": user.get("owned_bot_icons", []),
+        "equipped_building_icon": user.get("equipped_building_icon", None),
+        "equipped_bot_icon": user.get("equipped_bot_icon", None),
     })
     response.set_cookie(
         key="access_token",
@@ -71,7 +76,12 @@ def guest_login():
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
-        "paid_tokens": user["paid_tokens"]
+        "paid_tokens": user["paid_tokens"],
+        # ★ 追加：拠点・BOTのカスタマイズ情報
+        "owned_building_icons": user.get("owned_building_icons", []),
+        "owned_bot_icons": user.get("owned_bot_icons", []),
+        "equipped_building_icon": user.get("equipped_building_icon", None),
+        "equipped_bot_icon": user.get("equipped_bot_icon", None),
     })
     response.set_cookie(
         key="access_token",
