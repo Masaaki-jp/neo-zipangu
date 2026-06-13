@@ -1,22 +1,23 @@
 // frontend/src/components/StoreScreen.jsx
 import React, { useState } from 'react';
+import { BUILDING_ICONS, BOT_ICONS } from '../data/iconData';
 
-// 購入可能なアイコン一覧
-const AVAILABLE_ICONS = [
-  { emoji: '🏠️', name: 'ハウス' },
-  { emoji: '🏭️', name: '工場' },
-  { emoji: '🏛️', name: '古典建築' },
-  { emoji: '🗼', name: 'タワー' },
-  { emoji: '🏗️', name: '建設中' },
-  { emoji: '🏘️', name: '集合住宅' },
-];
-
-export default function StoreScreen({ user, onBack }) {
+export default function StoreScreen({ user, onBack, onUserUpdate }) {
+  const [activeTab, setActiveTab] = useState('building'); // "building" or "bot"
   const [message, setMessage] = useState('');
   const [isBuying, setIsBuying] = useState(false);
-  const [ownedIcons, setOwnedIcons] = useState(user.owned_icons || []);
-  const [equippedIcon, setEquippedIcon] = useState(user.equipped_icon || null);
+  const [ownedBuildingIcons, setOwnedBuildingIcons] = useState(user.owned_building_icons || []);
+  const [ownedBotIcons, setOwnedBotIcons] = useState(user.owned_bot_icons || []);
+  const [equippedBuildingIcon, setEquippedBuildingIcon] = useState(user.equipped_building_icon || null);
+  const [equippedBotIcon, setEquippedBotIcon] = useState(user.equipped_bot_icon || null);
   const [freeTokens, setFreeTokens] = useState(user.free_tokens || 0);
+
+  const isBuildingTab = activeTab === 'building';
+  const currentIcons = isBuildingTab ? BUILDING_ICONS : BOT_ICONS;
+  const ownedIcons = isBuildingTab ? ownedBuildingIcons : ownedBotIcons;
+  const equippedIcon = isBuildingTab ? equippedBuildingIcon : equippedBotIcon;
+  const setOwnedIcons = isBuildingTab ? setOwnedBuildingIcons : setOwnedBotIcons;
+  const setEquippedIcon = isBuildingTab ? setEquippedBuildingIcon : setEquippedBotIcon;
 
   // 購入処理
   const handlePurchase = async (icon) => {
@@ -33,7 +34,7 @@ export default function StoreScreen({ user, onBack }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ icon }),
+        body: JSON.stringify({ icon, icon_type: activeTab }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -61,11 +62,16 @@ export default function StoreScreen({ user, onBack }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ icon }),
+        body: JSON.stringify({ icon, icon_type: activeTab }),
       });
       const data = await res.json();
       if (res.ok) {
         setEquippedIcon(data.equipped_icon);
+        // ★ 親コンポーネントのユーザー情報も更新
+        if (onUserUpdate) {
+          const field = activeTab === 'building' ? 'equipped_building_icon' : 'equipped_bot_icon';
+          onUserUpdate({ [field]: data.equipped_icon });
+        }
         setMessage(`${icon} を装備しました！`);
       } else {
         setMessage(data.detail || '装備に失敗しました');
@@ -81,6 +87,38 @@ export default function StoreScreen({ user, onBack }) {
         <button onClick={onBack} style={{ padding: '0.5rem 1rem', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>◀ 戻る</button>
         <h1 style={{ margin: 0, color: '#ffcc00' }}>🏪 TOKEN STORE</h1>
         <div style={{ color: '#ffcc00', fontSize: '1.2rem', fontWeight: 'bold' }}>💰 {freeTokens} トークン</div>
+      </div>
+
+      {/* タブ切替 */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+        <button
+          onClick={() => setActiveTab('building')}
+          style={{
+            padding: '0.5rem 1.5rem',
+            backgroundColor: isBuildingTab ? '#e94560' : '#333',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          🏯 拠点アイコン
+        </button>
+        <button
+          onClick={() => setActiveTab('bot')}
+          style={{
+            padding: '0.5rem 1.5rem',
+            backgroundColor: !isBuildingTab ? '#e94560' : '#333',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          🤖 BOTアイコン
+        </button>
       </div>
 
       {message && (
@@ -101,7 +139,6 @@ export default function StoreScreen({ user, onBack }) {
                 borderRadius: '8px',
                 border: equippedIcon === icon ? '2px solid #ffcc00' : '1px solid #333',
                 textAlign: 'center',
-                cursor: 'pointer',
                 transition: 'all 0.2s'
               }}>
                 <div style={{ fontSize: '3rem' }}>{icon}</div>
@@ -128,11 +165,11 @@ export default function StoreScreen({ user, onBack }) {
         )}
       </div>
 
-      {/* 購入可能なアイコン一覧 */}
+      {/* ショップ */}
       <div style={{ width: '100%', maxWidth: '800px' }}>
         <h2 style={{ color: '#aaa', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>ショップ</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
-          {AVAILABLE_ICONS.map(({ emoji, name }) => {
+          {currentIcons.map(({ emoji, name }) => {
             const isOwned = ownedIcons.includes(emoji);
             return (
               <div key={emoji} style={{

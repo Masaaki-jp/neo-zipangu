@@ -4,6 +4,25 @@ import { STAGE_DATA } from '../maps/stageData';
 
 const HEX_SIZE = 60;
 
+// 建物タイプごとの基本フォントサイズ（倍率適用前）
+const BASE_BUILDING_FONT_SIZE = 28;
+// ボットの基本フォントサイズ（倍率適用前）
+const BASE_BOT_FONT_SIZE = 24;
+// 建物タイプに応じたサイズ倍率
+const BUILDING_SIZE_SCALE = {
+  LOCAL_HUB: 0.33,
+  DATA_CENTER: 0.66,
+  MEGA_HQ: 1.0,
+  GATEWAY: 0.8,
+};
+// ボットレベルに応じたサイズ倍率
+const BOT_SIZE_SCALE = {
+  1: 0.25,
+  2: 0.5,
+  3: 0.75,
+  4: 1.0,
+};
+
 const HexMap = ({
   currentPlayer,
   activeNumber,
@@ -15,7 +34,6 @@ const HexMap = ({
   setEventLog,
   hasRolledDice,
   gameStatus,
-  // 親から受け取るデータ
   boardData,
   buildings,
   roads,
@@ -24,7 +42,9 @@ const HexMap = ({
   mapId,
   myPlayerKey,
   playingRoomId,
-  coastalVertices, // ★ props から直接受け取る
+  coastalVertices,
+  myEquippedBuildingIcon = null,  // ★ 拠点用
+  myEquippedBotIcon = null,       // ★ BOT用
 }) => {
   const canvasRef = useRef(null);
   const [verticesCoords, setVerticesCoords] = useState([]);
@@ -251,32 +271,48 @@ const HexMap = ({
       }
     });
 
+    // ★ 建物とボットの描画をカスタムアイコンに対応（拠点・BOT分離）
     tempVertices.forEach(v => {
       if (buildings && buildings[v.id]) {
         const b = buildings[v.id];
-        const pColor = PLAYER_COLORS[b.player]?.hex || '#ffffff';
-        const style = BUILDING_STYLES[b.type] || BUILDING_STYLES.LOCAL_HUB;
-        const size = style.size;
+        const player = b.player;
+        const pColor = PLAYER_COLORS[player]?.hex || '#ffffff';
+        const type = b.type;
 
-        if (b.type === 'GATEWAY') {
-          ctx.beginPath();
-          ctx.arc(v.x, v.y, size / 2, 0, Math.PI * 2);
+        // 自分の建物かつ装備アイコンがある場合
+        const isMyBuilding = player === myPlayerKey && !!myEquippedBuildingIcon;
+        // GATEWAY は常に ⚓️ 固定
+        const isGateway = type === 'GATEWAY';
+
+        if (isGateway) {
+          // GATEWAY は常に ⚓️ の絵文字 + プレイヤー色
+          const fontSize = BASE_BUILDING_FONT_SIZE * (BUILDING_SIZE_SCALE.GATEWAY || 0.8);
+          ctx.font = `bold ${fontSize}px sans-serif`;
           ctx.fillStyle = pColor;
           ctx.shadowBlur = 15;
           ctx.shadowColor = pColor;
-          ctx.fill();
-          ctx.lineWidth = style.strokeWidth;
-          ctx.strokeStyle = '#ffffff';
-          ctx.stroke();
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 10px monospace';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('GW', v.x, v.y);
+          ctx.fillText('⚓️', v.x, v.y);
+          ctx.shadowBlur = 0;
+        } else if (isMyBuilding) {
+          // カスタムアイコン表示（拠点用）
+          const scale = BUILDING_SIZE_SCALE[type] || 1.0;
+          const fontSize = BASE_BUILDING_FONT_SIZE * scale;
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          ctx.fillStyle = pColor;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = pColor;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(myEquippedBuildingIcon, v.x, v.y);
           ctx.shadowBlur = 0;
         } else {
+          // デフォルトの建物描画（従来通り）
+          const style = BUILDING_STYLES[type] || BUILDING_STYLES.LOCAL_HUB;
+          const size = style.size;
           ctx.fillStyle = pColor;
-          ctx.shadowBlur = b.type === 'MEGA_HQ' ? 20 : 10;
+          ctx.shadowBlur = type === 'MEGA_HQ' ? 20 : 10;
           ctx.shadowColor = pColor;
           ctx.fillRect(v.x - size / 2, v.y - size / 2, size, size);
           ctx.shadowBlur = 0;
@@ -296,39 +332,68 @@ const HexMap = ({
 
       if (bots && bots[v.id]) {
         const bot = bots[v.id];
+        const player = bot.player;
+        const level = bot.level;
         const isSelected = selectedBot === v.id;
         const isMoved = bot.has_moved;
+        const isMyBot = player === myPlayerKey && !!myEquippedBotIcon;
+
+        // ボットの色
         const botColor = isSelected
           ? '#ffffff'
           : isMoved
             ? '#555555'
-            : PLAYER_COLORS[bot.player]?.hex || '#ffffff';
+            : PLAYER_COLORS[player]?.hex || '#ffffff';
 
-        ctx.beginPath();
-        ctx.arc(v.x + 14, v.y - 14, 7, 0, Math.PI * 2);
-        ctx.fillStyle = botColor;
-        ctx.shadowBlur = isSelected ? 20 : isMoved ? 0 : 10;
-        ctx.shadowColor = botColor;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = isMoved ? '#333333' : '#ffffff';
-        ctx.lineWidth = isSelected ? 2 : 1;
-        ctx.stroke();
-        ctx.fillStyle = isSelected ? '#000000' : '#ffffff';
-        ctx.font = 'bold 10px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(bot.level.toString(), v.x + 14, v.y - 14);
+        if (isMyBot) {
+          // カスタムアイコン表示（BOT用）
+          const scale = BOT_SIZE_SCALE[level] || 1.0;
+          const fontSize = BASE_BOT_FONT_SIZE * scale;
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          ctx.fillStyle = botColor;
+          ctx.shadowBlur = isSelected ? 20 : isMoved ? 0 : 10;
+          ctx.shadowColor = botColor;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(myEquippedBotIcon, v.x + 14, v.y - 14);
+          ctx.shadowBlur = 0;
+
+          // レベル表記（必須）
+          ctx.font = 'bold 10px monospace';
+          ctx.fillStyle = isSelected ? '#000000' : '#ffffff';
+          ctx.shadowBlur = 0;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(level.toString(), v.x + 14, v.y - 14);
+        } else {
+          // デフォルトのボット描画（従来通り）
+          ctx.beginPath();
+          ctx.arc(v.x + 14, v.y - 14, 7, 0, Math.PI * 2);
+          ctx.fillStyle = botColor;
+          ctx.shadowBlur = isSelected ? 20 : isMoved ? 0 : 10;
+          ctx.shadowColor = botColor;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = isMoved ? '#333333' : '#ffffff';
+          ctx.lineWidth = isSelected ? 2 : 1;
+          ctx.stroke();
+          ctx.fillStyle = isSelected ? '#000000' : '#ffffff';
+          ctx.font = 'bold 10px monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(bot.level.toString(), v.x + 14, v.y - 14);
+        }
       }
     });
   }, [
     boardData, buildings, roads, bots, hackerPos, activeNumber, actionMode,
-    selectedBot, activeCard, currentPlayer, canvasWidth, canvasHeight, gameStatus
+    selectedBot, activeCard, currentPlayer, canvasWidth, canvasHeight, gameStatus,
+    myEquippedBuildingIcon, myEquippedBotIcon, myPlayerKey  // ★ 依存を更新
   ]);
 
   const actingPlayer = myPlayerKey || currentPlayer;
 
-  // クリック処理（すべてのAPIに room_id を付与）
+  // クリック処理
   const handleCanvasClick = async (e) => {
     if (gameStatus && gameStatus.state === "playing" && !hasRolledDice && actionMode !== 'HACKER') {
       alert("[ ERROR ] アクションを行う前に、必ずサイコロを振ってください！"); return;

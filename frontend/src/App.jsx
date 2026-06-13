@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（ランク変動表示対応版・全文 + ストア画面分岐追加）
+// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -10,7 +10,7 @@ import ModeSelectionScreen from './components/ModeSelectionScreen';
 import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
 import RankedMatchmakingScreen from './components/RankedMatchmakingScreen';
-import StoreScreen from './components/StoreScreen'; // ★ 追加
+import StoreScreen from './components/StoreScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -586,7 +586,16 @@ function App() {
 
   // ★ ストア画面
   if (selectedMode === 'STORE') {
-    return <StoreScreen user={loggedInUser} onBack={() => setSelectedMode(null)} />;
+    const handleStoreUserUpdate = (updatedFields) => {
+      setLoggedInUser(prev => ({ ...prev, ...updatedFields }));
+    };
+    return (
+      <StoreScreen
+        user={loggedInUser}
+        onBack={() => setSelectedMode(null)}
+        onUserUpdate={handleStoreUserUpdate}
+      />
+    );
   }
 
   // ★ ランクマッチ待機画面（accessToken は不要）
@@ -815,6 +824,8 @@ function App() {
                 playingRoomId={playingRoomId}
                 isMyTurn={isMyTurn}
                 coastalVertices={coastalVertices}
+                myEquippedBuildingIcon={loggedInUser?.equipped_building_icon}  // ★ 拠点用
+                myEquippedBotIcon={loggedInUser?.equipped_bot_icon}            // ★ BOT用
               />
               
               <CardHand cards={cards} actionMode={actionMode} handleUseCard={handleUseCard} />
