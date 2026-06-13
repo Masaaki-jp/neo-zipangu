@@ -3,7 +3,7 @@ import uuid
 import os
 import firebase_admin
 from firebase_admin import credentials, firestore
-from google.cloud.firestore_v1 import SERVER_TIMESTAMP
+from google.cloud.firestore_v1 import SERVER_TIMESTAMP, ArrayUnion  # ★ ArrayUnion を追加
 
 # Firestore クライアントを初期化（既に main.py で初期化済みなら再初期化されない）
 if not firebase_admin._apps:
@@ -45,6 +45,7 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         "rank_points": 500,  # ★ 初期値を500に修正（アイアン中位）
         "free_tokens": 0,
         "paid_tokens": 0,
+        "discovered_species": [],  # ★ 追加：発見生物のリストを空で初期化
         "created_at": SERVER_TIMESTAMP
     }
     db.collection("users").document(user_id).set(user_data)
@@ -84,4 +85,15 @@ def update_user_after_match(user_id: str, rank_diff: int, token_reward: int):
     user_ref.update({
         "rank_points": firestore.Increment(rank_diff),
         "free_tokens": firestore.Increment(token_reward)
+    })
+
+# ★ 追加：発見した生物をユーザーのコレクションに永続化する
+def add_discovered_species(user_id: str, species_emoji: str):
+    """
+    ユーザーが新たに発見した生物の絵文字を、
+    Firestore の discovered_species 配列に追加する。
+    """
+    user_ref = db.collection("users").document(user_id)
+    user_ref.update({
+        "discovered_species": ArrayUnion([species_emoji])
     })

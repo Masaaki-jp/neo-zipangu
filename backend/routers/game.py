@@ -61,9 +61,9 @@ def _com_execute(session, req: ComExecuteRequest):
         "dice": result["dice"]
     })
 
-def _draw_card(session, req: CardRequest):
+def _draw_card(session, req: CardRequest, user_id: str = None):
     main.enforce_time_limit(session)
-    result = session.draw_card_for_player(req.player, req.deck_type)
+    result = session.draw_card_for_player(req.player, req.deck_type, user_id=user_id)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return main.build_standard_response(session, {"status": "success", "drawn": result["card"]})
@@ -194,9 +194,9 @@ def com_execute(req: ComExecuteRequest, room_id: str = Query("SOLO_CPU_ROOM")):
     return _com_execute(session, req)
 
 @router.post("/api/draw_card")
-def draw_card(req: CardRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+def draw_card(req: CardRequest, room_id: str = Query("SOLO_CPU_ROOM"), current_user: dict = Depends(main.get_current_user)):
     session = main.room_manager.get_or_create_room(room_id)
-    return _draw_card(session, req)
+    return _draw_card(session, req, user_id=current_user["user_id"])
 
 @router.post("/api/use_card")
 def use_card(req: UseCardRequest, room_id: str = Query("SOLO_CPU_ROOM")):

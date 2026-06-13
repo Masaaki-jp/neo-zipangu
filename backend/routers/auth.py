@@ -42,6 +42,8 @@ def login_user(req: LoginRequest):
         "owned_bot_icons": user.get("owned_bot_icons", []),
         "equipped_building_icon": user.get("equipped_building_icon", None),
         "equipped_bot_icon": user.get("equipped_bot_icon", None),
+        # ★ 追加：生物図鑑の発見済みリスト
+        "discovered_species": user.get("discovered_species", []),
     })
     response.set_cookie(
         key="access_token",
@@ -82,6 +84,8 @@ def guest_login():
         "owned_bot_icons": user.get("owned_bot_icons", []),
         "equipped_building_icon": user.get("equipped_building_icon", None),
         "equipped_bot_icon": user.get("equipped_bot_icon", None),
+        # ★ 追加：生物図鑑の発見済みリスト
+        "discovered_species": user.get("discovered_species", []),
     })
     response.set_cookie(
         key="access_token",
