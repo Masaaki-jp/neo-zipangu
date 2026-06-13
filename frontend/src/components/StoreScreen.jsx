@@ -1,25 +1,62 @@
 // frontend/src/components/StoreScreen.jsx
 import React, { useState } from 'react';
-import { BUILDING_ICONS, BOT_ICONS } from '../data/iconData';
+import { BUILDING_ICONS, BOT_ICONS, PROFILE_ICONS } from '../data/iconData';
 
 export default function StoreScreen({ user, onBack, onUserUpdate }) {
-  const [activeTab, setActiveTab] = useState('building'); // "building" or "bot"
+  const [activeTab, setActiveTab] = useState('building'); // "building" | "bot" | "profile"
+  const [profileSubTab, setProfileSubTab] = useState('flags'); // プロフィール内のサブカテゴリ
   const [message, setMessage] = useState('');
   const [isBuying, setIsBuying] = useState(false);
+
+  // 各カテゴリの所有・装備 state
   const [ownedBuildingIcons, setOwnedBuildingIcons] = useState(user.owned_building_icons || []);
   const [ownedBotIcons, setOwnedBotIcons] = useState(user.owned_bot_icons || []);
+  const [ownedProfileIcons, setOwnedProfileIcons] = useState(user.owned_profile_icons || []);
+
   const [equippedBuildingIcon, setEquippedBuildingIcon] = useState(user.equipped_building_icon || null);
   const [equippedBotIcon, setEquippedBotIcon] = useState(user.equipped_bot_icon || null);
+  const [equippedProfileIcon, setEquippedProfileIcon] = useState(user.equipped_profile_icon || null);
+
   const [freeTokens, setFreeTokens] = useState(user.free_tokens || 0);
 
+  // ── アクティブタブに応じたアイコンリストと状態の選択 ──
   const isBuildingTab = activeTab === 'building';
-  const currentIcons = isBuildingTab ? BUILDING_ICONS : BOT_ICONS;
-  const ownedIcons = isBuildingTab ? ownedBuildingIcons : ownedBotIcons;
-  const equippedIcon = isBuildingTab ? equippedBuildingIcon : equippedBotIcon;
-  const setOwnedIcons = isBuildingTab ? setOwnedBuildingIcons : setOwnedBotIcons;
-  const setEquippedIcon = isBuildingTab ? setEquippedBuildingIcon : setEquippedBotIcon;
+  const isBotTab = activeTab === 'bot';
+  const isProfileTab = activeTab === 'profile';
 
-  // 購入処理
+  // 表示するアイコン一覧
+  const currentIcons = isProfileTab
+    ? PROFILE_ICONS[profileSubTab] || []
+    : isBuildingTab
+      ? BUILDING_ICONS
+      : BOT_ICONS;
+
+  // 所有 / 装備の状態
+  const ownedIcons = isProfileTab
+    ? ownedProfileIcons
+    : isBuildingTab
+      ? ownedBuildingIcons
+      : ownedBotIcons;
+
+  const equippedIcon = isProfileTab
+    ? equippedProfileIcon
+    : isBuildingTab
+      ? equippedBuildingIcon
+      : equippedBotIcon;
+
+  const setOwnedIcons = isProfileTab
+    ? setOwnedProfileIcons
+    : isBuildingTab
+      ? setOwnedBuildingIcons
+      : setOwnedBotIcons;
+
+  const setEquippedIcon = isProfileTab
+    ? setEquippedProfileIcon
+    : isBuildingTab
+      ? setEquippedBuildingIcon
+      : setEquippedBotIcon;
+
+  // ── 購入処理 ──
   const handlePurchase = async (icon) => {
     if (freeTokens < 30) {
       setMessage('トークンが不足しています。');
@@ -30,11 +67,12 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
     setIsBuying(true);
     setMessage('');
     try {
+      const iconType = isProfileTab ? 'profile' : activeTab;
       const res = await fetch('/api/store/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ icon, icon_type: activeTab }),
+        body: JSON.stringify({ icon, icon_type: iconType }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -51,25 +89,30 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
     }
   };
 
-  // 装備処理
+  // ── 装備処理 ──
   const handleEquip = async (icon) => {
     if (equippedIcon === icon) {
       setMessage('すでに装備中です。');
       return;
     }
     try {
+      const iconType = isProfileTab ? 'profile' : activeTab;
       const res = await fetch('/api/store/equip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ icon, icon_type: activeTab }),
+        body: JSON.stringify({ icon, icon_type: iconType }),
       });
       const data = await res.json();
       if (res.ok) {
         setEquippedIcon(data.equipped_icon);
-        // ★ 親コンポーネントのユーザー情報も更新
+        // 親コンポーネントへ通知
         if (onUserUpdate) {
-          const field = activeTab === 'building' ? 'equipped_building_icon' : 'equipped_bot_icon';
+          const field = isProfileTab
+            ? 'equipped_profile_icon'
+            : isBuildingTab
+              ? 'equipped_building_icon'
+              : 'equipped_bot_icon';
           onUserUpdate({ [field]: data.equipped_icon });
         }
         setMessage(`${icon} を装備しました！`);
@@ -81,48 +124,71 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
     }
   };
 
+  // ── レンダリング ──
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* ヘッダー */}
       <div style={{ width: '100%', maxWidth: '800px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <button onClick={onBack} style={{ padding: '0.5rem 1rem', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>◀ 戻る</button>
         <h1 style={{ margin: 0, color: '#ffcc00' }}>🏪 TOKEN STORE</h1>
         <div style={{ color: '#ffcc00', fontSize: '1.2rem', fontWeight: 'bold' }}>💰 {freeTokens} トークン</div>
       </div>
 
-      {/* タブ切替 */}
+      {/* メインタブ切替 */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-        <button
-          onClick={() => setActiveTab('building')}
-          style={{
-            padding: '0.5rem 1.5rem',
-            backgroundColor: isBuildingTab ? '#e94560' : '#333',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
-        >
-          🏯 拠点アイコン
-        </button>
-        <button
-          onClick={() => setActiveTab('bot')}
-          style={{
-            padding: '0.5rem 1.5rem',
-            backgroundColor: !isBuildingTab ? '#e94560' : '#333',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
-        >
-          🤖 BOTアイコン
-        </button>
+        {[
+          { key: 'building', label: '🏯 拠点アイコン' },
+          { key: 'bot', label: '🤖 BOTアイコン' },
+          { key: 'profile', label: '👤 プロフィール' },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '0.5rem 1.5rem',
+              backgroundColor: activeTab === tab.key ? '#e94560' : '#333',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {message && (
         <div style={{ color: '#00ffcc', marginBottom: '1rem', fontWeight: 'bold', backgroundColor: '#333', padding: '0.5rem 1rem', borderRadius: '4px' }}>{message}</div>
+      )}
+
+      {/* プロフィールタブの場合のみサブカテゴリ切替 */}
+      {isProfileTab && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          {[
+            { key: 'flags', label: '🇯🇵 国籍' },
+            { key: 'corps', label: '🏢 企業' },
+            { key: 'titles', label: '👑 称号' },
+          ].map(sub => (
+            <button
+              key={sub.key}
+              onClick={() => setProfileSubTab(sub.key)}
+              style={{
+                padding: '0.4rem 1rem',
+                backgroundColor: profileSubTab === sub.key ? '#e94560' : '#444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '0.9rem'
+              }}
+            >
+              {sub.label}
+            </button>
+          ))}
+        </div>
       )}
 
       {/* 所持アイコン一覧（装備選択） */}

@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文）
+// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -779,6 +779,7 @@ function App() {
               score={score} allScores={allScores} title_owners={title_owners} handleEndTurn={handleEndTurn} 
               inventory={inventory} tradeRates={tradeRates} currentBCounts={currentBCounts} MAX_STOCKS={MAX_STOCKS}
               isMyTurn={isMyTurn}
+              profileIcon={loggedInUser?.equipped_profile_icon} // ★ プロフィールアイコンを渡す
             />
 
             <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem', position: 'relative' }}>
@@ -824,8 +825,8 @@ function App() {
                 playingRoomId={playingRoomId}
                 isMyTurn={isMyTurn}
                 coastalVertices={coastalVertices}
-                myEquippedBuildingIcon={loggedInUser?.equipped_building_icon}  // ★ 拠点用
-                myEquippedBotIcon={loggedInUser?.equipped_bot_icon}            // ★ BOT用
+                myEquippedBuildingIcon={loggedInUser?.equipped_building_icon}
+                myEquippedBotIcon={loggedInUser?.equipped_bot_icon}
               />
               
               <CardHand cards={cards} actionMode={actionMode} handleUseCard={handleUseCard} />

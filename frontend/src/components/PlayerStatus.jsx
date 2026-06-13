@@ -39,7 +39,8 @@ const PlayerStatus = ({
   tradeRates,
   currentBCounts,
   MAX_STOCKS,
-  isMyTurn // 🥷 追加：自分のターンかどうか
+  isMyTurn, // 🥷 追加：自分のターンかどうか
+  profileIcon, // ★ 追加：プロフィールアイコン
 }) => {
   const [showCosts, setShowCosts] = useState(false);
   const [showConditions, setShowConditions] = useState(false);
@@ -50,7 +51,11 @@ const PlayerStatus = ({
         {/* ヘッダー上部（ターン情報、タイマー） */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
           <div style={{ textAlign: 'left' }}>
-             <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: pColor }}>{currentPlayer} 'S TURN</div>
+             <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: pColor }}>
+               {/* ★ プロフィールアイコンがあれば表示 */}
+               {profileIcon && <span style={{ marginRight: '8px', fontSize: '1.8rem' }}>{profileIcon}</span>}
+               {currentPlayer} 'S TURN
+             </div>
              <div style={{ fontSize: '0.9rem', color: '#aaa' }}>TURN ORDER: {gameStatus.turn_order.join(' > ')}</div>
           </div>
           
