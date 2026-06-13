@@ -26,8 +26,6 @@ export const BUILDING_ICONS = [
   // ── サイバー / テクノロジー ──
   { emoji: '🏢', name: 'オフィスビル' },
   { emoji: '🏬', name: 'デパート' },
-  { emoji: '🛰️', name: '人工衛星' },
-  { emoji: '🛸', name: 'UFO' },
   { emoji: '⚙️', name: '歯車' },
   { emoji: '🔩', name: 'ボルト' },
   { emoji: '💾', name: 'フロッピー' },
@@ -68,6 +66,8 @@ export const BOT_ICONS = [
   // ── ロボット・機械 ──
   { emoji: '🤖', name: 'ロボット' },
   { emoji: '👾', name: 'エイリアン' },
+  { emoji: '🛰️', name: '人工衛星' },
+  { emoji: '🛸', name: 'UFO' },
   { emoji: '💀', name: 'ドクロ' },
   { emoji: '👻', name: 'ゴースト' },
   { emoji: '🐲', name: 'ドラゴン' },
@@ -86,24 +86,6 @@ export const BOT_ICONS = [
   { emoji: '📀', name: 'DVD' },
   { emoji: '🧯', name: '消火器' },
   { emoji: '🛡️', name: '盾' },
-
-  // ── 生物（モンスター・動物） ──
-  { emoji: '🐉', name: 'ドラゴン' },
-  { emoji: '🦖', name: 'ティラノ' },
-  { emoji: '🦕', name: '首長竜' },
-  { emoji: '🦑', name: 'イカ' },
-  { emoji: '🐙', name: 'タコ' },
-  { emoji: '🦂', name: 'サソリ' },
-  { emoji: '🕷️', name: 'クモ' },
-  { emoji: '🦇', name: 'コウモリ' },
-  { emoji: '🦅', name: 'ワシ' },
-  { emoji: '🐺', name: 'オオカミ' },
-  { emoji: '🐗', name: 'イノシシ' },
-  { emoji: '🦈', name: 'サメ' },
-  { emoji: '🐊', name: 'ワニ' },
-  { emoji: '🦍', name: 'ゴリラ' },
-  { emoji: '🐘', name: 'ゾウ' },
-  { emoji: '🦏', name: 'サイ' },
 
   // ── 記号・マーク ──
   { emoji: '☠️', name: 'ドクロマーク' },
@@ -157,14 +139,10 @@ export const PROFILE_ICONS = {
     { emoji: '💼', name: 'カンパニー' },
     { emoji: '⚖️', name: '法務部門' },
     { emoji: '🔰', name: '新規参入' },
-    { emoji: '🎖️', name: '軍部' },
-    { emoji: '💎', name: '資源王' },
     { emoji: '⚜️', name: '貴族' },
     { emoji: '🌐', name: 'グローバル' },
   ],
   titles: [
-    { emoji: '👑', name: '王者' },
-    { emoji: '⭐', name: 'スター' },
     { emoji: '🔥', name: '熱血' },
     { emoji: '💀', name: '危険人物' },
     { emoji: '🌀', name: '混沌' },
