@@ -211,6 +211,27 @@ def enforce_time_limit(session):
     if is_time_up(deadline):
         raise HTTPException(status_code=408, detail="TURN_TIMEOUT")
 
+# ★ 追加：生物図鑑用の最新ユーザーデータ取得API
+@app.get("/api/user/me")
+def get_my_profile(current_user: dict = Depends(get_current_user)):
+    user = database.get_user_by_id(current_user["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "user_id": user["user_id"],
+        "display_name": user["display_name"],
+        "rank_points": user["rank_points"],
+        "free_tokens": user["free_tokens"],
+        "paid_tokens": user["paid_tokens"],
+        "owned_building_icons": user.get("owned_building_icons", []),
+        "owned_bot_icons": user.get("owned_bot_icons", []),
+        "equipped_building_icon": user.get("equipped_building_icon"),
+        "equipped_bot_icon": user.get("equipped_bot_icon"),
+        "owned_profile_icons": user.get("owned_profile_icons", []),
+        "equipped_profile_icon": user.get("equipped_profile_icon"),
+        "discovered_species": user.get("discovered_species", []),
+    }
+
 @app.get("/health")
 def health_check():
     return {"status": "operational"}

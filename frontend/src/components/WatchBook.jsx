@@ -1,12 +1,7 @@
 // frontend/src/components/WatchBook.jsx
-import React, { useState } from 'react';
-// ★ nature_data.py のデータ構造をそのまま使うため、WATCH_DEFS をインポート
-// （実際のフロントエンドコードでは、バックエンドのAPIから取得する方が安全ですが、
-//   ここでは直接インポートできるように、nature_data.py の WATCH_DEFS を
-//   frontend/src/data/natureData.js にコピーして使う想定です。）
+import React, { useState, useEffect } from 'react';
 import { WATCH_DEFS, get_watch_card_info } from '../data/natureData';
 
-// カテゴリ一覧（表示順）
 const CATEGORIES = [
   "哺乳類", "鳥類", "爬虫類", "両生類", "魚類",
   "海洋生物", "昆虫", "植物", "菌類", "伝説", "古代生物"
@@ -14,13 +9,23 @@ const CATEGORIES = [
 
 export default function WatchBook({ user, onBack }) {
   const [activeCategory, setActiveCategory] = useState("哺乳類");
+  // ★ マウント時にAPIから最新データを取得するため、stateで管理
+  const [discoveredSpecies, setDiscoveredSpecies] = useState(user?.discovered_species || []);
 
-  // ユーザーが所有しているWATCHカードから発見済みの絵文字を抽出
-  const discoveredEmojis = new Set(
-    (user.cards || [])
-      .filter(card => card.type && card.type !== "PATENT") // WATCHカードは type が絵文字
-      .map(card => card.type)
-  );
+  // ★ コンポーネントマウント時に /api/user/me から最新の発見リストを取得
+  useEffect(() => {
+    fetch('/api/user/me', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.discovered_species) {
+          setDiscoveredSpecies(data.discovered_species);
+        }
+      })
+      .catch(err => console.error('Failed to fetch user data', err));
+  }, []);
+
+  // 発見済みの絵文字をSetに変換
+  const discoveredEmojis = new Set(discoveredSpecies);
 
   // 現在のカテゴリに属する生物をフィルタリング
   const categoryEntries = Object.entries(WATCH_DEFS)
@@ -81,7 +86,6 @@ export default function WatchBook({ user, onBack }) {
       }}>
         {categoryEntries.map(([emoji, data]) => {
           const isDiscovered = discoveredEmojis.has(emoji);
-          const info = get_watch_card_info(emoji);
 
           return (
             <div key={emoji} style={{
@@ -90,14 +94,14 @@ export default function WatchBook({ user, onBack }) {
               borderRadius: '8px',
               textAlign: 'center',
               border: isDiscovered ? '2px solid #32cd32' : '1px solid #333',
-              opacity: isDiscovered ? 1 : 0.5,
+              opacity: isDiscovered ? 1 : 0.4,
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem'
             }}>
               <div style={{ fontSize: '3rem' }}>
                 {isDiscovered ? emoji : '❓'}
               </div>
               <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: isDiscovered ? '#fff' : '#666' }}>
-                {isDiscovered ? info.name : '？？？'}
+                {isDiscovered ? data.name : '？？？'}
               </div>
               <div style={{ fontSize: '0.75rem', color: '#888' }}>
                 スコア: {isDiscovered ? data.score : '?'}
