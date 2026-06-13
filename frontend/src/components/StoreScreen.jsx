@@ -3,60 +3,50 @@ import React, { useState } from 'react';
 import { BUILDING_ICONS, BOT_ICONS, PROFILE_ICONS } from '../data/iconData';
 
 export default function StoreScreen({ user, onBack, onUserUpdate }) {
-  const [activeTab, setActiveTab] = useState('building'); // "building" | "bot" | "profile"
-  const [profileSubTab, setProfileSubTab] = useState('flags'); // プロフィール内のサブカテゴリ
+  const [activeTab, setActiveTab] = useState('building');
+  const [profileSubTab, setProfileSubTab] = useState('flags');
   const [message, setMessage] = useState('');
   const [isBuying, setIsBuying] = useState(false);
 
-  // 各カテゴリの所有・装備 state
-  const [ownedBuildingIcons, setOwnedBuildingIcons] = useState(user.owned_building_icons || []);
-  const [ownedBotIcons, setOwnedBotIcons] = useState(user.owned_bot_icons || []);
-  const [ownedProfileIcons, setOwnedProfileIcons] = useState(user.owned_profile_icons || []);
-
-  const [equippedBuildingIcon, setEquippedBuildingIcon] = useState(user.equipped_building_icon || null);
-  const [equippedBotIcon, setEquippedBotIcon] = useState(user.equipped_bot_icon || null);
-  const [equippedProfileIcon, setEquippedProfileIcon] = useState(user.equipped_profile_icon || null);
-
-  const [freeTokens, setFreeTokens] = useState(user.free_tokens || 0);
-
-  // ── アクティブタブに応じたアイコンリストと状態の選択 ──
   const isBuildingTab = activeTab === 'building';
   const isBotTab = activeTab === 'bot';
   const isProfileTab = activeTab === 'profile';
 
-  // 表示するアイコン一覧
+  const freeTokens = user.free_tokens || 0;
+
+  const ownedIcons = isProfileTab
+    ? (user.owned_profile_icons || [])
+    : isBuildingTab
+      ? (user.owned_building_icons || [])
+      : (user.owned_bot_icons || []);
+
+  const equippedIcon = isProfileTab
+    ? (user.equipped_profile_icon || null)
+    : isBuildingTab
+      ? (user.equipped_building_icon || null)
+      : (user.equipped_bot_icon || null);
+
   const currentIcons = isProfileTab
     ? PROFILE_ICONS[profileSubTab] || []
     : isBuildingTab
       ? BUILDING_ICONS
       : BOT_ICONS;
 
-  // 所有 / 装備の状態
-  const ownedIcons = isProfileTab
-    ? ownedProfileIcons
-    : isBuildingTab
-      ? ownedBuildingIcons
-      : ownedBotIcons;
+  // ユーザー情報を完全に再取得し、親コンポーネントに反映する
+  const refreshUser = async () => {
+    try {
+      const res = await fetch('/api/user/me', { credentials: 'include' });
+      if (res.ok) {
+        const fullUser = await res.json();
+        if (onUserUpdate) {
+          onUserUpdate(fullUser); // 完全なオブジェクトで親を更新
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh user data:', err);
+    }
+  };
 
-  const equippedIcon = isProfileTab
-    ? equippedProfileIcon
-    : isBuildingTab
-      ? equippedBuildingIcon
-      : equippedBotIcon;
-
-  const setOwnedIcons = isProfileTab
-    ? setOwnedProfileIcons
-    : isBuildingTab
-      ? setOwnedBuildingIcons
-      : setOwnedBotIcons;
-
-  const setEquippedIcon = isProfileTab
-    ? setEquippedProfileIcon
-    : isBuildingTab
-      ? setEquippedBuildingIcon
-      : setEquippedBotIcon;
-
-  // ── 購入処理 ──
   const handlePurchase = async (icon) => {
     if (freeTokens < 30) {
       setMessage('トークンが不足しています。');
@@ -76,8 +66,7 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
       });
       const data = await res.json();
       if (res.ok) {
-        setOwnedIcons(data.owned_icons);
-        setFreeTokens(data.free_tokens);
+        await refreshUser();
         setMessage(`${icon} を購入しました！`);
       } else {
         setMessage(data.detail || '購入に失敗しました');
@@ -89,7 +78,6 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
     }
   };
 
-  // ── 装備処理 ──
   const handleEquip = async (icon) => {
     if (equippedIcon === icon) {
       setMessage('すでに装備中です。');
@@ -105,16 +93,7 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
       });
       const data = await res.json();
       if (res.ok) {
-        setEquippedIcon(data.equipped_icon);
-        // 親コンポーネントへ通知
-        if (onUserUpdate) {
-          const field = isProfileTab
-            ? 'equipped_profile_icon'
-            : isBuildingTab
-              ? 'equipped_building_icon'
-              : 'equipped_bot_icon';
-          onUserUpdate({ [field]: data.equipped_icon });
-        }
+        await refreshUser();
         setMessage(`${icon} を装備しました！`);
       } else {
         setMessage(data.detail || '装備に失敗しました');
@@ -124,7 +103,6 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
     }
   };
 
-  // ── レンダリング ──
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {/* ヘッダー */}
