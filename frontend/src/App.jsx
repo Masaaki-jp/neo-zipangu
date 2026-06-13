@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応）
+// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応 + 生物図鑑対応）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -11,6 +11,7 @@ import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
 import RankedMatchmakingScreen from './components/RankedMatchmakingScreen';
 import StoreScreen from './components/StoreScreen';
+import WatchBook from './components/WatchBook'; // ★ 追加：生物図鑑
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -596,6 +597,11 @@ function App() {
         onUserUpdate={handleStoreUserUpdate}
       />
     );
+  }
+
+  // ★ 生物図鑑画面
+  if (selectedMode === 'WATCHBOOK') {
+    return <WatchBook user={loggedInUser} onBack={() => setSelectedMode(null)} />;
   }
 
   // ★ ランクマッチ待機画面（accessToken は不要）
