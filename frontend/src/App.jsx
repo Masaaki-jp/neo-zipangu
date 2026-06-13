@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（ランク変動表示対応版・全文）
+// frontend/src/App.jsx（ランク変動表示対応版・全文 + ストア画面分岐追加）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -10,6 +10,7 @@ import ModeSelectionScreen from './components/ModeSelectionScreen';
 import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
 import RankedMatchmakingScreen from './components/RankedMatchmakingScreen';
+import StoreScreen from './components/StoreScreen'; // ★ 追加
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -581,6 +582,11 @@ function App() {
   }
   if (!selectedMode) {
     return <ModeSelectionScreen user={loggedInUser} onSelectMode={(mode) => setSelectedMode(mode)} />;
+  }
+
+  // ★ ストア画面
+  if (selectedMode === 'STORE') {
+    return <StoreScreen user={loggedInUser} onBack={() => setSelectedMode(null)} />;
   }
 
   // ★ ランクマッチ待機画面（accessToken は不要）

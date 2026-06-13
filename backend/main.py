@@ -89,7 +89,7 @@ from nature_data import WATCH_DEFS, get_watch_card_info
 from countdown import calculate_deadline, is_time_up
 
 # FastAPI アプリケーション
-app = FastAPI(title="Neo Zipang Core API", version="1.11.0-beta")
+app = FastAPI(title="Neo Zipang Core API", version="1.12.0-beta")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -106,12 +106,14 @@ from routers.game import router as game_router
 from routers.solo import router as solo_router
 from routers.rooms import router as rooms_router
 from routers.ranked import router as ranked_router, start_matchmaking_background
+from routers.store import router as store_router  # ★ 追加：トークンストア
 
 app.include_router(auth_router)
 app.include_router(game_router)
 app.include_router(solo_router)
 app.include_router(rooms_router)
 app.include_router(ranked_router)
+app.include_router(store_router)  # ★ 追加
 
 # マッチメイキングのバックグラウンドスレッドを起動
 start_matchmaking_background()
@@ -175,7 +177,7 @@ def build_standard_response(session, extra_data: dict = None):
         "coastal_vertices": list(getattr(session, "coastal_vertices", set())),
         "vertex_coords": getattr(session, "vertex_coords", {}),
         "player_types": getattr(session, "player_types", {}),
-        "rank_deltas": getattr(session, "rank_deltas", {}),   # ★ 追加：ランク変動情報
+        "rank_deltas": getattr(session, "rank_deltas", {}),
     }
 
     if extra_data:
