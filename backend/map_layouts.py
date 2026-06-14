@@ -154,6 +154,13 @@ STAGE_12_OCEANS = []
 STAGE_12_LAYOUT = STAGE_12_LANDS + STAGE_12_DARKS + STAGE_12_OCEANS
 
 
+# --- STAGE 13: Soccer (⚽️) ---
+
+STAGE_13_LANDS = [(0, -1), (1, -1), (-1, 0), (-1, 1), (0, 1), (1, 0), (1, -2), (-1, -1), (2, -1), (1, 1), (-1, 2), (-2, 1)]
+STAGE_13_DARKS = [(0, -2), (2, -2), (2, 0), (0, 2), (-2, 2), (-2, 0), (0, 0)]
+STAGE_13_LAYOUT = STAGE_13_LANDS + STAGE_13_DARKS
+
+
 # ==========================================
 # 🗃️ MAP CATALOG (統合管理データ)
 # ==========================================
@@ -255,6 +262,13 @@ MAP_CATALOG = {
         "layout": STAGE_12_LAYOUT,
         "fixed_darks": STAGE_12_DARKS,
         "fixed_oceans": STAGE_12_OCEANS,
+        "coastal_exclusion_radius": 0.0
+    },
+    "STAGE_13_SOCCER": {
+        "name": "13面: ⚽️",
+        "winning_score": 130,
+        "layout": STAGE_13_LAYOUT,
+        "fixed_darks": STAGE_13_DARKS,
         "coastal_exclusion_radius": 0.0
     }
 }

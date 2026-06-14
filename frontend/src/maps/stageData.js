@@ -148,5 +148,18 @@ export const STAGE_DATA = [
     difficulty: "EXPERT",
     description: "37マスの完成された空中庭園。140万シェアを巡るバランスが究極に調整されており、あらゆる戦略が通用する集大成。",
     themeColor: "#00ffff"
-  }
+  },
+  {
+    id: "STAGE_13_SOCCER",
+    name: "12面: ⚽️",
+    totalHexes: 19,
+    darkHexes: 7,
+    targetScore: 100,
+    canvasHeight: 950,
+    viewMode:"fixed",
+    zoom:1.0,
+    difficulty: "HARD",
+    description: "🎲を転がしてGOALを決めよう！",
+    themeColor: "#5f6363de"
+  },
 ];
