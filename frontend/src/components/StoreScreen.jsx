@@ -32,6 +32,11 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
       ? BUILDING_ICONS
       : BOT_ICONS;
 
+  // プロフィールタブでは、現在のサブカテゴリに存在するアイコンだけを「所持」一覧に表示
+  const displayedOwnedIcons = isProfileTab
+    ? ownedIcons.filter(icon => currentIcons.some(item => item.emoji === icon))
+    : ownedIcons;
+
   // ユーザー情報を完全に再取得し、親コンポーネントに反映する
   const refreshUser = async () => {
     try {
@@ -39,7 +44,7 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
       if (res.ok) {
         const fullUser = await res.json();
         if (onUserUpdate) {
-          onUserUpdate(fullUser); // 完全なオブジェクトで親を更新
+          onUserUpdate(fullUser);
         }
       }
     } catch (err) {
@@ -143,11 +148,17 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
 
       {/* プロフィールタブの場合のみサブカテゴリ切替 */}
       {isProfileTab && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           {[
             { key: 'flags', label: '🇯🇵 国籍' },
-            { key: 'corps', label: '🏢 企業' },
-            { key: 'titles', label: '👑 称号' },
+            { key: 'smileys', label: '😊 スマイリー' },
+            { key: 'people', label: '🧑 人々' },
+            { key: 'animals', label: '🐾 動物・自然' },
+            { key: 'food', label: '🍔 食べ物' },
+            { key: 'travel', label: '✈ 旅行・乗り物' },
+            { key: 'activities', label: '⚽ アクティビティ' },
+            { key: 'objects', label: '💡 アイテム' },
+            { key: 'symbols', label: '🔣 シンボル' },
           ].map(sub => (
             <button
               key={sub.key}
@@ -172,11 +183,11 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
       {/* 所持アイコン一覧（装備選択） */}
       <div style={{ width: '100%', maxWidth: '800px', marginBottom: '2rem' }}>
         <h2 style={{ color: '#aaa', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>所持アイコン</h2>
-        {ownedIcons.length === 0 ? (
+        {displayedOwnedIcons.length === 0 ? (
           <div style={{ color: '#888' }}>まだアイコンを購入していません。</div>
         ) : (
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            {ownedIcons.map(icon => (
+            {displayedOwnedIcons.map(icon => (
               <div key={icon} style={{
                 backgroundColor: '#16213e',
                 padding: '1rem',
