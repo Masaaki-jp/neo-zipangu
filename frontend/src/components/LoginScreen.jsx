@@ -67,16 +67,29 @@ export default function LoginScreen({ onLoginSuccess, onSelectHelp }) {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', padding: '1rem' }}>
-      <div style={{ padding: '2.5rem', backgroundColor: '#16213e', borderRadius: '8px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)', width: '350px' }}>
-        
-        <h2 style={{ textAlign: 'center', marginBottom: '0.5rem', color: '#0f3460', fontSize: '1.8rem' }}>
-          <span style={{ color: '#e94560' }}>NEO ZIPANGU</span>
-        </h2>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', padding: '2rem 1rem' }}>
+      
+      {/* 🚀 クローラー用の隠し構造化テキスト（画面上は見えませんが、SEOで「Catan Alternative」として拾わせるための施策） */}
+      <div style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', border: 0 }}>
+        <h2>Neo-Zipangu: A Free Online Board Game (Catan Alternative)</h2>
+        <p>
+          Play the ultimate Catan-inspired multiplayer web game for free. 
+          Build your colony, expand roads, upgrade defenses, and discover rare species 
+          to complete your nature emoji encyclopedia. A stateless, no-pay-to-win educational browser game.
+        </p>
+      </div>
 
-        {/* ★ サブコピー（SEO対策） */}
-        <p style={{ textAlign: 'center', color: '#888', fontSize: '0.85rem', marginBottom: '2rem' }}>
-          サイコロ×資源×陣取り ― 六角形のボードで戦う無料オンラインゲーム
+      <div style={{ padding: '2.5rem', backgroundColor: '#16213e', borderRadius: '8px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)', width: '350px', zIndex: 1 }}>
+        
+        {/* 🚀 SEO評価を高めるため h2 から h1 へ変更（デザインは維持） */}
+        <h1 style={{ textAlign: 'center', marginBottom: '0.5rem', color: '#0f3460', fontSize: '1.8rem', marginTop: 0 }}>
+          <span style={{ color: '#e94560', letterSpacing: '2px' }}>NEO ZIPANGU</span>
+        </h1>
+
+        {/* ★ サブコピー（カタン・ボードゲーム・自然保護・図鑑の重要SEOキーワードを最適化） */}
+        <p style={{ textAlign: 'center', color: '#a0a0b8', fontSize: '0.8rem', lineHeight: '1.5', marginBottom: '2rem', padding: '0 0.25rem' }}>
+          カタン風の六角形開拓ボードゲームに「自然保護・生物図鑑」を融合。
+          奪い合いではない生き方も選べる、完全無料のオンライン通信対戦Webゲーム。
         </p>
 
         {errorMsg && <div style={{ color: '#e94560', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center', fontWeight: 'bold' }}>{errorMsg}</div>}
@@ -147,6 +160,15 @@ export default function LoginScreen({ onLoginSuccess, onSelectHelp }) {
           </span>
         </div>
       </div>
+
+      {/* 🚀 グローバルSEO用のセマンティックフッター（クローラーがインデックスを回しやすくなる底底上げ施策） */}
+      <footer style={{ marginTop: '2.5rem', textAlign: 'center', color: '#3d3d5c', fontSize: '0.75rem', maxWidth: '500px', lineHeight: '1.6', padding: '0 1rem' }}>
+        <p>
+          Neo-Zipangu is a free-to-play, browser-based multiplayer strategy board game inspired by Settlers of Catan. 
+          Build roads, expand colonies, upgrade defensive weapons, and establish nature reserves to discover rare wildlife emoji. 
+          Brought to you by aninja.com.
+        </p>
+      </footer>
     </div>
   );
 }
