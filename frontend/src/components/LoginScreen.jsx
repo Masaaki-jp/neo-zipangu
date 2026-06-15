@@ -70,9 +70,14 @@ export default function LoginScreen({ onLoginSuccess, onSelectHelp }) {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', padding: '1rem' }}>
       <div style={{ padding: '2.5rem', backgroundColor: '#16213e', borderRadius: '8px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)', width: '350px' }}>
         
-        <h2 style={{ textAlign: 'center', marginBottom: '2rem', color: '#0f3460', fontSize: '1.8rem' }}>
+        <h2 style={{ textAlign: 'center', marginBottom: '0.5rem', color: '#0f3460', fontSize: '1.8rem' }}>
           <span style={{ color: '#e94560' }}>NEO ZIPANGU</span>
         </h2>
+
+        {/* ★ サブコピー（SEO対策） */}
+        <p style={{ textAlign: 'center', color: '#888', fontSize: '0.85rem', marginBottom: '2rem' }}>
+          サイコロ×資源×陣取り ― 六角形のボードで戦う無料オンラインゲーム
+        </p>
 
         {errorMsg && <div style={{ color: '#e94560', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center', fontWeight: 'bold' }}>{errorMsg}</div>}
         {successMsg && <div style={{ color: '#4caf50', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center', fontWeight: 'bold' }}>{successMsg}</div>}
