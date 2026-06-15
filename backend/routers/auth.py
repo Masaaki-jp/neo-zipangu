@@ -38,10 +38,10 @@ def login_user(req: LoginRequest):
         "paid_tokens": user["paid_tokens"],
         "owned_building_icons": user.get("owned_building_icons", []),
         "owned_bot_icons": user.get("owned_bot_icons", []),
-        "owned_profile_icons": user.get("owned_profile_icons", []),   # ★ 追加
+        "owned_profile_icons": user.get("owned_profile_icons", []),
         "equipped_building_icon": user.get("equipped_building_icon"),
         "equipped_bot_icon": user.get("equipped_bot_icon"),
-        "equipped_profile_icon": user.get("equipped_profile_icon"),   # ★ 追加
+        "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
     })
     response.set_cookie(
@@ -79,10 +79,10 @@ def guest_login():
         "paid_tokens": user["paid_tokens"],
         "owned_building_icons": user.get("owned_building_icons", []),
         "owned_bot_icons": user.get("owned_bot_icons", []),
-        "owned_profile_icons": user.get("owned_profile_icons", []),   # ★ 追加
+        "owned_profile_icons": user.get("owned_profile_icons", []),
         "equipped_building_icon": user.get("equipped_building_icon"),
         "equipped_bot_icon": user.get("equipped_bot_icon"),
-        "equipped_profile_icon": user.get("equipped_profile_icon"),   # ★ 追加
+        "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
     })
     response.set_cookie(
@@ -92,5 +92,20 @@ def guest_login():
         samesite="lax",
         secure=False,
         max_age=60 * 60 * 24 * 7
+    )
+    return response
+
+
+# ★ 追加：ログアウトAPI
+@router.post("/api/logout")
+def logout_user():
+    response = JSONResponse({"status": "logged_out"})
+    response.set_cookie(
+        key="access_token",
+        value="",
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=0  # 即時削除
     )
     return response

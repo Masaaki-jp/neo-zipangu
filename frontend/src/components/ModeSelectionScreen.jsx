@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ModeSelectionScreen({ user, onSelectMode }) {
+export default function ModeSelectionScreen({ user, onSelectMode, onLogout }) {
   const isGuest = user?.login_id?.startsWith('guest_');
 
   return (
@@ -23,6 +23,36 @@ export default function ModeSelectionScreen({ user, onSelectMode }) {
           <div>
             <div style={{ fontSize: '0.8rem', color: '#aaa' }}>トークン</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ffcc00' }}>{user.free_tokens + user.paid_tokens}</div>
+          </div>
+          {/* ★ ログアウトボタン */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button
+              onClick={onLogout}
+              style={{
+                padding: '0.3rem 1rem',
+                backgroundColor: '#333',
+                color: '#aaa',
+                border: '1px solid #555',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '0.9rem',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = '#e94560';
+                e.target.style.color = '#fff';
+                e.target.style.borderColor = '#e94560';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = '#333';
+                e.target.style.color = '#aaa';
+                e.target.style.borderColor = '#555';
+              }}
+            >
+              ログアウト
+            </button>
           </div>
         </div>
       </div>

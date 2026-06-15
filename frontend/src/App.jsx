@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応 + 生物図鑑対応）
+// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応 + 生物図鑑対応 + ログアウト対応）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -561,6 +561,34 @@ function App() {
     } catch (err) { console.error("緊急脱出に失敗:", err); }
   };
 
+  // ★ ログアウト処理
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+    } catch (err) {
+      console.error('ログアウトAPIの呼び出しに失敗:', err);
+    }
+    // ステートを完全にリセット
+    setLoggedInUser(null);
+    setSelectedMode(null);
+    setGameStatus({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 });
+    setInitRolls({});
+    setDice(null);
+    setInventory(null);
+    setCards([]);
+    setScore({ total: 0, titles: [] });
+    setHasRolledDice(false);
+    setEventLog(null);
+    setWaitingRoomId(null);
+    setPlayingRoomId(null);
+    setMyPlayerKey("Player1");
+    setCoastalVertices([]);
+    setRankDeltas({});
+    // ローカルストレージのログイン情報を削除
+    localStorage.removeItem('nz_login_id');
+    localStorage.removeItem('nz_password');
+  };
+
   // ===== 建物カウント =====
   const bCounts = () => {
     const counts = { LOCAL_HUB: 0, DATA_CENTER: 0, GATEWAY: 0, MEGA_HQ: 0 };
@@ -582,20 +610,24 @@ function App() {
     return <LoginScreen onLoginSuccess={(userData) => setLoggedInUser(userData)} />;
   }
   if (!selectedMode) {
-    return <ModeSelectionScreen user={loggedInUser} onSelectMode={(mode) => setSelectedMode(mode)} />;
+    return (
+      <ModeSelectionScreen
+        user={loggedInUser}
+        onSelectMode={(mode) => setSelectedMode(mode)}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   // ★ ストア画面
   if (selectedMode === 'STORE') {
     const handleStoreUserUpdate = (updatedFields) => {
-      // StoreScreen が /api/user/me から取得した完全なオブジェクトを渡してくるので、それをそのまま使う
       if (updatedFields.user_id) {
         setLoggedInUser(updatedFields);
       } else {
         setLoggedInUser(prev => ({ ...prev, ...updatedFields }));
       }
     };
-    // key を削除することで不要な再マウントを防ぎ、React の効率的な差分更新に任せる
     return (
       <StoreScreen
         user={loggedInUser}
