@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応 + 生物図鑑対応 + ログアウト対応）
+// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応 + 生物図鑑対応 + ログアウト対応 + FAQ対応 + ログイン画面FAQリンク）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -12,6 +12,7 @@ import WaitingRoom from './components/WaitingRoom';
 import RankedMatchmakingScreen from './components/RankedMatchmakingScreen';
 import StoreScreen from './components/StoreScreen';
 import WatchBook from './components/WatchBook';
+import HelpScreen from './components/HelpScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -568,7 +569,6 @@ function App() {
     } catch (err) {
       console.error('ログアウトAPIの呼び出しに失敗:', err);
     }
-    // ステートを完全にリセット
     setLoggedInUser(null);
     setSelectedMode(null);
     setGameStatus({ state: "map_selection", winner: null, reason: "", current_player: "Player1", turn_order: [], setup_turn: 0 });
@@ -584,7 +584,6 @@ function App() {
     setMyPlayerKey("Player1");
     setCoastalVertices([]);
     setRankDeltas({});
-    // ローカルストレージのログイン情報を削除
     localStorage.removeItem('nz_login_id');
     localStorage.removeItem('nz_password');
   };
@@ -606,9 +605,21 @@ function App() {
   if (isCheckingLogin) {
     return <div style={{ height: '100vh', backgroundColor: '#1a1a2e', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>システムに接続中...</div>;
   }
-  if (!loggedInUser) {
-    return <LoginScreen onLoginSuccess={(userData) => setLoggedInUser(userData)} />;
+
+  // ★ FAQ / ヘルプ画面（ログイン前でも表示可能）
+  if (selectedMode === 'HELP') {
+    return <HelpScreen onBack={() => setSelectedMode(null)} />;
   }
+
+  if (!loggedInUser) {
+    return (
+      <LoginScreen
+        onLoginSuccess={(userData) => setLoggedInUser(userData)}
+        onSelectHelp={() => setSelectedMode('HELP')}
+      />
+    );
+  }
+
   if (!selectedMode) {
     return (
       <ModeSelectionScreen

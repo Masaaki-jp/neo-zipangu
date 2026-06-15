@@ -1,7 +1,7 @@
 // LoginScreen.jsx
 import React, { useState } from 'react';
 
-export default function LoginScreen({ onLoginSuccess }) {
+export default function LoginScreen({ onLoginSuccess, onSelectHelp }) {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   
   const [loginId, setLoginId] = useState('');
@@ -10,7 +10,6 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // 🥷 追加：1クリックで開始するゲストログイン処理
   const handleGuestLogin = async () => {
     setErrorMsg('');
     try {
@@ -18,10 +17,9 @@ export default function LoginScreen({ onLoginSuccess }) {
       const data = await res.json();
       
       if (res.ok) {
-        // バックエンドが生成したIDとパスワードをブラウザにこっそり記憶させる
         localStorage.setItem('nz_login_id', data.login_id);
         localStorage.setItem('nz_password', data.password);
-        onLoginSuccess(data); // ログイン完了！
+        onLoginSuccess(data);
       } else {
         setErrorMsg('ゲストアカウントの作成に失敗しました。');
       }
@@ -59,7 +57,6 @@ export default function LoginScreen({ onLoginSuccess }) {
         setIsRegisterMode(false);
         setPassword('');
       } else {
-        // 通常ログイン時もブラウザに記憶させる
         localStorage.setItem('nz_login_id', loginId);
         localStorage.setItem('nz_password', password);
         onLoginSuccess(data);
@@ -80,7 +77,6 @@ export default function LoginScreen({ onLoginSuccess }) {
         {errorMsg && <div style={{ color: '#e94560', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center', fontWeight: 'bold' }}>{errorMsg}</div>}
         {successMsg && <div style={{ color: '#4caf50', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center', fontWeight: 'bold' }}>{successMsg}</div>}
 
-        {/* 🥷 超目立つゲストボタン（一番のコンバージョン経路） */}
         {!isRegisterMode && (
           <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
             <button 
@@ -99,7 +95,6 @@ export default function LoginScreen({ onLoginSuccess }) {
           </div>
         )}
 
-        {/* 従来のアカウントログイン・登録フォーム */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <input 
             type="text" placeholder="ログインID" value={loginId} 
@@ -132,6 +127,20 @@ export default function LoginScreen({ onLoginSuccess }) {
           </span>
         </div>
 
+        {/* ★ FAQリンク */}
+        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+          <span 
+            onClick={() => onSelectHelp && onSelectHelp()}
+            style={{ 
+              color: '#888', 
+              fontSize: '0.85rem', 
+              cursor: 'pointer', 
+              textDecoration: 'underline' 
+            }}
+          >
+            ❓ よくある質問 / ヘルプ
+          </span>
+        </div>
       </div>
     </div>
   );
