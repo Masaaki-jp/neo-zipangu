@@ -63,6 +63,27 @@ export default function HelpScreen({ onBack }) {
         {/* FAQ コンテンツ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
+          {/* ★ ゲーム紹介（SEO対策） */}
+          <div style={{
+            backgroundColor: '#16213e',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.5)'
+          }}>
+            <h3 style={{ color: '#4caf50', margin: '0 0 0.5rem 0' }}>ネオ・ジパングとは？</h3>
+            <p style={{ color: '#ccc', lineHeight: '1.6', margin: 0 }}>
+              ネオ・ジパングは、<strong>資源を集めて拠点を拡大する無料のオンライン陣取りゲーム</strong>です。
+              サイコロを振ってPOWERやDATA、SILICONなどの資源を獲得し、自社のネットワークを広げましょう。
+              六角形（ヘックス）のマップを舞台に、対戦相手と資源を奪い合い、<strong>100万シェアの目標スコア</strong>を目指します。
+              <br />
+              <span style={{ color: '#00ffcc' }}>
+                ▶ CPU対戦で練習 ▶ カジュアルマッチで友達と対戦 ▶ ランクマッチで実力勝負
+              </span>
+              <br />
+              ブラウザだけで今すぐプレイ可能。登録不要のゲストモードもあります。
+            </p>
+          </div>
+
           <div style={{
             backgroundColor: '#16213e',
             padding: '1.5rem',
@@ -117,7 +138,7 @@ export default function HelpScreen({ onBack }) {
           }}>
             <h3 style={{ color: '#e94560', margin: '0 0 0.5rem 0' }}>Q. 問い合わせはどこにすればいいですか？</h3>
             <p style={{ color: '#ccc', lineHeight: '1.6', margin: 0 }}>
-              ゲームに関するご意見・ご質問は、以下のプロトコルでお寄せください。
+              ゲームに関するご意見・ご質問はこちらからお願いいたします。
             </p>
 
             {/* メールアドレス表示エリア（ターミナル風） */}
@@ -132,7 +153,6 @@ export default function HelpScreen({ onBack }) {
               fontSize: '0.9rem',
               letterSpacing: '1px'
             }}>
-              <h2 style={{ margin: '0 0 0.5rem 0', color: '#00ffcc', fontSize: '1rem' }}>COMMUNICATION_LINK</h2>
               <p style={{ margin: '0 0 0.5rem 0', color: '#aaa' }}>{'>'} 依頼・問い合わせプロトコル:</p>
               <p id="contact-address" style={{ margin: 0 }}>
                 {!emailVisible ? (
