@@ -240,7 +240,5 @@ export const OBJECTS_ICONS = [
   { emoji: "⚱", name: "funeral urn" },
   { emoji: "🧿", name: "nazar amulet" },
   { emoji: "🪬", name: "hamsa" },
-  { emoji: "🗿", name: "moai" },
-  { emoji: "🪧", name: "placard" },
   { emoji: "🪪", name: "identification card" }
 ];
