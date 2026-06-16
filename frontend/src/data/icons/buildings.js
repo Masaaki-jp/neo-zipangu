@@ -59,5 +59,7 @@ export const BUILDING_ICONS = [
   { emoji: "🎡", name: "ferris wheel" },
   { emoji: "🎢", name: "roller coaster" },
   { emoji: "💈", name: "barber pole" },
-  { emoji: "🎪", name: "circus tent" }
+  { emoji: "🎪", name: "circus tent" },
+  { emoji: "🗿", name: "moai" },
+  { emoji: "🪧", name: "placard" }
 ];
