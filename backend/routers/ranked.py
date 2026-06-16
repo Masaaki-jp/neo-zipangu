@@ -1,4 +1,4 @@
-# routers/ranked.py （トランザクション修正版 + is_ranked フラグ追加）
+# routers/ranked.py （シーズン自動切替 + ランク用マップ対応版）
 """
 ランク対戦マッチメイキング用APIエンドポイント
 """
@@ -26,6 +26,14 @@ TIER_ORDER = [
     "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"
 ]
 
+# ★ ランク戦用マッププール（map_layouts.py のキーと一致させる）
+RANKED_MAP_POOL = [
+    "RANKED_01_SQUARE",
+    "RANKED_02_CROSSC",
+    "RANKED_03_HONEYCOMB",
+    "RANKED_04_TRIANGLE"
+]
+
 def _rank_tier_from_points(points: int) -> str:
     if points < 1000: return "IRON"
     elif points < 2000: return "BRONZE"
@@ -47,6 +55,33 @@ def _adjacent_tiers(tier: str) -> list:
     if idx > 0: result.append(TIER_ORDER[idx - 1])
     if idx < len(TIER_ORDER) - 1: result.append(TIER_ORDER[idx + 1])
     return result
+
+# ★ シーズン管理
+def get_current_season_map():
+    """Firestore から現在のシーズンマップを取得。なければ初期値を返す。"""
+    doc = db.collection("season_info").document("current").get()
+    if doc.exists:
+        return doc.to_dict().get("map_id", "RANKED_01_SQUARE")
+    return "RANKED_01_SQUARE"
+
+def maybe_rotate_season():
+    """月初であればシーズンを切り替え、Firestore を更新する"""
+    now = datetime.now(timezone.utc)
+    current_season_id = f"{now.year}-{now.month:02d}"
+
+    doc = db.collection("season_info").document("current").get()
+    if doc.exists:
+        data = doc.to_dict()
+        if data.get("season_id") == current_season_id:
+            return  # まだ今月のシーズン
+
+    # 新しいシーズン：マップをランダム選択
+    new_map = random.choice(RANKED_MAP_POOL)
+    db.collection("season_info").document("current").set({
+        "season_id": current_season_id,
+        "map_id": new_map
+    })
+    print(f"[RANKED] シーズン更新: {current_season_id} -> {new_map}")
 
 class QueueStatusResponse(BaseModel):
     player_count: int
@@ -109,6 +144,9 @@ def check_match(current_user: dict = Depends(get_current_user)):
 
 # ── マッチメイキングループ ──
 def _perform_matching():
+    # ★ シーズン切替チェック（月初ならマップを更新）
+    maybe_rotate_season()
+
     transaction = db.transaction()
 
     @transactional
@@ -170,6 +208,9 @@ def _perform_matching():
         session = room_manager.get_or_create_room(room_id)
         session.is_ranked = True
 
+        # ★ 現在のシーズンマップをセット
+        session.current_map_id = get_current_season_map()
+
         joined = []
         for idx, uid in enumerate(human_ids):
             pkey = f"Player{idx+1}"
@@ -201,7 +242,6 @@ def _perform_matching():
             joined.append({"user_id": f"cpu_extra_{i}", "display_name": f"CPU{i+1}", "player_key": pkey})
 
         session.joined_players = joined
-        session.current_map_id = "STAGE_01_BEGINNER"
         session.game_status["state"] = "init_roll"
         session.game_status["turn_order"] = [f"Player{i+1}" for i in range(4)]
         session.game_status["current_player"] = "Player1"

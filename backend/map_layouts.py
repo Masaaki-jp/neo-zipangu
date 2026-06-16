@@ -161,6 +161,29 @@ STAGE_13_DARKS = [(0, -2), (2, -2), (2, 0), (0, 2), (-2, 2), (-2, 0), (0, 0)]
 STAGE_13_LAYOUT = STAGE_13_LANDS + STAGE_13_DARKS
 
 
+# --- RANK STAGES ---
+RANKED_01_SQUARE = [(0, -1), (-1, -1), (1, -1), (-2, 0), (-1, 0), (0, 0), (1, 0), (2, -1), (2, 0), (1, 1), (0, 1), (-1, 1), (-2, 1), (-1, -2), (0, -2), (1, -2), (2, -2), (-3, 2), (-2, 2), (-1, 2), (0, 2), (1, 2), (3, -2)]
+RANKED_02_CROSSC = [(-2, 0), (-1, 0), (0, 0), (1, 0), (2, 0), (1, -2), (0, -1), (1, -1), (-1, 1), (0, 1), (-1, 2), (-2, 3), (-1, 3), (-2, 4), (1, -3), (2, -3), (2, -4), (-3, 0), (3, 0), (-4, 0), (-3, -1), (-4, 1), (4, 0), (4, -1), (3, 1)]
+RANKED_03_HONEYCOMB = [(1, -2), (-1, 0), (-1, 1), (-1, 2), (0, 1), (1, 0), (1, -1), (0, 0), (-2, 1), (2, 0), (0, 2), (-2, 0), (-2, 2), (1, 1), (2, -1), (0, -1), (-1, -1), (0, -2), (2, -2), (-2, -1), (-3, 1), (3, -1), (2, 1)]
+RANKED_04_TRIANGLE = [(0, 0), (-1, 0), (-1, 1), (0, 1), (1, 0), (1, 1), (0, -1), (1, -1), (-2, 1), (-1, -1), (-2, 0), (-3, 1), (2, 1), (2, 0), (2, -1), (1, 2), (0, 2), (-1, 2), (-2, 2), (-3, 2), (1, -2), (0, -2), (2, -2), (1, -3), (2, -3)]
+
+
+# === カスタムマップ出力データ ===
+CUSTOM_DARKS = []
+CUSTOM_OCEANS = []
+# ==============================
+
+
+
+
+# === カスタムマップ出力データ ===
+CUSTOM_DARKS = []
+CUSTOM_OCEANS = []
+# ==============================
+
+
+
+
 # ==========================================
 # 🗃️ MAP CATALOG (統合管理データ)
 # ==========================================
@@ -269,6 +292,38 @@ MAP_CATALOG = {
         "winning_score": 130,
         "layout": STAGE_13_LAYOUT,
         "fixed_darks": STAGE_13_DARKS,
+        "coastal_exclusion_radius": 0.0
+    },
+    "RANKED_01_SQUARE": {
+        "name": "Ranked: Square",
+        "winning_score": 100,
+        "layout": RANKED_01_SQUARE,
+        "fixed_darks": [],
+        "fixed_oceans": [],
+        "coastal_exclusion_radius": 0.0
+    },
+    "RANKED_02_CROSSC": {
+        "name": "Ranked: Cross",
+        "winning_score": 120,
+        "layout": RANKED_02_CROSSC,
+        "fixed_darks": [],
+        "fixed_oceans": [],
+        "coastal_exclusion_radius": 0.0
+    },
+    "RANKED_03_HONEYCOMB": {
+        "name": "Ranked: Honeycomb",
+        "winning_score": 110,
+        "layout": RANKED_03_HONEYCOMB,
+        "fixed_darks": [],
+        "fixed_oceans": [],
+        "coastal_exclusion_radius": 0.0
+    },
+    "RANKED_04_TRIANGLE": {
+        "name": "Ranked: Triangle",
+        "winning_score": 120,
+        "layout": RANKED_04_TRIANGLE,
+        "fixed_darks": [],
+        "fixed_oceans": [],
         "coastal_exclusion_radius": 0.0
     }
 }
