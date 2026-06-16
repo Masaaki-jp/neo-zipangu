@@ -7,10 +7,10 @@ export const STAGE_DATA = [
     totalHexes: 19,
     darkHexes: 0,
     targetScore: 100,
-    canvasWidth: 1000,  // 🥷 追加：標準の幅
-    canvasHeight: 800,  // 🥷 追加：標準の高さ
-    viewMode: "fixed", // 🥷 追加：画面内にピッタリ収める
-    zoom: 1.0, // 🥷 追加：1面はそのままの大きさで！
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
+    zoom: 1.0,
     difficulty: "NORMAL",
     description: "別名「たたかいの島」。19マスの最小構成。対角線配置は即・窒息を意味する。100万シェアへの到達スピードを競う純粋な実力派マップ。",
     themeColor: "#00ffcc"
@@ -21,10 +21,10 @@ export const STAGE_DATA = [
     totalHexes: 30,
     darkHexes: 0,
     targetScore: 110,
-    canvasWidth: 1000,  // 🥷 追加：標準の幅
-    canvasHeight: 800,  // 🥷 追加：標準の高さ
-    viewMode: "fixed", // 🥷 追加：画面内にピッタリ収める
-    zoom: 0.85, // 🥷 追加：2面もそのままの大きさで！
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
+    zoom: 0.85,
     difficulty: "HARD",
     description: "内海に港を作れない制約があるが、広さは標準的。100万シェアへの最短ルートは、外周ゲートウェイの早期確保にある。",
     themeColor: "#ff3333"
@@ -33,25 +33,26 @@ export const STAGE_DATA = [
     id: "STAGE_03_CANYON",
     name: "3面: けいこく",
     totalHexes: 28,
+    darkHexes: 0,
     targetScore: 130,
-    canvasWidth: 1100,  // 1000から1100に拡張
-    canvasHeight: 1100, // 800から1100に拡張
-    viewMode: "scroll", // 🥷 追加：ステージが大きいのでスクロールで対応
-    zoom: 0.9, // 🥷 追加：3面は少し縮小して表示
+    canvasWidth: 1100,
+    canvasHeight: 1100,
+    viewMode: "scroll",
+    zoom: 0.9,
     difficulty: "NORMAL",
     description: "4つの島が連なる28マスの広域マップ。島をまたぐネットワーク構築が必須となるため、ゴールは120万シェアに設定されている。",
     themeColor: "#ccff00"
   },
- {
+  {
     id: "STAGE_04_ZIPANGU",
     name: "4面: じぱんぐ島",
     totalHexes: 48,
+    darkHexes: 0,
     targetScore: 140,
-    // 🥷 九州から北海道まで収まるように、縦に長い1400pxの画用紙を用意
     canvasWidth: 2400,
     canvasHeight: 1600,
     viewMode: "scroll",
-    zoom: 0.9, 
+    zoom: 0.9,
     difficulty: "EXTREME",
     description: "四つの島からなる黄金の国。北東の巨大な島『蝦夷（HOKKAIDO）』は全域が未開拓のDARK領域。物理ネットワークが分断されたこの地を、VPNと港で制覇せよ。",
     themeColor: "#ffcc00"
@@ -60,9 +61,12 @@ export const STAGE_DATA = [
     id: "STAGE_05_PARADISE",
     name: "5面: 南の楽園",
     totalHexes: 28,
-    targetScore: 130, // 遊びやすいので少し高めに
-    viewMode: "fixed", // 🥷 追加：画面内にピッタリ収める
-    zoom: 0.91, // 
+    darkHexes: 0,
+    targetScore: 130,
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
+    zoom: 0.91,
     difficulty: "EASY",
     description: "28マスの広大な楽園。資源が豊かに出るため展開が早い。サバイバルを忘れ、130万シェアの超巨大企業を目指せ。",
     themeColor: "#00bfff"
@@ -71,10 +75,11 @@ export const STAGE_DATA = [
     id: "STAGE_06_ARCHIPELAGO",
     name: "6面: 分断海域",
     totalHexes: 33,
+    darkHexes: 0,
     targetScore: 130,
-    canvasWidth: 1200,  // 横に広いマップなのでキャンバスを大きめに確保
+    canvasWidth: 1200,
     canvasHeight: 900,
-    viewMode: "fixed", // はみ出す場合はスクロールできるようにする
+    viewMode: "fixed",
     zoom: 1.0,
     difficulty: "Nomal",
     description: "28マスの広大な楽園。資源が豊かに出るため展開が早い。サバイバルを忘れ、130万シェアの超巨大企業を目指せ。",
@@ -84,7 +89,11 @@ export const STAGE_DATA = [
     id: "STAGE_07_NORTH",
     name: "7面: 北の大地",
     totalHexes: 34,
+    darkHexes: 0,
     targetScore: 130,
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
     zoom: 1.0,
     difficulty: "EASY",
     description: "34マスの快適な一本道。ブリッジを使いこなし、120万シェアをスマートに稼ぎ出す「DX」なおすすめマップ。",
@@ -94,8 +103,12 @@ export const STAGE_DATA = [
     id: "STAGE_08_BUTTERFLY",
     name: "8面: バタフライ",
     totalHexes: 25,
+    darkHexes: 0,
     targetScore: 100,
-    zoom:0.95,
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
+    zoom: 0.95,
     difficulty: "NORMAL",
     description: "25マスと手狭だが3面隣接が容易。100万シェアを目指す内陸部の陣取り合戦は、一瞬の油断も許されない。",
     themeColor: "#aa00ff"
@@ -104,10 +117,12 @@ export const STAGE_DATA = [
     id: "STAGE_09_MELODY",
     name: "9面: メロディ島",
     totalHexes: 32,
-    viewMode:"scroll",
-    zoom:0.9,
+    darkHexes: 0,
     targetScore: 100,
+    canvasWidth: 1000,
     canvasHeight: 1000,
+    viewMode: "scroll",
+    zoom: 0.9,
     difficulty: "HARD",
     description: "32マスあるが好立地が極端に少ない。110万シェアへの道のりは険しく、交渉力が試されるテクニカルステージ。",
     themeColor: "#ff8800"
@@ -117,10 +132,11 @@ export const STAGE_DATA = [
     name: "10面: 鬼ヶ島",
     totalHexes: 35,
     darkHexes: 22,
-    targetScore: 70, // 中央を独占した時の爆発力を考慮
+    targetScore: 70,
+    canvasWidth: 1000,
     canvasHeight: 1100,
-    zoom:0.9,
-    viewMode:"scroll",
+    viewMode: "scroll",
+    zoom: 0.9,
     difficulty: "EXPERT",
     description: "35マスの広域戦。中央の未開地を抑えた者が、140万シェアの王座に最も近付く。忍の心が試される戦場。",
     themeColor: "#8b0000"
@@ -129,12 +145,15 @@ export const STAGE_DATA = [
     id: "STAGE_11_NUCLEAR",
     name: "11面: 核汚染領域",
     totalHexes: 37,
-    viewMode: "fixed",
-    zoom: 1.0, // 🥷 広大なため、全体を見渡せるようズームアウト
+    darkHexes: 0,
     targetScore: 140,
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
+    zoom: 1.0,
     difficulty: "HELL",
     description: "全資源地帯が『核』で構成された禁忌の地。一歩間違えれば致命的な汚染がインフラを焼き切る。",
-    themeColor: "#00ff00" // 🥷 核エネルギーを象徴するネオングリーン
+    themeColor: "#00ff00"
   },
   {
     id: "STAGE_12_SKY",
@@ -142,24 +161,86 @@ export const STAGE_DATA = [
     totalHexes: 37,
     darkHexes: 19,
     targetScore: 130,
+    canvasWidth: 1000,
     canvasHeight: 950,
-    viewMode:"fixed",
-    zoom:1.0,
+    viewMode: "fixed",
+    zoom: 1.0,
     difficulty: "EXPERT",
     description: "37マスの完成された空中庭園。140万シェアを巡るバランスが究極に調整されており、あらゆる戦略が通用する集大成。",
     themeColor: "#00ffff"
   },
   {
     id: "STAGE_13_SOCCER",
-    name: "12面: ⚽️",
+    name: "13面: ⚽️",
     totalHexes: 19,
     darkHexes: 7,
     targetScore: 100,
+    canvasWidth: 1000,
     canvasHeight: 950,
-    viewMode:"fixed",
-    zoom:1.0,
+    viewMode: "fixed",
+    zoom: 1.0,
     difficulty: "HARD",
     description: "🎲を転がしてGOALを決めよう！",
     themeColor: "#5f6363de"
   },
+
+  // ============================================================
+  // 🥷 ランク専用マップ (4面)
+  // ============================================================
+  {
+    id: "RANKED_01_SQUARE",
+    name: "Ranked: Square",
+    totalHexes: 19,
+    darkHexes: 0,
+    targetScore: 100,
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
+    zoom: 1.0,
+    difficulty: "NORMAL",
+    description: "ランクシーズン用の正方形型マップ。内陸戦の基本。",
+    themeColor: "#ffaa00"
+  },
+  {
+    id: "RANKED_02_CROSSC",
+    name: "Ranked: Cross",
+    totalHexes: 25,
+    darkHexes: 0,
+    targetScore: 120,
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
+    zoom: 0.9,
+    difficulty: "HARD",
+    description: "十字型のランクマップ。交差点の制圧が勝敗を分ける。",
+    themeColor: "#ff5500"
+  },
+  {
+    id: "RANKED_03_HONEYCOMB",
+    name: "Ranked: Honeycomb",
+    totalHexes: 23,
+    darkHexes: 0,
+    targetScore: 110,
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
+    zoom: 1.0,
+    difficulty: "NORMAL",
+    description: "六角形のハニカム型マップ。実力差が出やすい。",
+    themeColor: "#ffdd00"
+  },
+  {
+    id: "RANKED_04_TRIANGLE",
+    name: "Ranked: Triangle",
+    totalHexes: 25,
+    darkHexes: 0,
+    targetScore: 120,
+    canvasWidth: 1000,
+    canvasHeight: 800,
+    viewMode: "fixed",
+    zoom: 0.95,
+    difficulty: "HARD",
+    description: "三角形のランクマップ。対称性が高く公平な戦い。",
+    themeColor: "#ff00aa"
+  }
 ];
