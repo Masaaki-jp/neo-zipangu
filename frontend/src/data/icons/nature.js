@@ -1,4 +1,4 @@
-// frontend/src/data/icons/animals.js
+// frontend/src/data/icons/nature.js
 
 export const ANIMALS_ICONS = [
   { emoji: "🐵", name: "monkey face" },

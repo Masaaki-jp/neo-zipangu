@@ -541,7 +541,7 @@ class GameSession:
                 self.game_status["turn_end_time"] = None
         return {"status": "success"}
 
-    # ★ ランク対戦の報酬計算とDB反映
+    # ★ ランク対戦の報酬計算とDB反映（限定アイコン解放を追加）
     def apply_rank_rewards(self):
         print(f"[RANK] apply_rank_rewards called, is_ranked={self.is_ranked}, joined_players={self.joined_players}")
         
@@ -589,6 +589,8 @@ class GameSession:
             token_reward = token_rewards.get(rank, 0)
             print(f"[RANK] Updating {uid} (player={pkey}): delta={delta}, token_reward={token_reward}")
             database.update_user_after_match(uid, delta, token_reward)
+            # ★ 限定アイコン解放チェック
+            database.check_and_grant_limited_icons(uid)
 
         self.rank_deltas = deltas
         print(f"[RANK] Final rank_deltas: {self.rank_deltas}")
