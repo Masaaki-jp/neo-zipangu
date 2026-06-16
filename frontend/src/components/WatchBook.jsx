@@ -1,6 +1,6 @@
 // frontend/src/components/WatchBook.jsx
 import React, { useState, useEffect } from 'react';
-import { WATCH_DEFS, get_watch_card_info } from '../data/natureData';
+import { WATCH_DEFS, get_watch_card_info } from '../data/nature';
 
 const CATEGORIES = [
   "哺乳類", "鳥類", "爬虫類", "両生類", "魚類",
@@ -9,10 +9,8 @@ const CATEGORIES = [
 
 export default function WatchBook({ user, onBack }) {
   const [activeCategory, setActiveCategory] = useState("哺乳類");
-  // ★ マウント時にAPIから最新データを取得するため、stateで管理
   const [discoveredSpecies, setDiscoveredSpecies] = useState(user?.discovered_species || []);
 
-  // ★ コンポーネントマウント時に /api/user/me から最新の発見リストを取得
   useEffect(() => {
     fetch('/api/user/me', { credentials: 'include' })
       .then(res => res.json())
@@ -24,10 +22,8 @@ export default function WatchBook({ user, onBack }) {
       .catch(err => console.error('Failed to fetch user data', err));
   }, []);
 
-  // 発見済みの絵文字をSetに変換
   const discoveredEmojis = new Set(discoveredSpecies);
 
-  // 現在のカテゴリに属する生物をフィルタリング
   const categoryEntries = Object.entries(WATCH_DEFS)
     .filter(([_, data]) => (data.category || "未分類") === activeCategory);
 
