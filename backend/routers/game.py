@@ -157,8 +157,8 @@ def _build_road(session, req: RoadRequest):
         print(f"[DEBUG] build_road error for {req.player}: {result['error']}")
         raise HTTPException(status_code=400, detail=result["error"])
 
-    # ★ 統計更新：道路建設回数
-    if result["status"] == "success" and req.player in session.player_types and session.player_types[req.player] == "human":
+    # ★ 統計更新：道路建設回数（execute_build_road は {"success": True, ...} を返す）
+    if result.get("success") and req.player in session.player_types and session.player_types[req.player] == "human":
         for p in session.joined_players:
             if p.get("player_key") == req.player:
                 uid = p.get("user_id")
