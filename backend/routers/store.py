@@ -10,6 +10,11 @@ from constants import STORE_PRICES
 # ★ WATCH_DEFS をインポート（生物アイコンの購入を拒否するため）
 from nature_data import WATCH_DEFS
 
+# ★ 管理者専用アイコン（一般購入不可）の定義
+ADMIN_ONLY_ICONS = {
+    "©", "®", "™"
+}
+
 router = APIRouter()
 
 class PurchaseRequest(BaseModel):
@@ -55,6 +60,10 @@ def purchase_icon(req: PurchaseRequest, current_user: dict = Depends(get_current
     # ★ 生物アイコン（WATCH_DEFS のキーに含まれる絵文字）は購入不可
     if icon_type == "profile" and icon in WATCH_DEFS:
         raise HTTPException(status_code=400, detail="WATCH_ONLY")
+
+    # ★ 管理者専用アイコンの購入を拒否
+    if icon_type == "profile" and icon in ADMIN_ONLY_ICONS:
+        raise HTTPException(status_code=400, detail="NOT_PURCHASABLE")
 
     user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()

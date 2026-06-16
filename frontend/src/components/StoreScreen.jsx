@@ -276,7 +276,8 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
         <div style={{ width: '100%', maxWidth: '800px' }}>
           <h2 style={{ color: '#aaa', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>ショップ</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
-            {currentIcons.map((item) => {
+            {/* ★ hidden フラグが true のアイコンはショップに表示しない */}
+            {currentIcons.filter(item => !item.hidden).map((item) => {
               const isOwned = ownedIcons.includes(item.emoji);
               const price = item.price || 30;
               return (

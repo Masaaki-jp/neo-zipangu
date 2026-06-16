@@ -67,6 +67,8 @@ export const LIMITED_ICONS = [
   { key: "combat_25",  emoji: "⚡",  name: "Berserker",     category: "戦闘", desc: "通算25回の戦闘勝利",  requirement: "通算25回戦闘に勝利する" },
   { key: "combat_50",  emoji: "💀",  name: "Executioner",   category: "戦闘", desc: "通算50回の戦闘勝利",  requirement: "通算50回戦闘に勝利する" },
   { key: "combat_100", emoji: "👹",  name: "Demon General", category: "戦闘", desc: "通算100回の戦闘勝利", requirement: "通算100回戦闘に勝利する" },
+  // ★ 追加：戦闘英雄
+  { key: "combat_hero", emoji: "🎖️", name: "Combat Hero", category: "戦闘", desc: "戦闘でMVP評価を受ける", requirement: "1試合で3回以上戦闘勝利する" },
 
   // ============================================================
   // 🐾 生物図鑑開放割合 (5)
@@ -99,16 +101,19 @@ export const LIMITED_ICONS = [
   { key: "supporter_black",  emoji: "⚫", name: "Obsidian Supporter",category: "出資者", desc: "サポーター（ブラック）に認定",  requirement: "サポーター（ブラック）として認定される" },
 
   // ============================================================
-  // 🌸 季節イベント (15)
+  // 🌸 季節イベント (19) ← 15から増加
   // ============================================================
   { key: "season_newyear",    emoji: "🎍", name: "New Year's Dawn",       category: "季節", desc: "正月イベント参加",           requirement: "該当シーズンイベントに参加する" },
   { key: "season_setsubun",   emoji: "👹", name: "Oni Out, Fortune In",   category: "季節", desc: "節分イベント参加",           requirement: "該当シーズンイベントに参加する" },
   { key: "season_valentine",  emoji: "💝", name: "Chocolate Hacker",      category: "季節", desc: "バレンタインイベント参加",   requirement: "該当シーズンイベントに参加する" },
+  { key: "season_hinamatsuri",emoji: "🎎", name: "Doll Festival",         category: "季節", desc: "ひな祭りイベント参加",       requirement: "該当シーズンイベントに参加する" },
   { key: "season_spring",     emoji: "🌸", name: "Sakura Blossom",        category: "季節", desc: "春イベント参加",            requirement: "該当シーズンイベントに参加する" },
   { key: "season_goldenweek", emoji: "🎏", name: "Golden Week Streamer",  category: "季節", desc: "ゴールデンウィークイベント参加", requirement: "該当シーズンイベントに参加する" },
   { key: "season_rainy",      emoji: "🌧️", name: "Rainy Season Protocol", category: "季節", desc: "梅雨イベント参加",         requirement: "該当シーズンイベントに参加する" },
   { key: "season_tanabata",   emoji: "🎋", name: "Tanabata Wish",         category: "季節", desc: "七夕イベント参加",         requirement: "該当シーズンイベントに参加する" },
   { key: "season_summer",     emoji: "🌻", name: "Summer Festival",       category: "季節", desc: "夏イベント参加",           requirement: "該当シーズンイベントに参加する" },
+  { key: "season_fireworks",  emoji: "🎇", name: "Fireworks Display",    category: "季節", desc: "花火大会イベント参加",       requirement: "該当シーズンイベントに参加する" },
+  { key: "season_windchime",  emoji: "🎐", name: "Wind Chime",            category: "季節", desc: "風鈴イベント参加",         requirement: "該当シーズンイベントに参加する" },
   { key: "season_obon",       emoji: "🏮", name: "Bon Lantern",           category: "季節", desc: "お盆イベント参加",         requirement: "該当シーズンイベントに参加する" },
   { key: "season_moon",       emoji: "🎑", name: "Moon Viewing",          category: "季節", desc: "月見イベント参加",         requirement: "該当シーズンイベントに参加する" },
   { key: "season_autumn",     emoji: "🍁", name: "Autumn Leaves",         category: "季節", desc: "秋イベント参加",           requirement: "該当シーズンイベントに参加する" },
@@ -116,6 +121,7 @@ export const LIMITED_ICONS = [
   { key: "season_winter",     emoji: "🌨️", name: "Winter Solstice",      category: "季節", desc: "冬至イベント参加",         requirement: "該当シーズンイベントに参加する" },
   { key: "season_xmas",       emoji: "🎄", name: "Christmas Eve Hack",    category: "季節", desc: "クリスマスイベント参加",   requirement: "該当シーズンイベントに参加する" },
   { key: "season_countdown",  emoji: "🎆", name: "New Year Countdown",    category: "季節", desc: "大晦日イベント参加",       requirement: "該当シーズンイベントに参加する" },
+  { key: "season_redenvelope",emoji: "🧧", name: "Red Envelope",          category: "季節", desc: "旧正月イベント参加",       requirement: "該当シーズンイベントに参加する" },
 
   // ============================================================
   // 🧬 珍種 / 特別な生物 (10)
@@ -132,7 +138,7 @@ export const LIMITED_ICONS = [
   { key: "rare_dragonfly",      emoji: "🦋", name: "Emperor Dragonfly", category: "珍種", desc: "特別な発見: オニヤンマ",      requirement: "特定の条件で発見する" },
 
   // ============================================================
-  // 🎖️ 人気実績 / スペシャル (15)
+  // 🎖️ 人気実績 / スペシャル (20) ← 15から増加
   // ============================================================
   { key: "popular_first_win",     emoji: "🏅", name: "First Victory",     category: "実績", desc: "初勝利",                     requirement: "初めて試合に勝利する" },
   { key: "popular_10_wins",       emoji: "🏆", name: "Ten Victories",     category: "実績", desc: "通算10勝",                    requirement: "通算10勝する" },
@@ -148,5 +154,11 @@ export const LIMITED_ICONS = [
   { key: "popular_gatekeeper",    emoji: "⚓", name: "Gatekeeper",        category: "実績", desc: "GATEWAYを3つ建設",          requirement: "GATEWAYを3つ建設する" },
   { key: "popular_explorer",      emoji: "🗺️", name: "Explorer",          category: "実績", desc: "DARKセクターを5回開拓",      requirement: "DARKセクターを5回開拓する" },
   { key: "popular_card_master",   emoji: "🀄", name: "Card Master",       category: "実績", desc: "全種類のカードを同時に所持", requirement: "全8種類のカードを同時に所持する" },
-  { key: "popular_annihilator",   emoji: "💀", name: "Annihilator",       category: "実績", desc: "敵の全拠点を破壊して勝利",   requirement: "敵の全拠点を破壊して勝利する" }
+  { key: "popular_annihilator",   emoji: "💀", name: "Annihilator",       category: "実績", desc: "敵の全拠点を破壊して勝利",   requirement: "敵の全拠点を破壊して勝利する" },
+  // ★ 追加：新実績
+  { key: "popular_sparkle",       emoji: "✨", name: "Sparkle",           category: "実績", desc: "ゾロ目を3回連続で出す",     requirement: "ゾロ目を3回連続で出す" },
+  { key: "popular_surprise",      emoji: "🎁", name: "Surprise Gift",     category: "実績", desc: "WATCHカードからレア生物を引く", requirement: "WATCHカードからスコア8以上の生物を引く" },
+  { key: "popular_celebrate",     emoji: "🎉", name: "Celebration",       category: "実績", desc: "1試合で50スコア以上を獲得",  requirement: "1試合で50スコア以上を獲得する" },
+  { key: "popular_balloon",       emoji: "🎈", name: "Balloon",           category: "実績", desc: "ランクポイントが上昇する",    requirement: "ランクポイントが100以上上昇する" },
+  { key: "popular_ribbon",        emoji: "🎀", name: "Ribbon",            category: "実績", desc: "プロフィールアイコンを5個装備", requirement: "プロフィールアイコンを5個以上所持する" }
 ];
