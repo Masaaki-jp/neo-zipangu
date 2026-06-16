@@ -1,7 +1,6 @@
 # routers/ranked.py （トランザクション修正版 + is_ranked フラグ追加）
 """
 ランク対戦マッチメイキング用APIエンドポイント
-※ Firestore トランザクションの「読み取り→書き込み」順序違反を修正
 """
 import time
 import threading
@@ -148,9 +147,8 @@ def _perform_matching():
         if not (len(selected) >= GROUP_SIZE or need_cpu):
             return False
 
-        # ★ 書き込み前に、選ばれた人間ユーザーの情報をトランザクション内で読み取る
         human_ids = []
-        user_info = {}  # uid -> user_data
+        user_info = {}
         for p in selected:
             uid = p["data"]["user_id"]
             if uid not in human_ids:
@@ -161,7 +159,6 @@ def _perform_matching():
                 else:
                     user_info[uid] = None
 
-        # ここから書き込みフェーズ
         for p in selected:
             transaction.delete(p["ref"])
 
@@ -171,8 +168,6 @@ def _perform_matching():
 
         room_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
         session = room_manager.get_or_create_room(room_id)
-        
-        # ★ ランク対戦フラグを設定
         session.is_ranked = True
 
         joined = []

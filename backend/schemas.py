@@ -66,3 +66,16 @@ class LoginRequest(BaseModel):
 # COM ターン実行用リクエストモデル
 class ComExecuteRequest(BaseModel):
     player: str
+
+
+# ★ トークンストア用リクエストモデル（price / subcategory フィールドを追加）
+class PurchaseRequest(BaseModel):
+    icon: str
+    icon_type: str = "building"  # "building" | "bot" | "profile"
+    price: Optional[int] = None  # クライアント側の表示価格（サーバー側でマスタと照合）
+    subcategory: Optional[str] = None  # プロフィールアイコンのサブカテゴリ（例: "flags"）
+
+
+class EquipRequest(BaseModel):
+    icon: str
+    icon_type: str = "building"  # "building" | "bot" | "profile"

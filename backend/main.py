@@ -230,6 +230,7 @@ def get_my_profile(current_user: dict = Depends(get_current_user)):
         "owned_profile_icons": user.get("owned_profile_icons", []),
         "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
+        "limited_icons": user.get("limited_icons", []),  # ★ 追加
     }
 
 @app.get("/health")

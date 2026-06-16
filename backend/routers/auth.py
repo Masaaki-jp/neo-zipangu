@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from schemas import RegisterRequest, LoginRequest
-from database import create_user, get_user_by_login_id
+from database import create_user, get_user_by_login_id, check_and_grant_limited_icons
 from core.security import pwd_context, verify_password, create_access_token
 import random
 import string
@@ -27,7 +27,13 @@ def login_user(req: LoginRequest):
         raise HTTPException(status_code=400, detail="USER_NOT_FOUND")
     if not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="INVALID_PASSWORD")
+
     token = create_access_token({"sub": user["user_id"]})
+
+    # ★ 限定アイコンのチェック・付与（ログイン時）
+    new_limited = check_and_grant_limited_icons(user["user_id"])
+    if new_limited:
+        user = get_user_by_login_id(req.login_id)  # 最新のユーザーデータを再取得
 
     response = JSONResponse({
         "status": "success",
@@ -43,6 +49,7 @@ def login_user(req: LoginRequest):
         "equipped_bot_icon": user.get("equipped_bot_icon"),
         "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
+        "limited_icons": user.get("limited_icons", []),  # ★ 追加
     })
     response.set_cookie(
         key="access_token",
@@ -65,8 +72,14 @@ def guest_login():
     result = create_user(login_id, hashed_pw, display_name)
     if "error" in result:
         raise HTTPException(status_code=500, detail="GUEST_CREATION_FAILED")
+
     user = get_user_by_login_id(login_id)
     token = create_access_token({"sub": user["user_id"]})
+
+    # ★ 限定アイコンのチェック・付与（ゲスト作成直後なのでほぼ空だが、将来拡張のため）
+    new_limited = check_and_grant_limited_icons(user["user_id"])
+    if new_limited:
+        user = get_user_by_login_id(login_id)
 
     response = JSONResponse({
         "status": "success",
@@ -84,6 +97,7 @@ def guest_login():
         "equipped_bot_icon": user.get("equipped_bot_icon"),
         "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
+        "limited_icons": user.get("limited_icons", []),  # ★ 追加
     })
     response.set_cookie(
         key="access_token",

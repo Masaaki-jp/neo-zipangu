@@ -9,6 +9,7 @@ from schemas import (
     ComExecuteRequest
 )
 import main
+import database  # ★ 追加
 
 router = APIRouter()
 
@@ -28,10 +29,7 @@ def _get_or_generate_board(session):
 def _init_roll(session, req: InitRollRequest):
     result = session.execute_init_roll(req.player)
     if "error" in result:
-        # ★ INIT_TIMEOUT の場合は部屋を削除する（呼び出し元に委ねるため特別なHTTPエラーは不要）
         if result["error"] == "INIT_TIMEOUT":
-            # タイムアウト時は game_status.state が "finished" に変わっている
-            # そのままレスポンスを返す（フロントエンドで解散を検知させる）
             return main.build_standard_response(session, {
                 "status": "timeout",
                 "reason": session.game_status.get("reason", "")
@@ -40,7 +38,6 @@ def _init_roll(session, req: InitRollRequest):
     return main.build_standard_response(session, {"status": "success", "init_rolls": result["init_rolls"]})
 
 def _end_turn(session, req: BuildRequest):
-    # ★ 強制タイムアウトフラグを execute_end_turn に渡す
     result = session.execute_end_turn(req.player, forced_timeout=req.forced_timeout)
     if "error" in result:
         print(f"[DEBUG] end_turn error for {req.player}: {result['error']}")
@@ -66,6 +63,13 @@ def _draw_card(session, req: CardRequest, user_id: str = None):
     result = session.draw_card_for_player(req.player, req.deck_type, user_id=user_id)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+
+    # ★ 統計更新：カードドロー回数
+    if user_id:
+        database.increment_user_stat(user_id, "total_cards_drawn")
+        # 限定アイコン解放チェック
+        database.check_and_grant_limited_icons(user_id)
+
     return main.build_standard_response(session, {"status": "success", "drawn": result["card"]})
 
 def _use_card(session, req: UseCardRequest):
@@ -97,6 +101,18 @@ def _build_hub(session, req: BuildRequest):
     result = session.execute_build(req.player, req.vertex_id, upgrade_to)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+
+    # ★ 統計更新：拠点建設回数（成功時のみ、かつプレイヤーが人間の場合）
+    if result["status"] == "success" and req.player in session.player_types and session.player_types[req.player] == "human":
+        # ユーザーID を特定する必要がある。session.joined_players から player_key を検索
+        for p in session.joined_players:
+            if p.get("player_key") == req.player:
+                uid = p.get("user_id")
+                if uid and not uid.startswith("cpu_"):
+                    database.increment_user_stat(uid, "total_hubs_built")
+                    database.check_and_grant_limited_icons(uid)
+                break
+
     response_data = {"status": result["status"]}
     if "type" in result:
         response_data["type"] = result["type"]
@@ -121,6 +137,17 @@ def _move_bot(session, req: MoveRequest):
     result = session.execute_move_bot(req.player, req.from_vertex, req.to_vertex)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+
+    # ★ 戦闘勝利なら combat_wins を更新
+    if result.get("combat_log") and "VICTORY" in result["combat_log"]:
+        for p in session.joined_players:
+            if p.get("player_key") == req.player:
+                uid = p.get("user_id")
+                if uid and not uid.startswith("cpu_"):
+                    database.increment_user_stat(uid, "combat_wins")
+                    database.check_and_grant_limited_icons(uid)
+                break
+
     return main.build_standard_response(session, {"status": "success", "combat_log": result.get("combat_log")})
 
 def _build_road(session, req: RoadRequest):
@@ -129,6 +156,17 @@ def _build_road(session, req: RoadRequest):
     if "error" in result:
         print(f"[DEBUG] build_road error for {req.player}: {result['error']}")
         raise HTTPException(status_code=400, detail=result["error"])
+
+    # ★ 統計更新：道路建設回数
+    if result["status"] == "success" and req.player in session.player_types and session.player_types[req.player] == "human":
+        for p in session.joined_players:
+            if p.get("player_key") == req.player:
+                uid = p.get("user_id")
+                if uid and not uid.startswith("cpu_"):
+                    database.increment_user_stat(uid, "total_roads_built")
+                    database.check_and_grant_limited_icons(uid)
+                break
+
     return main.build_standard_response(session, {
         "status": "success",
         "explored": result["explored"],
@@ -177,7 +215,6 @@ def get_or_generate_board(room_id: str = Query("SOLO_CPU_ROOM")):
 def init_roll(req: InitRollRequest, room_id: str = Query("SOLO_CPU_ROOM")):
     session = main.room_manager.get_or_create_room(room_id)
     result_data = _init_roll(session, req)
-    # ★ タイムアウトによる解散が発生した場合、部屋を削除
     if result_data.get("status") == "timeout":
         if room_id != "SOLO_CPU_ROOM":
             main.room_manager.delete_room(room_id)
@@ -257,7 +294,6 @@ def roll_dice(room_id: str = Query("SOLO_CPU_ROOM")):
 def reset_game(req: ResetRequest = None, room_id: str = Query("SOLO_CPU_ROOM")):
     session = main.room_manager.get_or_create_room(room_id)
 
-    # マルチプレイでゲームが終了している場合、部屋を削除する
     if room_id != "SOLO_CPU_ROOM" and session.game_status.get("state") == "finished":
         main.room_manager.delete_room(room_id)
         return {"status": "room_deleted"}

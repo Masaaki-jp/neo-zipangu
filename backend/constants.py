@@ -47,3 +47,30 @@ WEAPON_DECK = ["EMP", "DRONE_STRIKE", "WEAPON_DEV", "DDOS"]
 #🐘生物データの呼び出し
 from nature_data import WATCH_DEFS
 WATCH_DECK = list(WATCH_DEFS.keys()) # ここに追加
+
+# ★===== トークンストア価格マスタ =====★
+# カテゴリごとの基本価格を定義する（個別アイコンの上書きも可能）
+STORE_PRICES = {
+    "building": {
+        # 拠点アイコンは一律40トークン
+        "_default": 40,
+        # 個別に価格を変えたい場合は絵文字をキーにして設定可能
+        # "🏔": 50,
+    },
+    "bot": {
+        # BOTアイコンは一律35トークン
+        "_default": 35,
+        # "🤖": 50,
+    },
+    "profile": {
+        "flags":      {"_default": 10},
+        "smileys":    {"_default": 20},
+        "people":     {"_default": 20},
+        "animals":    {"_default": 30},
+        "food":       {"_default": 20},
+        "travel":     {"_default": 20},
+        "activities": {"_default": 15},
+        "objects":    {"_default": 15},
+        "symbols":    {"_default": 25},
+    }
+}
