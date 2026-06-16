@@ -135,9 +135,11 @@ export const SYMBOLS_ICONS = [
   { emoji: "✳", name: "eight-spoked asterisk" },
   { emoji: "✴", name: "eight-pointed star" },
   { emoji: "❇", name: "sparkle" },
-  { emoji: "©", name: "copyright" },
-  { emoji: "®", name: "registered" },
-  { emoji: "™", name: "trade mark" },
+
+  { emoji: "©", name: "copyright", purchasable: false, hidden: true },  // ★ 管理者専用
+  { emoji: "®", name: "registered", purchasable: false, hidden: true }, // ★ 管理者専用
+  { emoji: "™", name: "trade mark", purchasable: false, hidden: true }, // ★ 管理者専用
+
   { emoji: "#️⃣", name: "keycap: #" },
   { emoji: "*️⃣", name: "keycap: *" },
   { emoji: "0️⃣", name: "keycap: 0" },
