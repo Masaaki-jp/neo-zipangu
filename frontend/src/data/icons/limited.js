@@ -15,7 +15,7 @@ export const LIMITED_ICONS = [
   { key: "rank_silver",        emoji: "🥈", name: "Silver Circuit",      category: "ランク", desc: "ランクポイント 2000〜2999",           requirement: "ランクポイントが2000〜2999になる" },
   { key: "rank_gold",          emoji: "🥇", name: "Gold Matrix",         category: "ランク", desc: "ランクポイント 3000〜3999",           requirement: "ランクポイントが3000〜3999になる" },
   { key: "rank_platinum",      emoji: "💿", name: "Platinum Grid",       category: "ランク", desc: "ランクポイント 4000〜4999",           requirement: "ランクポイントが4000〜4999になる" },
-  { key: "rank_emerald",       emoji: "🟢", name: "Emerald Node",        category: "ランク", desc: "ランクポイント 5000〜5999",           requirement: "ランクポイントが5000〜5999になる" },
+  { key: "rank_emerald",       emoji: "❇", name: "Emerald Node",        category: "ランク", desc: "ランクポイント 5000〜5999",           requirement: "ランクポイントが5000〜5999になる" },
   { key: "rank_diamond",       emoji: "💎", name: "Diamond Core",        category: "ランク", desc: "ランクポイント 6000〜6999",           requirement: "ランクポイントが6000〜6999になる" },
   { key: "rank_master",        emoji: "🧠", name: "Master Algorithm",    category: "ランク", desc: "ランクポイント 7000〜7999",           requirement: "ランクポイントが7000〜7999になる" },
   { key: "rank_grandmaster",   emoji: "👑", name: "Grandmaster Protocol",category: "ランク", desc: "ランクポイント 8000〜8999",           requirement: "ランクポイントが8000〜8999になる" },
@@ -60,7 +60,7 @@ export const LIMITED_ICONS = [
   { key: "card_200", emoji: "🎰", name: "Card Collector",   category: "カード", desc: "通算200枚のカードドロー", requirement: "通算200枚カードを引く" },
 
   // ============================================================
-  // ⚔️ 戦闘勝利回数 (5)
+  // ⚔️ 戦闘勝利回数 (6)
   // ============================================================
   { key: "combat_3",   emoji: "⚔️", name: "Fighter",       category: "戦闘", desc: "通算3回の戦闘勝利",   requirement: "通算3回戦闘に勝利する" },
   { key: "combat_10",  emoji: "🛡️", name: "Warrior",       category: "戦闘", desc: "通算10回の戦闘勝利",  requirement: "通算10回戦闘に勝利する" },
@@ -88,7 +88,7 @@ export const LIMITED_ICONS = [
   { key: "icon_100", emoji: "🌈", name: "Collector 100%", category: "アイコン所持", desc: "全アイコンを完全所持", requirement: "利用可能な全アイコンを100%所持する" },
 
   // ============================================================
-  // 💖 出資者 / サポーター (12) ← ハートアイコンに変更
+  // 💖 出資者 / サポーター (ハート 12)
   // ============================================================
   { key: "supporter_red",         emoji: "❤️", name: "Ruby Supporter",        category: "出資者", desc: "サポーター（レッド）に認定",    requirement: "サポーター（レッド）として認定される" },
   { key: "supporter_pink",        emoji: "🩷", name: "Pink Diamond Supporter", category: "出資者", desc: "サポーター（ピンク）に認定",   requirement: "サポーター（ピンク）として認定される" },
@@ -102,6 +102,125 @@ export const LIMITED_ICONS = [
   { key: "supporter_black",       emoji: "🖤", name: "Obsidian Supporter",     category: "出資者", desc: "サポーター（ブラック）に認定",  requirement: "サポーター（ブラック）として認定される" },
   { key: "supporter_grey",        emoji: "🩶", name: "Moonstone Supporter",    category: "出資者", desc: "サポーター（グレー）に認定",   requirement: "サポーター（グレー）として認定される" },
   { key: "supporter_white",       emoji: "🤍", name: "Diamond Supporter",     category: "出資者", desc: "サポーター（ホワイト）に認定",  requirement: "サポーター（ホワイト）として認定される" },
+
+  // ============================================================
+  // 🔴🟠🟡🟢🔵🟣🟤⚫⚪ 出資者・サポーター (図形: 円形 9)
+  // ============================================================
+  { key: "supporter_circle_red",    emoji: "🔴", name: "Ruby Circle",    category: "出資者", desc: "サポーター（レッドサークル）に認定", requirement: "サポーター（レッドサークル）として認定される" },
+  { key: "supporter_circle_orange", emoji: "🟠", name: "Amber Circle",   category: "出資者", desc: "サポーター（オレンジサークル）に認定", requirement: "サポーター（オレンジサークル）として認定される" },
+  { key: "supporter_circle_yellow", emoji: "🟡", name: "Topaz Circle",   category: "出資者", desc: "サポーター（イエローサークル）に認定", requirement: "サポーター（イエローサークル）として認定される" },
+  { key: "supporter_circle_green",  emoji: "🟢", name: "Emerald Circle", category: "出資者", desc: "サポーター（グリーンサークル）に認定", requirement: "サポーター（グリーンサークル）として認定される" },
+  { key: "supporter_circle_blue",   emoji: "🔵", name: "Sapphire Circle",category: "出資者", desc: "サポーター（ブルーサークル）に認定", requirement: "サポーター（ブルーサークル）として認定される" },
+  { key: "supporter_circle_purple", emoji: "🟣", name: "Amethyst Circle",category: "出資者", desc: "サポーター（パープルサークル）に認定", requirement: "サポーター（パープルサークル）として認定される" },
+  { key: "supporter_circle_brown",  emoji: "🟤", name: "Bronze Circle",  category: "出資者", desc: "サポーター（ブロンズサークル）に認定", requirement: "サポーター（ブロンズサークル）として認定される" },
+  { key: "supporter_circle_black",  emoji: "⚫", name: "Obsidian Circle",category: "出資者", desc: "サポーター（ブラックサークル）に認定", requirement: "サポーター（ブラックサークル）として認定される" },
+  { key: "supporter_circle_white",  emoji: "⚪", name: "White Circle",   category: "出資者", desc: "サポーター（ホワイトサークル）に認定", requirement: "サポーター（ホワイトサークル）として認定される" },
+
+  // ============================================================
+  // 🟥🟧🟨🟩🟦🟪🟫⬛⬜◼◻◾◽▪▫ 出資者・サポーター (図形: 四角形 14)
+  // ============================================================
+  { key: "supporter_square_red",        emoji: "🟥", name: "Ruby Square",        category: "出資者", desc: "サポーター（レッドスクエア）に認定", requirement: "サポーター（レッドスクエア）として認定される" },
+  { key: "supporter_square_orange",     emoji: "🟧", name: "Amber Square",       category: "出資者", desc: "サポーター（オレンジスクエア）に認定", requirement: "サポーター（オレンジスクエア）として認定される" },
+  { key: "supporter_square_yellow",     emoji: "🟨", name: "Topaz Square",       category: "出資者", desc: "サポーター（イエロースクエア）に認定", requirement: "サポーター（イエロースクエア）として認定される" },
+  { key: "supporter_square_green",      emoji: "🟩", name: "Emerald Square",     category: "出資者", desc: "サポーター（グリーンスクエア）に認定", requirement: "サポーター（グリーンスクエア）として認定される" },
+  { key: "supporter_square_blue",       emoji: "🟦", name: "Sapphire Square",    category: "出資者", desc: "サポーター（ブルースクエア）に認定", requirement: "サポーター（ブルースクエア）として認定される" },
+  { key: "supporter_square_purple",     emoji: "🟪", name: "Amethyst Square",    category: "出資者", desc: "サポーター（パープルスクエア）に認定", requirement: "サポーター（パープルスクエア）として認定される" },
+  { key: "supporter_square_brown",      emoji: "🟫", name: "Bronze Square",      category: "出資者", desc: "サポーター（ブロンズスクエア）に認定", requirement: "サポーター（ブロンズスクエア）として認定される" },
+  { key: "supporter_square_black_large",emoji: "⬛", name: "Obsidian Square",    category: "出資者", desc: "サポーター（ブラックスクエア）に認定", requirement: "サポーター（ブラックスクエア）として認定される" },
+  { key: "supporter_square_white_large",emoji: "⬜", name: "White Square",       category: "出資者", desc: "サポーター（ホワイトスクエア）に認定", requirement: "サポーター（ホワイトスクエア）として認定される" },
+  { key: "supporter_square_black_medium",emoji: "◼", name: "Onyx Medium Square", category: "出資者", desc: "サポーター（ミディアムブラックスクエア）に認定", requirement: "サポーター（ミディアムブラックスクエア）として認定される" },
+  { key: "supporter_square_white_medium",emoji: "◻", name: "Marble Medium Square",category: "出資者", desc: "サポーター（ミディアムホワイトスクエア）に認定", requirement: "サポーター（ミディアムホワイトスクエア）として認定される" },
+  { key: "supporter_square_black_small", emoji: "▪", name: "Obsidian Small Square",category: "出資者", desc: "サポーター（スモールブラックスクエア）に認定", requirement: "サポーター（スモールブラックスクエア）として認定される" },
+  { key: "supporter_square_white_small", emoji: "▫", name: "White Small Square", category: "出資者", desc: "サポーター（スモールホワイトスクエア）に認定", requirement: "サポーター（スモールホワイトスクエア）として認定される" },
+  { key: "supporter_square_black_med_small", emoji: "◾", name: "Obsidian Medium-Small Square", category: "出資者", desc: "サポーター（ミディアムスモールブラックスクエア）に認定", requirement: "サポーター（ミディアムスモールブラックスクエア）として認定される" },
+  { key: "supporter_square_white_med_small", emoji: "◽", name: "White Medium-Small Square", category: "出資者", desc: "サポーター（ミディアムスモールホワイトスクエア）に認定", requirement: "サポーター（ミディアムスモールホワイトスクエア）として認定される" },
+
+  // ============================================================
+  // 🔶🔷🔸🔹 出資者・サポーター (図形: ダイヤモンド 4)
+  // ============================================================
+  { key: "supporter_diamond_orange_large", emoji: "🔶", name: "Large Orange Diamond", category: "出資者", desc: "サポーター（ラージオレンジダイヤ）に認定", requirement: "サポーター（ラージオレンジダイヤ）として認定される" },
+  { key: "supporter_diamond_blue_large",  emoji: "🔷", name: "Large Blue Diamond",  category: "出資者", desc: "サポーター（ラージブルーダイヤ）に認定", requirement: "サポーター（ラージブルーダイヤ）として認定される" },
+  { key: "supporter_diamond_orange_small", emoji: "🔸", name: "Small Orange Diamond", category: "出資者", desc: "サポーター（スモールオレンジダイヤ）に認定", requirement: "サポーター（スモールオレンジダイヤ）として認定される" },
+  { key: "supporter_diamond_blue_small",  emoji: "🔹", name: "Small Blue Diamond",  category: "出資者", desc: "サポーター（スモールブルーダイヤ）に認定", requirement: "サポーター（スモールブルーダイヤ）として認定される" },
+
+  // ============================================================
+  // 🔺🔻💠🔘🔳🔲 出資者・サポーター (図形: その他 6)
+  // ============================================================
+  { key: "supporter_triangle_red_up",     emoji: "🔺", name: "Red Triangle Up",    category: "出資者", desc: "サポーター（レッドトライアングル）に認定", requirement: "サポーター（レッドトライアングル）として認定される" },
+  { key: "supporter_triangle_red_down",   emoji: "🔻", name: "Red Triangle Down",  category: "出資者", desc: "サポーター（レッド逆トライアングル）に認定", requirement: "サポーター（レッド逆トライアングル）として認定される" },
+  { key: "supporter_diamond_dot",         emoji: "💠", name: "Diamond with Dot",   category: "出資者", desc: "サポーター（ドットダイヤ）に認定", requirement: "サポーター（ドットダイヤ）として認定される" },
+  { key: "supporter_radio_button",        emoji: "🔘", name: "Radio Button",       category: "出資者", desc: "サポーター（ラジオボタン）に認定", requirement: "サポーター（ラジオボタン）として認定される" },
+  { key: "supporter_button_white_square", emoji: "🔳", name: "White Square Button", category: "出資者", desc: "サポーター（ホワイトスクエアボタン）に認定", requirement: "サポーター（ホワイトスクエアボタン）として認定される" },
+  { key: "supporter_button_black_square", emoji: "🔲", name: "Black Square Button", category: "出資者", desc: "サポーター（ブラックスクエアボタン）に認定", requirement: "サポーター（ブラックスクエアボタン）として認定される" },
+
+  // ============================================================
+  // 🍩 紹介システム / フレンド招待 (14)
+  // ============================================================
+  { key: "refer_soft_icecream", emoji: "🍦", name: "Soft Ice Cream", category: "紹介", desc: "紹介システム特典", requirement: "フレンドを1人招待する" },
+  { key: "refer_shaved_ice",    emoji: "🍧", name: "Shaved Ice",     category: "紹介", desc: "紹介システム特典", requirement: "フレンドを2人招待する" },
+  { key: "refer_ice_cream",     emoji: "🍨", name: "Ice Cream",      category: "紹介", desc: "紹介システム特典", requirement: "フレンドを3人招待する" },
+  { key: "refer_doughnut",      emoji: "🍩", name: "Doughnut",       category: "紹介", desc: "紹介システム特典", requirement: "フレンドを4人招待する" },
+  { key: "refer_cookie",        emoji: "🍪", name: "Cookie",         category: "紹介", desc: "紹介システム特典", requirement: "フレンドを5人招待する" },
+  { key: "refer_birthday_cake", emoji: "🎂", name: "Birthday Cake",  category: "紹介", desc: "紹介システム特典", requirement: "フレンドを6人招待する" },
+  { key: "refer_shortcake",     emoji: "🍰", name: "Shortcake",      category: "紹介", desc: "紹介システム特典", requirement: "フレンドを7人招待する" },
+  { key: "refer_cupcake",       emoji: "🧁", name: "Cupcake",        category: "紹介", desc: "紹介システム特典", requirement: "フレンドを8人招待する" },
+  { key: "refer_pie",           emoji: "🥧", name: "Pie",            category: "紹介", desc: "紹介システム特典", requirement: "フレンドを9人招待する" },
+  { key: "refer_chocolate",     emoji: "🍫", name: "Chocolate Bar",  category: "紹介", desc: "紹介システム特典", requirement: "フレンドを10人招待する" },
+  { key: "refer_candy",         emoji: "🍬", name: "Candy",          category: "紹介", desc: "紹介システム特典", requirement: "フレンドを12人招待する" },
+  { key: "refer_lollipop",      emoji: "🍭", name: "Lollipop",       category: "紹介", desc: "紹介システム特典", requirement: "フレンドを15人招待する" },
+  { key: "refer_custard",       emoji: "🍮", name: "Custard",        category: "紹介", desc: "紹介システム特典", requirement: "フレンドを20人招待する" },
+  { key: "refer_honey_pot",     emoji: "🍯", name: "Honey Pot",      category: "紹介", desc: "紹介システム特典", requirement: "フレンドを30人招待する" },
+
+  // ============================================================
+  // 📦 objects.js からの移行組 (コレクション 31)
+  // ============================================================
+  { key: "collection_ring", emoji: "💍", name: "Ring", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_computer_disk", emoji: "💽", name: "Computer Disk", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_floppy_disk", emoji: "💾", name: "Floppy Disk", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_dvd", emoji: "📀", name: "DVD", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_magnifying_left", emoji: "🔍", name: "Magnifying Glass Left", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_magnifying_right", emoji: "🔎", name: "Magnifying Glass Right", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_tearoff_calendar", emoji: "📆", name: "Tear-off Calendar", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_spiral_notepad", emoji: "🗒", name: "Spiral Notepad", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_hammer", emoji: "🔨", name: "Hammer", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_axe", emoji: "🪓", name: "Axe", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_pick", emoji: "⛏", name: "Pick", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_hammer_and_pick", emoji: "⚒", name: "Hammer and Pick", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_hammer_and_wrench", emoji: "🛠", name: "Hammer and Wrench", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_dagger", emoji: "🗡", name: "Dagger", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_bomb", emoji: "💣", name: "Bomb", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_boomerang", emoji: "🪃", name: "Boomerang", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_bow_and_arrow", emoji: "🏹", name: "Bow and Arrow", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_carpentry_saw", emoji: "🪚", name: "Carpentry Saw", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_wrench", emoji: "🔧", name: "Wrench", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_screwdriver", emoji: "🪛", name: "Screwdriver", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_gear", emoji: "⚙", name: "Gear", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_clamp", emoji: "🗜", name: "Clamp", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_key", emoji: "🔑", name: "Key", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_telescope", emoji: "🔭", name: "Telescope", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_satellite_antenna", emoji: "📡", name: "Satellite Antenna", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_coin", emoji: "🪙", name: "Coin", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_money_bag", emoji: "💰", name: "Money Bag", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_yen_banknote", emoji: "💴", name: "Yen Banknote", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_dollar_banknote", emoji: "💵", name: "Dollar Banknote", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_euro_banknote", emoji: "💶", name: "Euro Banknote", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_pound_banknote", emoji: "💷", name: "Pound Banknote", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_money_with_wings", emoji: "💸", name: "Money with Wings", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_credit_card", emoji: "💳", name: "Credit Card", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_receipt", emoji: "🧾", name: "Receipt", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_chart_increasing_yen", emoji: "💹", name: "Chart Increasing with Yen", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_fleur_de_lis", emoji: "⚜", name: "Fleur-de-lis", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_trident_emblem", emoji: "🔱", name: "Trident Emblem", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+
+  // ============================================================
+  // ✈ travels.js からの移行組 (コレクション 5)
+  // ============================================================
+
+  { key: "collection_ringed_planet", emoji: "🪐", name: "Ringed Planet", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_star", emoji: "⭐", name: "Star", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_glowing_star", emoji: "🌟", name: "Glowing Star", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_shooting_star", emoji: "🌠", name: "Shooting Star", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
+  { key: "collection_milky_way", emoji: "🌌", name: "Milky Way", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
 
   // ============================================================
   // 🌸 季節イベント (19)
