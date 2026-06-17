@@ -63,6 +63,7 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         "total_cards_drawn": 0,
         "combat_wins": 0,
         "login_days": 0,
+        "last_login_date": None,    # ★ 最後のログイン日（"YYYY-MM-DD"）
         "season_participated": [],
         "is_supporter": False,
         "supporter_tier": None,
@@ -119,6 +120,28 @@ def add_discovered_species(user_id: str, species_emoji: str):
 def increment_user_stat(user_id: str, stat: str, increment: int = 1):
     user_ref = db.collection("users").document(user_id)
     user_ref.update({stat: firestore.Increment(increment)})
+
+# ★ ログイン日数カウント
+def increment_login_days(user_id: str):
+    """
+    今日が最終ログイン日と異なれば login_days を +1 し、last_login_date を今日に更新する。
+    """
+    from datetime import date
+    today_str = date.today().isoformat()
+
+    user_ref = db.collection("users").document(user_id)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        return
+
+    user_data = user_doc.to_dict()
+    last_login = user_data.get("last_login_date")
+
+    if last_login != today_str:
+        user_ref.update({
+            "login_days": firestore.Increment(1),
+            "last_login_date": today_str
+        })
 
 # ------------------------------------------------------------
 #  直近一緒にプレイしたユーザー

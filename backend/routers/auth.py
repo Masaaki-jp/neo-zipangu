@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from schemas import RegisterRequest, LoginRequest
-from database import create_user, get_user_by_login_id, check_and_grant_limited_icons
+from database import create_user, get_user_by_login_id, check_and_grant_limited_icons, increment_login_days  # ★ increment_login_days を追加
 from core.security import pwd_context, verify_password, create_access_token
 import random
 import string
@@ -29,6 +29,9 @@ def login_user(req: LoginRequest):
         raise HTTPException(status_code=400, detail="INVALID_PASSWORD")
 
     token = create_access_token({"sub": user["user_id"]})
+
+    # ★ ログイン日数をカウント（限定アイコンチェックの前に実行）
+    increment_login_days(user["user_id"])
 
     # ★ 限定アイコンのチェック・付与（ログイン時）
     new_limited = check_and_grant_limited_icons(user["user_id"])
@@ -75,6 +78,9 @@ def guest_login():
 
     user = get_user_by_login_id(login_id)
     token = create_access_token({"sub": user["user_id"]})
+
+    # ★ ログイン日数をカウント（ゲストアカウントでもカウントする）
+    increment_login_days(user["user_id"])
 
     # ★ 限定アイコンのチェック・付与（ゲスト作成直後なのでほぼ空だが、将来拡張のため）
     new_limited = check_and_grant_limited_icons(user["user_id"])
