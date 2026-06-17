@@ -70,6 +70,8 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         "support_points": 0,          # 累計応援ポイント
         "daily_support_count": 0,     # 本日の応援回数
         "last_support_date": None,    # 最後に応援した日（"YYYY-MM-DD"）
+        # ★ 直近一緒にプレイしたユーザー
+        "recent_teammates": [],       # UUIDのリスト（最大5件）
         "created_at": SERVER_TIMESTAMP
     }
     db.collection("users").document(user_id).set(user_data)
@@ -117,6 +119,25 @@ def add_discovered_species(user_id: str, species_emoji: str):
 def increment_user_stat(user_id: str, stat: str, increment: int = 1):
     user_ref = db.collection("users").document(user_id)
     user_ref.update({stat: firestore.Increment(increment)})
+
+# ------------------------------------------------------------
+#  直近一緒にプレイしたユーザー
+# ------------------------------------------------------------
+def add_recent_teammate(user_id: str, teammate_id: str):
+    """
+    直近で一緒にプレイしたプレイヤーを記録する（最大5件、重複除去、先頭に追加）
+    """
+    user_ref = db.collection("users").document(user_id)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        return
+    user_data = user_doc.to_dict()
+    recent = user_data.get("recent_teammates", [])
+    # 重複を除去し、先頭に追加
+    recent = [teammate_id] + [t for t in recent if t != teammate_id]
+    # 最大5件に制限
+    recent = recent[:5]
+    user_ref.update({"recent_teammates": recent})
 
 # ------------------------------------------------------------
 #  応援機能
