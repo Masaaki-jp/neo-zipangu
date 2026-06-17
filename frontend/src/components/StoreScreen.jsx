@@ -1,18 +1,25 @@
 // frontend/src/components/StoreScreen.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BUILDING_ICONS, BOT_ICONS, PROFILE_ICONS } from '../data/iconData';
 
-export default function StoreScreen({ user, onBack, onUserUpdate }) {
-  const [activeTab, setActiveTab] = useState('building');
+export default function StoreScreen({ user, onBack, onUserUpdate, initialTab = 'building' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [profileSubTab, setProfileSubTab] = useState('flags');
   const [message, setMessage] = useState('');
   const [isBuying, setIsBuying] = useState(false);
+
+  // ★ 応援タブ用 state
+  const [supportTargetId, setSupportTargetId] = useState('');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [isSupporting, setIsSupporting] = useState(false);
+  const [dailyRemaining, setDailyRemaining] = useState(0);
+  const [supportPoints, setSupportPoints] = useState(0);
 
   const isBuildingTab = activeTab === 'building';
   const isBotTab = activeTab === 'bot';
   const isProfileTab = activeTab === 'profile';
   const isLimitedTab = activeTab === 'limited';
-  // ★ 動物・自然タブかどうか
+  const isSupportTab = activeTab === 'support';   // ★ 応援タブ
   const isAnimalsTab = isProfileTab && profileSubTab === 'animals';
 
   const freeTokens = user.free_tokens || 0;
@@ -59,6 +66,27 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
     }
   };
 
+  // 応援ステータス取得
+  const fetchSupportStatus = async () => {
+    try {
+      const res = await fetch('/api/support/status', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setDailyRemaining(data.daily_remaining);
+        setSupportPoints(data.support_points);
+      }
+    } catch (err) {
+      console.error('Failed to fetch support status', err);
+    }
+  };
+
+  // タブが support になったとき、または初回マウント時にステータス取得
+  useEffect(() => {
+    if (isSupportTab) {
+      fetchSupportStatus();
+    }
+  }, [isSupportTab]);
+
   const handlePurchase = async (iconItem) => {
     const price = iconItem.price || 30;
     if (freeTokens < price) {
@@ -71,7 +99,6 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
     setMessage('');
     try {
       const iconType = isProfileTab ? 'profile' : activeTab;
-      // ★ プロフィールタブのときはサブカテゴリを送る
       const subcategory = isProfileTab ? profileSubTab : undefined;
       const res = await fetch('/api/store/purchase', {
         method: 'POST',
@@ -118,6 +145,43 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
     }
   };
 
+  // ★ 応援処理
+  const handleSupport = async () => {
+    const targetId = supportTargetId.trim();
+    if (!targetId) {
+      setSupportMessage('応援先のユーザーIDを入力してください。');
+      return;
+    }
+    if (dailyRemaining <= 0) {
+      setSupportMessage('今日の応援回数（3回）を使い切りました。');
+      return;
+    }
+    setIsSupporting(true);
+    setSupportMessage('');
+    try {
+      const res = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ target_user_id: targetId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSupportMessage(data.message || '応援が完了しました！');
+        setDailyRemaining(data.daily_remaining);
+        setSupportPoints(data.support_points);
+        setSupportTargetId('');
+        await refreshUser(); // トークン更新
+      } else {
+        setSupportMessage(data.detail || '応援に失敗しました。');
+      }
+    } catch (err) {
+      setSupportMessage('通信エラーが発生しました。');
+    } finally {
+      setIsSupporting(false);
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {/* ヘッダー */}
@@ -134,6 +198,7 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
           { key: 'bot', label: '🤖 BOTアイコン' },
           { key: 'profile', label: '👤 プロフィール' },
           { key: 'limited', label: '🏆 限定' },
+          { key: 'support', label: '🤝 応援' }  // ★ 応援タブ追加
         ].map(tab => (
           <button
             key={tab.key}
@@ -153,8 +218,62 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
         ))}
       </div>
 
-      {message && (
+      {message && !isSupportTab && (
         <div style={{ color: '#00ffcc', marginBottom: '1rem', fontWeight: 'bold', backgroundColor: '#333', padding: '0.5rem 1rem', borderRadius: '4px' }}>{message}</div>
+      )}
+
+      {/* ★ 応援タブの中身 */}
+      {isSupportTab && (
+        <div style={{ width: '100%', maxWidth: '600px', backgroundColor: '#16213e', padding: '2rem', borderRadius: '8px', marginTop: '1rem' }}>
+          <h2 style={{ color: '#ffaa00', marginBottom: '1.5rem', textAlign: 'center' }}>🤝 プレイヤーを応援</h2>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '2rem', color: '#ccc' }}>
+            <div>今日の残り応援回数: <span style={{ color: dailyRemaining > 0 ? '#00ffcc' : '#ff0055', fontWeight: 'bold', fontSize: '1.2rem' }}>{dailyRemaining}</span> / 3</div>
+            <div>累計応援ポイント: <span style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '1.2rem' }}>{supportPoints}</span></div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+            <input
+              type="text"
+              placeholder="応援する相手のユーザーID"
+              value={supportTargetId}
+              onChange={(e) => setSupportTargetId(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                borderRadius: '4px',
+                border: '1px solid #555',
+                backgroundColor: '#0a0a1a',
+                color: 'white',
+                fontSize: '0.9rem'
+              }}
+            />
+            <button
+              onClick={handleSupport}
+              disabled={isSupporting || dailyRemaining <= 0}
+              style={{
+                padding: '0.75rem 1.5rem',
+                backgroundColor: isSupporting || dailyRemaining <= 0 ? '#555' : '#ffaa00',
+                color: 'black',
+                border: 'none',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+                cursor: isSupporting || dailyRemaining <= 0 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isSupporting ? '送信中...' : '応援する'}
+            </button>
+          </div>
+
+          {supportMessage && (
+            <div style={{ color: '#00ffcc', fontWeight: 'bold', textAlign: 'center', marginTop: '1rem' }}>{supportMessage}</div>
+          )}
+
+          <div style={{ marginTop: '2rem', color: '#888', fontSize: '0.85rem', textAlign: 'center', lineHeight: '1.6' }}>
+            応援すると、あなたと相手の両方に <span style={{ color: '#ffcc00' }}>+1 トークン</span> が付与されます。<br />
+            1日に3回まで応援できます。応援ポイントが貯まると限定アイコンが解放されます。
+          </div>
+        </div>
       )}
 
       {/* プロフィールタブの場合のみサブカテゴリ切替 */}
@@ -228,7 +347,7 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
       )}
 
       {/* 通常タブの所持アイコン一覧（装備選択） */}
-      {!isLimitedTab && (
+      {!isLimitedTab && !isSupportTab && (
         <div style={{ width: '100%', maxWidth: '800px', marginBottom: '2rem' }}>
           <h2 style={{ color: '#aaa', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>所持アイコン</h2>
           {displayedOwnedIcons.length === 0 ? (
@@ -271,12 +390,11 @@ export default function StoreScreen({ user, onBack, onUserUpdate }) {
         </div>
       )}
 
-      {/* ショップ（限定タブ以外 & 動物・自然タブ以外） */}
-      {!isLimitedTab && !isAnimalsTab && (
+      {/* ショップ（限定タブ以外 & 動物・自然タブ以外 & 応援タブ以外） */}
+      {!isLimitedTab && !isAnimalsTab && !isSupportTab && (
         <div style={{ width: '100%', maxWidth: '800px' }}>
           <h2 style={{ color: '#aaa', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>ショップ</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
-            {/* ★ hidden フラグが true のアイコンはショップに表示しない */}
             {currentIcons.filter(item => !item.hidden).map((item) => {
               const isOwned = ownedIcons.includes(item.emoji);
               const price = item.price || 30;

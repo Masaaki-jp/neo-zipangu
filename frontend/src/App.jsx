@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応 + 生物図鑑対応 + ログアウト対応 + FAQ対応 + ログイン画面FAQリンク）
+// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応 + 生物図鑑対応 + ログアウト対応 + FAQ対応 + ログイン画面FAQリンク + 応援機能対応）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -630,8 +630,8 @@ function App() {
     );
   }
 
-  // ★ ストア画面
-  if (selectedMode === 'STORE') {
+  // ★ ストア画面（SUPPORTモードの場合はinitialTab="support"を渡す）
+  if (selectedMode === 'STORE' || selectedMode === 'SUPPORT') {
     const handleStoreUserUpdate = (updatedFields) => {
       if (updatedFields.user_id) {
         setLoggedInUser(updatedFields);
@@ -644,6 +644,7 @@ function App() {
         user={loggedInUser}
         onBack={() => setSelectedMode(null)}
         onUserUpdate={handleStoreUserUpdate}
+        initialTab={selectedMode === 'SUPPORT' ? 'support' : 'building'}
       />
     );
   }

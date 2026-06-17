@@ -107,6 +107,7 @@ from routers.solo import router as solo_router
 from routers.rooms import router as rooms_router
 from routers.ranked import router as ranked_router, start_matchmaking_background
 from routers.store import router as store_router  # ★ 追加：トークンストア
+from routers.support import router as support_router  # ★ 追加：応援機能
 
 app.include_router(auth_router)
 app.include_router(game_router)
@@ -114,6 +115,7 @@ app.include_router(solo_router)
 app.include_router(rooms_router)
 app.include_router(ranked_router)
 app.include_router(store_router)  # ★ 追加
+app.include_router(support_router)  # ★ 追加
 
 # マッチメイキングのバックグラウンドスレッドを起動
 start_matchmaking_background()
