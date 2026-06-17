@@ -11,9 +11,10 @@ import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
 import RankedMatchmakingScreen from './components/RankedMatchmakingScreen';
 import StoreScreen from './components/StoreScreen';
-import SupportScreen from './components/SupportScreen'; // ★ 追加
+import SupportScreen from './components/SupportScreen';
 import WatchBook from './components/WatchBook';
 import HelpScreen from './components/HelpScreen';
+import GuideScreen from './components/GuideScreen'; // ★ 追加
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -671,6 +672,11 @@ function App() {
   // ★ 生物図鑑画面
   if (selectedMode === 'WATCHBOOK') {
     return <WatchBook user={loggedInUser} onBack={() => setSelectedMode(null)} />;
+  }
+
+  // ★ ルール解説画面
+  if (selectedMode === 'GUIDE') {
+    return <GuideScreen onBack={() => setSelectedMode(null)} />;
   }
 
   // ★ ランクマッチ待機画面（accessToken は不要）

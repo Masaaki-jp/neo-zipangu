@@ -155,6 +155,17 @@ export default function ModeSelectionScreen({ user, onSelectMode, onLogout }) {
           <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>友達を応援してトークンを獲得</div>
         </button>
 
+        {/* ⑦ ルール解説 */}
+        <button 
+          onClick={() => onSelectMode('GUIDE')}
+          style={{ padding: '1.5rem', backgroundColor: '#0f3460', color: 'white', border: '2px solid #00bcd4', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.3s', boxShadow: '0 4px 6px rgba(0,188,212,0.2)' }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#1a4b8c'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#0f3460'}
+        >
+          📖 ルール解説
+          <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>ゲームの遊び方やコツを学ぶ</div>
+        </button>
+
       </div>
     </div>
   );
