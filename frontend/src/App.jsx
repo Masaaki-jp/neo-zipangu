@@ -11,6 +11,7 @@ import LobbyScreen from './components/LobbyScreen';
 import WaitingRoom from './components/WaitingRoom';
 import RankedMatchmakingScreen from './components/RankedMatchmakingScreen';
 import StoreScreen from './components/StoreScreen';
+import SupportScreen from './components/SupportScreen'; // ★ 追加
 import WatchBook from './components/WatchBook';
 import HelpScreen from './components/HelpScreen';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -630,8 +631,8 @@ function App() {
     );
   }
 
-  // ★ ストア画面（SUPPORTモードの場合はinitialTab="support"を渡す）
-  if (selectedMode === 'STORE' || selectedMode === 'SUPPORT') {
+  // ★ ストア画面
+  if (selectedMode === 'STORE') {
     const handleStoreUserUpdate = (updatedFields) => {
       if (updatedFields.user_id) {
         setLoggedInUser(updatedFields);
@@ -644,7 +645,25 @@ function App() {
         user={loggedInUser}
         onBack={() => setSelectedMode(null)}
         onUserUpdate={handleStoreUserUpdate}
-        initialTab={selectedMode === 'SUPPORT' ? 'support' : 'building'}
+        initialTab="building"
+      />
+    );
+  }
+
+  // ★ 応援画面（独立ページ）
+  if (selectedMode === 'SUPPORT') {
+    const handleSupportUserUpdate = (updatedFields) => {
+      if (updatedFields.user_id) {
+        setLoggedInUser(updatedFields);
+      } else {
+        setLoggedInUser(prev => ({ ...prev, ...updatedFields }));
+      }
+    };
+    return (
+      <SupportScreen
+        user={loggedInUser}
+        onBack={() => setSelectedMode(null)}
+        onUserUpdate={handleSupportUserUpdate}
       />
     );
   }

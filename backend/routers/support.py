@@ -64,3 +64,23 @@ def get_support_status(current_user: dict = Depends(get_current_user)):
     user_id = current_user["user_id"]
     status = database.get_support_status(user_id)
     return status
+
+
+@router.get("/api/support/recent")
+def get_recent_teammates(current_user: dict = Depends(get_current_user)):
+    """
+    直近で一緒にプレイしたプレイヤー一覧を取得する。
+    """
+    user_id = current_user["user_id"]
+    user_doc = database.db.collection("users").document(user_id).get()
+    if not user_doc.exists:
+        return {"teammates": []}
+    user_data = user_doc.to_dict()
+    recent = user_data.get("recent_teammates", [])
+    # UUID から login_id に変換して返す
+    teammates = []
+    for uid in recent:
+        u = database.get_user_by_id(uid)
+        if u:
+            teammates.append({"user_id": uid, "login_id": u.get("login_id", uid)})
+    return {"teammates": teammates}

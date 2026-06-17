@@ -368,6 +368,17 @@ class GameSession:
             self.game_status["reason"] = f"ANNIHILATION: {loser} の全拠点が陥落し、倒産しました！"
             if self.is_ranked:
                 self.apply_rank_rewards()
+            else:
+                # ★ カジュアル戦でも直近のプレイヤーを記録
+                self._record_recent_teammates()
+
+    def _record_recent_teammates(self):
+        """同じ部屋の人間プレイヤー同士を recent_teammates に記録する"""
+        human_uids = [j["user_id"] for j in self.joined_players if not j["user_id"].startswith("cpu_")]
+        for uid in human_uids:
+            for other_uid in human_uids:
+                if uid != other_uid:
+                    database.add_recent_teammate(uid, other_uid)
 
     # 🥷 追加2：ボットの移動と戦闘
     def execute_move_bot(self, player_id: str, from_vertex: str, to_vertex: str):
@@ -523,6 +534,9 @@ class GameSession:
                 self.game_status["target_score"] = target_score
                 if self.is_ranked:
                     self.apply_rank_rewards()
+                else:
+                    # ★ カジュアル戦でも直近のプレイヤーを記録
+                    self._record_recent_teammates()
             else:
                 next_idx = (self.game_status["current_turn_index"] + 1) % 4
                 self.game_status["current_turn_index"] = next_idx
@@ -591,6 +605,9 @@ class GameSession:
             database.update_user_after_match(uid, delta, token_reward)
             # ★ 限定アイコン解放チェック
             database.check_and_grant_limited_icons(uid)
+
+        # ★ 同じ部屋の人間プレイヤー同士を recent_teammates に記録
+        self._record_recent_teammates()
 
         self.rank_deltas = deltas
         print(f"[RANK] Final rank_deltas: {self.rank_deltas}")
@@ -740,6 +757,9 @@ class GameSession:
             self.game_status["target_score"] = target_score
             if self.is_ranked:
                 self.apply_rank_rewards()
+            else:
+                # ★ カジュアル戦でも直近のプレイヤーを記録
+                self._record_recent_teammates()
         if self.game_status["state"] == "playing" and self.game_status.get("current_turn_index") == 0:
             import random
             self.game_status["season_event"] = {
