@@ -50,10 +50,10 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         "free_tokens": 0,
         "paid_tokens": 0,
         "discovered_species": [],
-        "owned_profile_icons": [],       # ★ プロフィールアイコン
-        "owned_building_icons": [],      # 拠点アイコン（Store用）
-        "owned_bot_icons": [],           # BOTアイコン（Store用）
-        "limited_icons": [],             # ★ 限定アイコン
+        "owned_profile_icons": [],
+        "owned_building_icons": [],
+        "owned_bot_icons": [],
+        "limited_icons": [],
         "equipped_profile_icon": None,
         "equipped_building_icon": None,
         "equipped_bot_icon": None,
@@ -66,6 +66,10 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         "season_participated": [],
         "is_supporter": False,
         "supporter_tier": None,
+        # ★ 応援関連
+        "support_points": 0,          # 累計応援ポイント
+        "daily_support_count": 0,     # 本日の応援回数
+        "last_support_date": None,    # 最後に応援した日（"YYYY-MM-DD"）
         "created_at": SERVER_TIMESTAMP
     }
     db.collection("users").document(user_id).set(user_data)
@@ -115,6 +119,96 @@ def increment_user_stat(user_id: str, stat: str, increment: int = 1):
     user_ref.update({stat: firestore.Increment(increment)})
 
 # ------------------------------------------------------------
+#  応援機能
+# ------------------------------------------------------------
+def support_player(supporter_id: str, target_id: str) -> dict:
+    """
+    応援を実行する。
+    1日3回までの制限、双方に +1 トークン、応援された側に +1 ポイント。
+    戻り値: {"status": "success"} または {"status": "error", "reason": "..."}
+    """
+    from datetime import date
+    today_str = date.today().isoformat()
+
+    # 自分自身は応援できない
+    if supporter_id == target_id:
+        return {"status": "error", "reason": "CANNOT_SUPPORT_SELF"}
+
+    supporter_ref = db.collection("users").document(supporter_id)
+    target_ref = db.collection("users").document(target_id)
+
+    # トランザクションで一貫性を保つ
+    transaction = db.transaction()
+
+    @firestore.transactional
+    def run_support(transaction):
+        supporter_doc = supporter_ref.get(transaction=transaction)
+        target_doc = target_ref.get(transaction=transaction)
+
+        if not supporter_doc.exists:
+            return {"status": "error", "reason": "SUPPORTER_NOT_FOUND"}
+        if not target_doc.exists:
+            return {"status": "error", "reason": "TARGET_NOT_FOUND"}
+
+        supporter_data = supporter_doc.to_dict()
+        last_date = supporter_data.get("last_support_date")
+        daily_count = supporter_data.get("daily_support_count", 0)
+
+        # 日付が変わっていればカウントをリセット
+        if last_date != today_str:
+            daily_count = 0
+
+        if daily_count >= 3:
+            return {"status": "error", "reason": "DAILY_LIMIT_REACHED"}
+
+        # トークン付与（双方に +1）
+        transaction.update(supporter_ref, {
+            "free_tokens": firestore.Increment(1),
+            "daily_support_count": daily_count + 1,
+            "last_support_date": today_str
+        })
+        transaction.update(target_ref, {
+            "free_tokens": firestore.Increment(1),
+            "support_points": firestore.Increment(1)
+        })
+        return {"status": "success"}
+
+    try:
+        result = run_support(transaction)
+        if result["status"] == "success":
+            # 応援した側・された側双方の限定アイコンをチェック
+            check_and_grant_limited_icons(supporter_id)
+            check_and_grant_limited_icons(target_id)
+        return result
+    except Exception as e:
+        print(f"[SUPPORT] トランザクション失敗: {e}")
+        return {"status": "error", "reason": "TRANSACTION_FAILED"}
+
+def get_support_status(user_id: str) -> dict:
+    """
+    今日の残り応援回数と累計応援ポイントを返す
+    """
+    from datetime import date
+    today_str = date.today().isoformat()
+
+    user_doc = db.collection("users").document(user_id).get()
+    if not user_doc.exists:
+        return {"daily_remaining": 0, "support_points": 0}
+
+    user_data = user_doc.to_dict()
+    last_date = user_data.get("last_support_date")
+    daily_count = user_data.get("daily_support_count", 0)
+
+    if last_date != today_str:
+        daily_count = 0
+
+    remaining = max(0, 3 - daily_count)
+    return {
+        "daily_remaining": remaining,
+        "support_points": user_data.get("support_points", 0)
+    }
+
+# ------------------------------------------------------------
 #  限定アイコン付与
 # ------------------------------------------------------------
 def check_and_grant_limited_icons(user_id: str):
@@ -136,8 +230,8 @@ def check_and_grant_limited_icons(user_id: str):
     owned_b = len(user_data.get("owned_building_icons", []))
     owned_bot = len(user_data.get("owned_bot_icons", []))
     owned_p = len(user_data.get("owned_profile_icons", []))
+    support_points = user_data.get("support_points", 0)
 
-    # 限定アイコン定義（キーと判定関数）
     limited_defs = [
         # ---- ランク ----
         ("rank_iron",        lambda u: 0 <= u.get("rank_points", 0) < 1000),
@@ -194,7 +288,7 @@ def check_and_grant_limited_icons(user_id: str):
         ("icon_50",  lambda u: (owned_b + owned_bot + owned_p) / total_icons >= 0.50 if total_icons else False),
         ("icon_75",  lambda u: (owned_b + owned_bot + owned_p) / total_icons >= 0.75 if total_icons else False),
         ("icon_100", lambda u: (owned_b + owned_bot + owned_p) >= total_icons if total_icons else False),
-        # ---- 出資者 ----
+        # ---- 出資者（手動設定） ----
         ("supporter_red",    lambda u: u.get("supporter_tier") == "red"),
         ("supporter_orange", lambda u: u.get("supporter_tier") == "orange"),
         ("supporter_yellow", lambda u: u.get("supporter_tier") == "yellow"),
@@ -203,6 +297,16 @@ def check_and_grant_limited_icons(user_id: str):
         ("supporter_purple", lambda u: u.get("supporter_tier") == "purple"),
         ("supporter_white",  lambda u: u.get("supporter_tier") == "white"),
         ("supporter_black",  lambda u: u.get("supporter_tier") == "black"),
+        # ---- 応援ポイントによる自動サポーター認定 ----
+        ("supporter_circle_red",    lambda u: support_points >= 5),
+        ("supporter_circle_orange", lambda u: support_points >= 10),
+        ("supporter_circle_yellow", lambda u: support_points >= 15),
+        ("supporter_circle_green",  lambda u: support_points >= 20),
+        ("supporter_circle_blue",   lambda u: support_points >= 30),
+        ("supporter_circle_purple", lambda u: support_points >= 40),
+        ("supporter_circle_brown",  lambda u: support_points >= 50),
+        ("supporter_circle_black",  lambda u: support_points >= 70),
+        ("supporter_circle_white",  lambda u: support_points >= 100),
     ]
 
     new_icons = []
