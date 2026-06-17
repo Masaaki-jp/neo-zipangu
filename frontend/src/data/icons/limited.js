@@ -67,7 +67,6 @@ export const LIMITED_ICONS = [
   { key: "combat_25",  emoji: "⚡",  name: "Berserker",     category: "戦闘", desc: "通算25回の戦闘勝利",  requirement: "通算25回戦闘に勝利する" },
   { key: "combat_50",  emoji: "💀",  name: "Executioner",   category: "戦闘", desc: "通算50回の戦闘勝利",  requirement: "通算50回戦闘に勝利する" },
   { key: "combat_100", emoji: "👹",  name: "Demon General", category: "戦闘", desc: "通算100回の戦闘勝利", requirement: "通算100回戦闘に勝利する" },
-  // ★ 追加：戦闘英雄
   { key: "combat_hero", emoji: "🎖️", name: "Combat Hero", category: "戦闘", desc: "戦闘でMVP評価を受ける", requirement: "1試合で3回以上戦闘勝利する" },
 
   // ============================================================
@@ -89,19 +88,23 @@ export const LIMITED_ICONS = [
   { key: "icon_100", emoji: "🌈", name: "Collector 100%", category: "アイコン所持", desc: "全アイコンを完全所持", requirement: "利用可能な全アイコンを100%所持する" },
 
   // ============================================================
-  // 💎 出資者 / サポーター (8)
+  // 💖 出資者 / サポーター (12) ← ハートアイコンに変更
   // ============================================================
-  { key: "supporter_red",    emoji: "🔴", name: "Ruby Supporter",    category: "出資者", desc: "サポーター（レッド）に認定",    requirement: "サポーター（レッド）として認定される" },
-  { key: "supporter_orange", emoji: "🟠", name: "Amber Supporter",   category: "出資者", desc: "サポーター（オレンジ）に認定",  requirement: "サポーター（オレンジ）として認定される" },
-  { key: "supporter_yellow", emoji: "🟡", name: "Topaz Supporter",   category: "出資者", desc: "サポーター（イエロー）に認定",  requirement: "サポーター（イエロー）として認定される" },
-  { key: "supporter_green",  emoji: "🟢", name: "Emerald Supporter", category: "出資者", desc: "サポーター（グリーン）に認定",  requirement: "サポーター（グリーン）として認定される" },
-  { key: "supporter_blue",   emoji: "🔵", name: "Sapphire Supporter",category: "出資者", desc: "サポーター（ブルー）に認定",   requirement: "サポーター（ブルー）として認定される" },
-  { key: "supporter_purple", emoji: "🟣", name: "Amethyst Supporter",category: "出資者", desc: "サポーター（パープル）に認定",  requirement: "サポーター（パープル）として認定される" },
-  { key: "supporter_white",  emoji: "⚪", name: "Diamond Supporter", category: "出資者", desc: "サポーター（ホワイト）に認定",  requirement: "サポーター（ホワイト）として認定される" },
-  { key: "supporter_black",  emoji: "⚫", name: "Obsidian Supporter",category: "出資者", desc: "サポーター（ブラック）に認定",  requirement: "サポーター（ブラック）として認定される" },
+  { key: "supporter_red",         emoji: "❤️", name: "Ruby Supporter",        category: "出資者", desc: "サポーター（レッド）に認定",    requirement: "サポーター（レッド）として認定される" },
+  { key: "supporter_pink",        emoji: "🩷", name: "Pink Diamond Supporter", category: "出資者", desc: "サポーター（ピンク）に認定",   requirement: "サポーター（ピンク）として認定される" },
+  { key: "supporter_orange",      emoji: "🧡", name: "Amber Supporter",        category: "出資者", desc: "サポーター（オレンジ）に認定",  requirement: "サポーター（オレンジ）として認定される" },
+  { key: "supporter_yellow",      emoji: "💛", name: "Topaz Supporter",        category: "出資者", desc: "サポーター（イエロー）に認定",  requirement: "サポーター（イエロー）として認定される" },
+  { key: "supporter_green",       emoji: "💚", name: "Emerald Supporter",      category: "出資者", desc: "サポーター（グリーン）に認定",  requirement: "サポーター（グリーン）として認定される" },
+  { key: "supporter_blue",        emoji: "💙", name: "Sapphire Supporter",     category: "出資者", desc: "サポーター（ブルー）に認定",   requirement: "サポーター（ブルー）として認定される" },
+  { key: "supporter_lightblue",   emoji: "🩵", name: "Aquamarine Supporter",   category: "出資者", desc: "サポーター（ライトブルー）に認定", requirement: "サポーター（ライトブルー）として認定される" },
+  { key: "supporter_purple",      emoji: "💜", name: "Amethyst Supporter",     category: "出資者", desc: "サポーター（パープル）に認定",  requirement: "サポーター（パープル）として認定される" },
+  { key: "supporter_brown",       emoji: "🤎", name: "Smoky Quartz Supporter", category: "出資者", desc: "サポーター（ブラウン）に認定",  requirement: "サポーター（ブラウン）として認定される" },
+  { key: "supporter_black",       emoji: "🖤", name: "Obsidian Supporter",     category: "出資者", desc: "サポーター（ブラック）に認定",  requirement: "サポーター（ブラック）として認定される" },
+  { key: "supporter_grey",        emoji: "🩶", name: "Moonstone Supporter",    category: "出資者", desc: "サポーター（グレー）に認定",   requirement: "サポーター（グレー）として認定される" },
+  { key: "supporter_white",       emoji: "🤍", name: "Diamond Supporter",     category: "出資者", desc: "サポーター（ホワイト）に認定",  requirement: "サポーター（ホワイト）として認定される" },
 
   // ============================================================
-  // 🌸 季節イベント (19) ← 15から増加
+  // 🌸 季節イベント (19)
   // ============================================================
   { key: "season_newyear",    emoji: "🎍", name: "New Year's Dawn",       category: "季節", desc: "正月イベント参加",           requirement: "該当シーズンイベントに参加する" },
   { key: "season_setsubun",   emoji: "👹", name: "Oni Out, Fortune In",   category: "季節", desc: "節分イベント参加",           requirement: "該当シーズンイベントに参加する" },
@@ -138,7 +141,7 @@ export const LIMITED_ICONS = [
   { key: "rare_dragonfly",      emoji: "🦋", name: "Emperor Dragonfly", category: "珍種", desc: "特別な発見: オニヤンマ",      requirement: "特定の条件で発見する" },
 
   // ============================================================
-  // 🎖️ 人気実績 / スペシャル (20) ← 15から増加
+  // 🎖️ 人気実績 / スペシャル (20)
   // ============================================================
   { key: "popular_first_win",     emoji: "🏅", name: "First Victory",     category: "実績", desc: "初勝利",                     requirement: "初めて試合に勝利する" },
   { key: "popular_10_wins",       emoji: "🏆", name: "Ten Victories",     category: "実績", desc: "通算10勝",                    requirement: "通算10勝する" },
@@ -155,7 +158,6 @@ export const LIMITED_ICONS = [
   { key: "popular_explorer",      emoji: "🗺️", name: "Explorer",          category: "実績", desc: "DARKセクターを5回開拓",      requirement: "DARKセクターを5回開拓する" },
   { key: "popular_card_master",   emoji: "🀄", name: "Card Master",       category: "実績", desc: "全種類のカードを同時に所持", requirement: "全8種類のカードを同時に所持する" },
   { key: "popular_annihilator",   emoji: "💀", name: "Annihilator",       category: "実績", desc: "敵の全拠点を破壊して勝利",   requirement: "敵の全拠点を破壊して勝利する" },
-  // ★ 追加：新実績
   { key: "popular_sparkle",       emoji: "✨", name: "Sparkle",           category: "実績", desc: "ゾロ目を3回連続で出す",     requirement: "ゾロ目を3回連続で出す" },
   { key: "popular_surprise",      emoji: "🎁", name: "Surprise Gift",     category: "実績", desc: "WATCHカードからレア生物を引く", requirement: "WATCHカードからスコア8以上の生物を引く" },
   { key: "popular_celebrate",     emoji: "🎉", name: "Celebration",       category: "実績", desc: "1試合で50スコア以上を獲得",  requirement: "1試合で50スコア以上を獲得する" },
