@@ -66,22 +66,6 @@ export const FOOD_ICONS = [
   { emoji: "🥠", name: "fortune cookie" },
   { emoji: "🥡", name: "takeout box" },
 
-  // デザート・菓子
-  { emoji: "🍦", name: "soft ice cream" },
-  { emoji: "🍧", name: "shaved ice" },
-  { emoji: "🍨", name: "ice cream" },
-  { emoji: "🍩", name: "doughnut" },
-  { emoji: "🍪", name: "cookie" },
-  { emoji: "🎂", name: "birthday cake" },
-  { emoji: "🍰", name: "shortcake" },
-  { emoji: "🧁", name: "cupcake" },
-  { emoji: "🥧", name: "pie" },
-  { emoji: "🍫", name: "chocolate bar" },
-  { emoji: "🍬", name: "candy" },
-  { emoji: "🍭", name: "lollipop" },
-  { emoji: "🍮", name: "custard" },
-  { emoji: "🍯", name: "honey pot" },
-
   // 飲み物
   { emoji: "🍼", name: "baby bottle" },
   { emoji: "🥛", name: "glass of milk" },
