@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from schemas import RegisterRequest, LoginRequest
-from database import create_user, get_user_by_login_id, check_and_grant_limited_icons, increment_login_days  # ★ increment_login_days を追加
+from database import create_user, get_user_by_login_id, check_and_grant_limited_icons, increment_login_days, process_referral  # ★ process_referral を追加
 from core.security import pwd_context, verify_password, create_access_token
 import random
 import string
@@ -17,7 +17,18 @@ def register_user(req: RegisterRequest):
     result = create_user(req.login_id, hashed_pw, req.display_name)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
-    return {"status": "success", "user_id": result["user_id"]}
+
+    # ★ 招待コードが指定されていれば処理
+    referral_msg = None
+    if req.referral_code:
+        ref_result = process_referral(req.referral_code)
+        if ref_result.get("status") == "success":
+            referral_msg = f"{ref_result['referrer_display_name']} さんのお友達ですね！👫"
+
+    response_data = {"status": "success", "user_id": result["user_id"]}
+    if referral_msg:
+        response_data["referral_message"] = referral_msg
+    return response_data
 
 
 @router.post("/api/login")
@@ -53,6 +64,7 @@ def login_user(req: LoginRequest):
         "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
         "limited_icons": user.get("limited_icons", []),  # ★ 追加
+        "referral_code": user.get("referral_code"),      # ★ 自分の招待コードを返す
     })
     response.set_cookie(
         key="access_token",
@@ -104,6 +116,7 @@ def guest_login():
         "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
         "limited_icons": user.get("limited_icons", []),  # ★ 追加
+        "referral_code": user.get("referral_code"),      # ★ 自分の招待コードを返す
     })
     response.set_cookie(
         key="access_token",

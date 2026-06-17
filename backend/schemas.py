@@ -56,6 +56,7 @@ class RegisterRequest(BaseModel):
     login_id: str
     password: str
     display_name: str
+    referral_code: Optional[str] = None  # ★ 紹介コード（任意）
 
 
 class LoginRequest(BaseModel):

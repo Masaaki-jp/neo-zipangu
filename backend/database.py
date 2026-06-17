@@ -4,6 +4,8 @@ import os
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP, ArrayUnion
+import random
+import string
 
 # Firestore クライアントを初期化（既に main.py で初期化済みなら再初期化されない）
 if not firebase_admin._apps:
@@ -42,6 +44,9 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         return {"error": "LOGIN_ID_ALREADY_EXISTS"}
 
     user_id = str(uuid.uuid4())
+    # ★ 自分の招待コードを生成
+    my_referral_code = generate_referral_code()
+
     user_data = {
         "login_id": login_id,
         "password_hash": password_hash,
@@ -71,6 +76,9 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         "support_points": 0,          # 累計応援ポイント
         "daily_support_count": 0,     # 本日の応援回数
         "last_support_date": None,    # 最後に応援した日（"YYYY-MM-DD"）
+        # ★ 紹介関連
+        "referral_code": my_referral_code,  # 自分の紹介コード
+        "referral_count": 0,          # 紹介した人数
         # ★ 直近一緒にプレイしたユーザー
         "recent_teammates": [],       # UUIDのリスト（最大5件）
         "created_at": SERVER_TIMESTAMP
@@ -100,6 +108,52 @@ def update_user_after_match(user_id: str, rank_diff: int, token_reward: int):
         "rank_points": firestore.Increment(rank_diff),
         "free_tokens": firestore.Increment(token_reward)
     })
+
+# ------------------------------------------------------------
+#  紹介システム
+# ------------------------------------------------------------
+def generate_referral_code():
+    """8桁のランダムな英数字を招待コードとして生成する"""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+def get_user_by_referral_code(code: str):
+    """招待コードでユーザーを検索する"""
+    docs = db.collection("users").where("referral_code", "==", code).limit(1).stream()
+    for doc in docs:
+        user = doc.to_dict()
+        user["user_id"] = doc.id
+        return user
+    return None
+
+def process_referral(referrer_code: str):
+    """
+    紹介コードで紹介者を特定し、紹介カウントを+1、紹介者に+10トークン付与。
+    戻り値: 成功なら {"status": "success", "referrer_display_name": "..."}、失敗なら {"status": "error", "reason": "..."}
+    """
+    if not referrer_code:
+        return {"status": "error", "reason": "NO_CODE"}
+
+    # 紹介コードでユーザーを検索
+    referrer = get_user_by_referral_code(referrer_code)
+    if not referrer:
+        return {"status": "error", "reason": "INVALID_CODE"}
+
+    referrer_id = referrer["user_id"]
+    referrer_ref = db.collection("users").document(referrer_id)
+
+    # 紹介カウント+1、紹介者に+10トークン
+    referrer_ref.update({
+        "referral_count": firestore.Increment(1),
+        "free_tokens": firestore.Increment(10)
+    })
+
+    # 紹介者の限定アイコンをチェック
+    check_and_grant_limited_icons(referrer_id)
+
+    return {
+        "status": "success",
+        "referrer_display_name": referrer.get("display_name", "unknown")
+    }
 
 # ------------------------------------------------------------
 #  発見生物・アイコン連動
@@ -275,6 +329,7 @@ def check_and_grant_limited_icons(user_id: str):
     owned_bot = len(user_data.get("owned_bot_icons", []))
     owned_p = len(user_data.get("owned_profile_icons", []))
     support_points = user_data.get("support_points", 0)
+    referral_count = user_data.get("referral_count", 0)
 
     limited_defs = [
         # ---- ランク ----
@@ -351,6 +406,21 @@ def check_and_grant_limited_icons(user_id: str):
         ("supporter_circle_brown",  lambda u: support_points >= 50),
         ("supporter_circle_black",  lambda u: support_points >= 70),
         ("supporter_circle_white",  lambda u: support_points >= 100),
+        # ---- 紹介システム ----
+        ("refer_soft_icecream", lambda u: referral_count >= 1),
+        ("refer_shaved_ice",    lambda u: referral_count >= 2),
+        ("refer_ice_cream",     lambda u: referral_count >= 3),
+        ("refer_doughnut",      lambda u: referral_count >= 4),
+        ("refer_cookie",        lambda u: referral_count >= 5),
+        ("refer_birthday_cake", lambda u: referral_count >= 6),
+        ("refer_shortcake",     lambda u: referral_count >= 7),
+        ("refer_cupcake",       lambda u: referral_count >= 8),
+        ("refer_pie",           lambda u: referral_count >= 9),
+        ("refer_chocolate",     lambda u: referral_count >= 10),
+        ("refer_candy",         lambda u: referral_count >= 12),
+        ("refer_lollipop",      lambda u: referral_count >= 15),
+        ("refer_custard",       lambda u: referral_count >= 20),
+        ("refer_honey_pot",     lambda u: referral_count >= 30),
     ]
 
     new_icons = []
