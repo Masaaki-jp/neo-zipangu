@@ -7,6 +7,7 @@ export default function LoginScreen({ onLoginSuccess, onSelectHelp }) {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [referralCode, setReferralCode] = useState('');  // ★ 紹介コード用 state
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -35,7 +36,7 @@ export default function LoginScreen({ onLoginSuccess, onSelectHelp }) {
 
     const endpoint = isRegisterMode ? '/api/register' : '/api/login';
     const payload = isRegisterMode 
-      ? { login_id: loginId, password: password, display_name: displayName }
+      ? { login_id: loginId, password: password, display_name: displayName, referral_code: referralCode }
       : { login_id: loginId, password: password };
 
     try {
@@ -53,9 +54,13 @@ export default function LoginScreen({ onLoginSuccess, onSelectHelp }) {
       }
 
       if (isRegisterMode) {
-        setSuccessMsg('アカウント登録が完了しました！そのままログインしてください。');
+        const msg = data.referral_message 
+          ? `アカウント登録が完了しました！${data.referral_message} そのままログインしてください。`
+          : 'アカウント登録が完了しました！そのままログインしてください。';
+        setSuccessMsg(msg);
         setIsRegisterMode(false);
         setPassword('');
+        setReferralCode('');
       } else {
         localStorage.setItem('nz_login_id', loginId);
         localStorage.setItem('nz_password', password);
@@ -120,11 +125,19 @@ export default function LoginScreen({ onLoginSuccess, onSelectHelp }) {
             style={{ padding: '0.75rem', borderRadius: '4px', border: 'none', backgroundColor: '#0f3460', color: 'white' }}
           />
           {isRegisterMode && (
-            <input 
-              type="text" placeholder="プレイヤー名（表示名）" value={displayName} 
-              onChange={(e) => setDisplayName(e.target.value)} required 
-              style={{ padding: '0.75rem', borderRadius: '4px', border: 'none', backgroundColor: '#0f3460', color: 'white' }}
-            />
+            <>
+              <input 
+                type="text" placeholder="プレイヤー名（表示名）" value={displayName} 
+                onChange={(e) => setDisplayName(e.target.value)} required 
+                style={{ padding: '0.75rem', borderRadius: '4px', border: 'none', backgroundColor: '#0f3460', color: 'white' }}
+              />
+              {/* ★ 紹介コード入力欄（任意） */}
+              <input 
+                type="text" placeholder="紹介コード（任意）" value={referralCode} 
+                onChange={(e) => setReferralCode(e.target.value)}
+                style={{ padding: '0.75rem', borderRadius: '4px', border: 'none', backgroundColor: '#0f3460', color: 'white' }}
+              />
+            </>
           )}
           <input 
             type="password" placeholder="パスワード" value={password} 

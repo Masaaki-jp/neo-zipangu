@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function ModeSelectionScreen({ user, onSelectMode, onLogout }) {
   const isGuest = user?.login_id?.startsWith('guest_');
+  const [showReferral, setShowReferral] = useState(false);  // ★ 招待コード表示状態
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem' }}>
@@ -13,7 +14,19 @@ export default function ModeSelectionScreen({ user, onSelectMode, onLogout }) {
             {user.equipped_profile_icon && <span style={{ marginRight: '8px', fontSize: '2rem' }}>{user.equipped_profile_icon}</span>}
             {user.display_name}
           </h2>
-          <div style={{ fontSize: '0.85rem', color: '#888', marginTop: '4px' }}>ID: {user.login_id}</div>
+          {/* ★ IDクリックで招待コードを表示 */}
+          <div 
+            style={{ fontSize: '0.85rem', color: '#888', marginTop: '4px', cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => setShowReferral(!showReferral)}
+            title="クリックで招待コードを表示"
+          >
+            ID: {user.login_id}
+          </div>
+          {showReferral && (
+            <div style={{ fontSize: '0.8rem', color: '#4caf50', marginTop: '4px', fontWeight: 'bold' }}>
+              招待コード: {user.referral_code || '取得中...'}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '2rem', textAlign: 'center' }}>
           <div>
