@@ -2,7 +2,10 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from schemas import RegisterRequest, LoginRequest
-from database import create_user, get_user_by_login_id, check_and_grant_limited_icons, increment_login_days, process_referral
+from database import (
+    create_user, get_user_by_login_id, check_and_grant_limited_icons,
+    increment_login_days, process_referral, sync_limited_emojis
+)
 from core.security import pwd_context, verify_password, create_access_token
 import random
 import string
@@ -49,10 +52,13 @@ def login_user(req: LoginRequest):
     if new_limited:
         user = get_user_by_login_id(req.login_id)  # 最新のユーザーデータを再取得
 
+    # ★ 既存の限定アイコンの絵文字を owned_profile_icons に補完
+    sync_limited_emojis(user["user_id"])
+
     response = JSONResponse({
         "status": "success",
         "user_id": user["user_id"],
-        "login_id": user.get("login_id", ""),        # ★ 追加：ゲスト判定用
+        "login_id": user.get("login_id", ""),
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
@@ -100,10 +106,13 @@ def guest_login():
     if new_limited:
         user = get_user_by_login_id(login_id)
 
+    # ★ 既存の限定アイコンの絵文字を owned_profile_icons に補完
+    sync_limited_emojis(user["user_id"])
+
     response = JSONResponse({
         "status": "success",
         "user_id": user["user_id"],
-        "login_id": login_id,                       # ★ ゲスト判定用（既存）
+        "login_id": login_id,
         "password": raw_password,
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
