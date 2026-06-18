@@ -15,6 +15,7 @@ import SupportScreen from './components/SupportScreen';
 import WatchBook from './components/WatchBook';
 import HelpScreen from './components/HelpScreen';
 import GuideScreen from './components/GuideScreen'; // ★ 追加
+import RedeemScreen from './components/RedeemScreen'; // ★ 追加
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -677,6 +678,24 @@ function App() {
   // ★ ルール解説画面
   if (selectedMode === 'GUIDE') {
     return <GuideScreen onBack={() => setSelectedMode(null)} />;
+  }
+
+  // ★ 引き換えコード画面
+  if (selectedMode === 'REDEEM') {
+    const handleRedeemUserUpdate = (updatedFields) => {
+      if (updatedFields.user_id) {
+        setLoggedInUser(updatedFields);
+      } else {
+        setLoggedInUser(prev => ({ ...prev, ...updatedFields }));
+      }
+    };
+    return (
+      <RedeemScreen
+        user={loggedInUser}
+        onBack={() => setSelectedMode(null)}
+        onUserUpdate={handleRedeemUserUpdate}
+      />
+    );
   }
 
   // ★ ランクマッチ待機画面（accessToken は不要）
