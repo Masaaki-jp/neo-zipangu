@@ -255,5 +255,58 @@ export const LIMITED_ICONS = [
   { key: "popular_surprise",      emoji: "🎁", name: "Surprise Gift",     category: "実績", desc: "WATCHカードからレア生物を引く", requirement: "WATCHカードからスコア8以上の生物を引く" },
   { key: "popular_celebrate",     emoji: "🎉", name: "Celebration",       category: "実績", desc: "1試合で50スコア以上を獲得",  requirement: "1試合で50スコア以上を獲得する" },
   { key: "popular_balloon",       emoji: "🎈", name: "Balloon",           category: "実績", desc: "ランクポイントが上昇する",    requirement: "ランクポイントが100以上上昇する" },
-  { key: "popular_ribbon",        emoji: "🎀", name: "Ribbon",            category: "実績", desc: "プロフィールアイコンを5個装備", requirement: "プロフィールアイコンを5個以上所持する" }
+  { key: "popular_ribbon",        emoji: "🎀", name: "Ribbon",            category: "実績", desc: "プロフィールアイコンを5個装備", requirement: "プロフィールアイコンを5個以上所持する" },
+
+  // ============================================================
+  // 📝 Note サポーター (13)
+  // ============================================================
+  { key: "media_note_notebook_decorative", emoji: "📔", name: "Notebook (Decorative)", category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_closed_book",        emoji: "📕", name: "Closed Book",             category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_open_book",          emoji: "📖", name: "Open Book",               category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_green_book",         emoji: "📗", name: "Green Book",              category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_blue_book",          emoji: "📘", name: "Blue Book",               category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_orange_book",        emoji: "📙", name: "Orange Book",             category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_books",              emoji: "📚", name: "Books",                   category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_notebook",           emoji: "📓", name: "Notebook",                category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_ledger",             emoji: "📒", name: "Ledger",                  category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_page_curl",          emoji: "📃", name: "Page with Curl",          category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_scroll",             emoji: "📜", name: "Scroll",                  category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_page_up",            emoji: "📄", name: "Page Facing Up",          category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+  { key: "media_note_memo",               emoji: "📝", name: "Memo",                    category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
+
+  // ============================================================
+  // ▶️ YouTube サポーター (5)
+  // ============================================================
+  { key: "media_youtube_movie_camera",    emoji: "🎥", name: "Movie Camera",    category: "メディア", desc: "YouTubeサポーター特典", requirement: "YouTube限定コードで解放" },
+  { key: "media_youtube_film_frames",     emoji: "🎞", name: "Film Frames",     category: "メディア", desc: "YouTubeサポーター特典", requirement: "YouTube限定コードで解放" },
+  { key: "media_youtube_film_projector",  emoji: "📽", name: "Film Projector",  category: "メディア", desc: "YouTubeサポーター特典", requirement: "YouTube限定コードで解放" },
+  { key: "media_youtube_clapper_board",   emoji: "🎬", name: "Clapper Board",   category: "メディア", desc: "YouTubeサポーター特典", requirement: "YouTube限定コードで解放" },
+  { key: "media_youtube_cinema",          emoji: "🎦", name: "Cinema",          category: "メディア", desc: "YouTubeサポーター特典", requirement: "YouTube限定コードで解放" },
+
+  // ============================================================
+  // 💻 GitHub サポーター (6)
+  // ============================================================
+  { key: "media_github_laptop",           emoji: "💻", name: "Laptop",            category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
+  { key: "media_github_desktop",          emoji: "🖥", name: "Desktop Computer",  category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
+  { key: "media_github_printer",          emoji: "🖨", name: "Printer",           category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
+  { key: "media_github_keyboard",         emoji: "⌨", name: "Keyboard",          category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
+  { key: "media_github_mouse",            emoji: "🖱", name: "Computer Mouse",    category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
+  { key: "media_github_trackball",        emoji: "🖲", name: "Trackball",         category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
+
+  // ============================================================
+  // 👻 Reddit サポーター (3)
+  // ============================================================
+  { key: "media_reddit_ghost",            emoji: "👻", name: "Ghost",            category: "メディア", desc: "Redditサポーター特典", requirement: "Reddit限定コードで解放" },
+  { key: "media_reddit_alien",            emoji: "👽", name: "Alien",            category: "メディア", desc: "Redditサポーター特典", requirement: "Reddit限定コードで解放" },
+  { key: "media_reddit_alien_monster",    emoji: "👾", name: "Alien Monster",    category: "メディア", desc: "Redditサポーター特典", requirement: "Reddit限定コードで解放" },
+
+  // ============================================================
+  // 𝕏 X (旧Twitter) サポーター (6)
+  // ============================================================
+  { key: "media_x_speaker_low",           emoji: "🔈", name: "Speaker Low Volume",  category: "メディア", desc: "Xサポーター特典", requirement: "X限定コードで解放" },
+  { key: "media_x_speaker_medium",        emoji: "🔉", name: "Speaker Medium Vol",   category: "メディア", desc: "Xサポーター特典", requirement: "X限定コードで解放" },
+  { key: "media_x_speaker_high",          emoji: "🔊", name: "Speaker High Volume",  category: "メディア", desc: "Xサポーター特典", requirement: "X限定コードで解放" },
+  { key: "media_x_loudspeaker",           emoji: "📢", name: "Loudspeaker",          category: "メディア", desc: "Xサポーター特典", requirement: "X限定コードで解放" },
+  { key: "media_x_megaphone",             emoji: "📣", name: "Megaphone",            category: "メディア", desc: "Xサポーター特典", requirement: "X限定コードで解放" },
+  { key: "media_x_postal_horn",           emoji: "📯", name: "Postal Horn",          category: "メディア", desc: "Xサポーター特典", requirement: "X限定コードで解放" },
 ];
