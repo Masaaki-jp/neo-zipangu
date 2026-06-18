@@ -23,12 +23,15 @@ export default function WatchBook({ user, onBack }) {
   }, []);
 
   const discoveredEmojis = new Set(discoveredSpecies);
+  const totalSpecies = Object.keys(WATCH_DEFS).length;
+  const discoveredCount = discoveredEmojis.size;
+  const percentage = totalSpecies > 0 ? Math.round((discoveredCount / totalSpecies) * 100) : 0;
 
   const categoryEntries = Object.entries(WATCH_DEFS)
     .filter(([_, data]) => (data.category || "未分類") === activeCategory);
 
-  const discoveredCount = categoryEntries.filter(([emoji]) => discoveredEmojis.has(emoji)).length;
-  const totalCount = categoryEntries.length;
+  const categoryDiscoveredCount = categoryEntries.filter(([emoji]) => discoveredEmojis.has(emoji)).length;
+  const categoryTotalCount = categoryEntries.length;
 
   return (
     <div style={{
@@ -40,7 +43,7 @@ export default function WatchBook({ user, onBack }) {
         <button onClick={onBack} style={{ padding: '0.5rem 1rem', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>◀ 戻る</button>
         <h1 style={{ margin: 0, color: '#32cd32' }}>📖 生物図鑑</h1>
         <div style={{ color: '#32cd32', fontSize: '1.1rem', fontWeight: 'bold' }}>
-          {discoveredEmojis.size} / {Object.keys(WATCH_DEFS).length} 発見
+          {discoveredCount} / {totalSpecies} 発見 ({percentage}%)
         </div>
       </div>
 
@@ -70,7 +73,7 @@ export default function WatchBook({ user, onBack }) {
 
       {/* 発見状況 */}
       <div style={{ marginBottom: '1rem', color: '#888', fontSize: '0.9rem' }}>
-        {activeCategory}: {discoveredCount} / {totalCount} 発見
+        {activeCategory}: {categoryDiscoveredCount} / {categoryTotalCount} 発見
       </div>
 
       {/* 生物グリッド */}
