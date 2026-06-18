@@ -18,19 +18,29 @@ export default function StoreScreen({ user, onBack, onUserUpdate, initialTab = '
 
   const ownedLimitedIcons = user.limited_icons || [];
 
+  // 限定タブでは ownedLimitedIcons をキーとして扱い、表示用の絵文字配列を別途用意する
+  const ownedLimitedEmojis = isLimitedTab
+    ? (PROFILE_ICONS.limited || [])
+        .filter(icon => ownedLimitedIcons.includes(icon.key))
+        .map(icon => icon.emoji)
+    : [];
+
   const ownedIcons = isLimitedTab
-    ? ownedLimitedIcons
+    ? ownedLimitedEmojis  // 絵文字の配列
     : isProfileTab
       ? (user.owned_profile_icons || [])
       : isBuildingTab
         ? (user.owned_building_icons || [])
         : (user.owned_bot_icons || []);
 
-  const equippedIcon = isProfileTab
+  // 装備中のアイコンを判定（限定タブでは profile の装備状態を見る）
+  const equippedIcon = isLimitedTab
     ? (user.equipped_profile_icon || null)
-    : isBuildingTab
-      ? (user.equipped_building_icon || null)
-      : (user.equipped_bot_icon || null);
+    : isProfileTab
+      ? (user.equipped_profile_icon || null)
+      : isBuildingTab
+        ? (user.equipped_building_icon || null)
+        : (user.equipped_bot_icon || null);
 
   const currentIcons = isLimitedTab
     ? PROFILE_ICONS.limited || []
@@ -91,13 +101,15 @@ export default function StoreScreen({ user, onBack, onUserUpdate, initialTab = '
     }
   };
 
+  // 装備処理：限定タブでは profile として扱う
   const handleEquip = async (icon) => {
     if (equippedIcon === icon) {
       setMessage('すでに装備中です。');
       return;
     }
     try {
-      const iconType = isProfileTab ? 'profile' : activeTab;
+      // 限定タブの場合はプロフィールアイコンとして装備
+      const iconType = (isProfileTab || isLimitedTab) ? 'profile' : activeTab;
       const res = await fetch('/api/store/equip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -115,6 +127,14 @@ export default function StoreScreen({ user, onBack, onUserUpdate, initialTab = '
       setMessage('通信エラー');
     }
   };
+
+  // 限定タブ用：絵文字から key を逆引きするマップ
+  const emojiToKey = {};
+  if (isLimitedTab) {
+    (PROFILE_ICONS.limited || []).forEach(item => {
+      emojiToKey[item.emoji] = item.key;
+    });
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -218,6 +238,25 @@ export default function StoreScreen({ user, onBack, onUserUpdate, initialTab = '
                   <div style={{ fontSize: '0.7rem', color: '#888' }}>
                     {icon.requirement || icon.desc}
                   </div>
+                  {owned && (
+                    <button
+                      onClick={() => handleEquip(icon.emoji)}
+                      disabled={equippedIcon === icon.emoji}
+                      style={{
+                        marginTop: '0.5rem',
+                        padding: '0.3rem 1rem',
+                        backgroundColor: equippedIcon === icon.emoji ? '#555' : '#4caf50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: equippedIcon === icon.emoji ? 'not-allowed' : 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      {equippedIcon === icon.emoji ? '使用中' : '装備する'}
+                    </button>
+                  )}
                 </div>
               );
             })}

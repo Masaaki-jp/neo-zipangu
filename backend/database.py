@@ -344,6 +344,56 @@ def redeem_code(code: str, user_id: str) -> dict:
     }
 
 # ------------------------------------------------------------
+#  限定アイコン絵文字マッピング
+# ------------------------------------------------------------
+LIMITED_ICON_EMOJIS = {
+    # ランク
+    "rank_iron": "🔩", "rank_bronze": "🥉", "rank_silver": "🥈", "rank_gold": "🥇",
+    "rank_platinum": "💠", "rank_emerald": "❇", "rank_diamond": "💎", "rank_master": "🧠",
+    "rank_grandmaster": "👑", "rank_challenger": "🚀",
+    # ログイン
+    "login_3": "🌱", "login_7": "📅", "login_14": "🗓️", "login_30": "🏠",
+    "login_90": "🏰", "login_180": "⚜", "login_365": "💍",
+    # 拠点建設
+    "hub_5": "🛖", "hub_15": "🏘️", "hub_30": "🏢", "hub_60": "🏗️", "hub_100": "🏰",
+    # 道路建設
+    "road_10": "🛤️", "road_25": "🛣️", "road_50": "🌉", "road_100": "🗺️", "road_200": "🌐",
+    # カードドロー
+    "card_10": "🃏", "card_30": "🎴", "card_60": "🀄", "card_100": "🎪", "card_200": "🎰",
+    # 戦闘勝利
+    "combat_3": "⚔️", "combat_10": "🛡️", "combat_25": "⚡", "combat_50": "💀", "combat_100": "👹",
+    "combat_hero": "🎖️",
+    # 生物図鑑
+    "nature_10": "🔍", "nature_20": "🔎", "nature_30": "🔭", "nature_40": "📡",
+    "nature_50": "🪐", "nature_60": "🔱", "nature_70": "⭐", "nature_80": "🌟",
+    "nature_90": "🌠", "nature_100": "🌌",
+    # アイコン所持
+    "icon_10": "🧩", "icon_25": "🎖️", "icon_50": "🏆", "icon_75": "💠", "icon_100": "🌈",
+    # 出資者（手動設定）
+    "supporter_red": "❤️", "supporter_orange": "🧡", "supporter_yellow": "💛",
+    "supporter_green": "💚", "supporter_blue": "💙", "supporter_purple": "💜",
+    "supporter_white": "🤍", "supporter_black": "🖤",
+    # 応援ポイント
+    "supporter_circle_red": "🔴", "supporter_circle_orange": "🟠", "supporter_circle_yellow": "🟡",
+    "supporter_circle_green": "🟢", "supporter_circle_blue": "🔵", "supporter_circle_purple": "🟣",
+    "supporter_circle_brown": "🟤", "supporter_circle_black": "⚫", "supporter_circle_white": "⚪",
+    # 紹介システム
+    "refer_soft_icecream": "🍦", "refer_shaved_ice": "🍧", "refer_ice_cream": "🍨",
+    "refer_doughnut": "🍩", "refer_cookie": "🍪", "refer_birthday_cake": "🎂",
+    "refer_shortcake": "🍰", "refer_cupcake": "🧁", "refer_pie": "🥧",
+    "refer_chocolate": "🍫", "refer_candy": "🍬", "refer_lollipop": "🍭",
+    "refer_custard": "🍮", "refer_honey_pot": "🍯",
+    # 季節イベント
+    "season_newyear": "🎍", "season_setsubun": "👹", "season_valentine": "💝",
+    "season_hinamatsuri": "🎎", "season_spring": "🌸", "season_goldenweek": "🎏",
+    "season_rainy": "🌧️", "season_tanabata": "🎋", "season_summer": "🌻",
+    "season_fireworks": "🎇", "season_windchime": "🎐", "season_obon": "🏮",
+    "season_moon": "🎑", "season_autumn": "🍁", "season_halloween": "🎃",
+    "season_winter": "🌨️", "season_xmas": "🎄", "season_countdown": "🎆",
+    "season_redenvelope": "🧧",
+}
+
+# ------------------------------------------------------------
 #  限定アイコン付与
 # ------------------------------------------------------------
 def check_and_grant_limited_icons(user_id: str):
@@ -482,13 +532,40 @@ def check_and_grant_limited_icons(user_id: str):
     ]
 
     new_icons = []
+    new_emojis = []
     for key, condition in limited_defs:
         if key not in current_limited and condition(user_data):
             new_icons.append(key)
+            emoji = LIMITED_ICON_EMOJIS.get(key)
+            if emoji:
+                new_emojis.append(emoji)
 
     if new_icons:
         user_ref.update({
-            "limited_icons": firestore.ArrayUnion(new_icons)
+            "limited_icons": firestore.ArrayUnion(new_icons),
+            "owned_profile_icons": firestore.ArrayUnion(new_emojis)
         })
 
     return new_icons
+
+
+def sync_limited_emojis(user_id: str):
+    """既存ユーザーの limited_icons から絵文字を owned_profile_icons に補完する"""
+    user_doc = db.collection("users").document(user_id).get()
+    if not user_doc.exists:
+        return
+    user_data = user_doc.to_dict()
+    limited_icons = user_data.get("limited_icons", [])
+    owned_profile_icons = set(user_data.get("owned_profile_icons", []))
+    
+    missing_emojis = []
+    for key in limited_icons:
+        emoji = LIMITED_ICON_EMOJIS.get(key)
+        if emoji and emoji not in owned_profile_icons:
+            missing_emojis.append(emoji)
+    
+    if missing_emojis:
+        user_ref = db.collection("users").document(user_id)
+        user_ref.update({
+            "owned_profile_icons": firestore.ArrayUnion(missing_emojis)
+        })
