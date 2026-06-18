@@ -1,12 +1,11 @@
-import React, { useState } from 'react'; // 🥷 修正1：useStateをインポート！
+// frontend/src/components/MapSelector.jsx （修正版：戻るボタン追加）
+import React, { useState } from 'react';
 import { STAGE_DATA } from '../maps/stageData';
-import MapBuilder from './MapBuilder'; // 🥷 修正2：パスを直したインポート
+import MapBuilder from './MapBuilder';
 
-const MapSelector = ({ onSelectMap, pColor }) => {
-  // 🥷 修正3：ツール表示の切り替え用ステートを追加
+const MapSelector = ({ onSelectMap, pColor, onBack }) => {
   const [showBuilder, setShowBuilder] = useState(false);
 
-  // 🥷 修正4：ツール画面がONならツールを描画（早期リターン）
   if (showBuilder) {
     return <MapBuilder onBack={() => setShowBuilder(false)} />;
   }
@@ -16,6 +15,25 @@ const MapSelector = ({ onSelectMap, pColor }) => {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: '2rem', backgroundColor: '#000', minHeight: '80vh', color: '#fff'
     }}>
+      {/* ★ 戻るボタン追加 */}
+      <div style={{ width: '100%', maxWidth: '1200px', marginBottom: '0.5rem' }}>
+        <button
+          onClick={onBack}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: '#333',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontFamily: 'inherit'
+          }}
+        >
+          ◀ 戻る
+        </button>
+      </div>
+
       <h1 style={{ color: '#00ffcc', textShadow: '0 0 15px #00ffcc', marginBottom: '1rem' }}>
         [ SELECT NETWORK SECTOR ]
       </h1>
@@ -25,7 +43,7 @@ const MapSelector = ({ onSelectMap, pColor }) => {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
         gap: '20px', width: '100%', maxWidth: '1200px',
-        marginBottom: '4rem' // 🥷 下部のボタンとの間に余白を確保
+        marginBottom: '4rem'
       }}>
         {STAGE_DATA.map((stage) => {
           const isImplemented = stage.id === "STAGE_01_BEGINNER" || 
@@ -40,7 +58,7 @@ const MapSelector = ({ onSelectMap, pColor }) => {
                                 stage.id === "STAGE_10_DEMON"||
                                 stage.id === "STAGE_11_NUCLEAR"||
                                 stage.id === "STAGE_12_SKY"||
-                                stage.id === "STAGE_13_SOCCER"
+                                stage.id === "STAGE_13_SOCCER";
           return (
             <div 
               key={stage.id}
@@ -109,7 +127,7 @@ const MapSelector = ({ onSelectMap, pColor }) => {
         })}
       </div>
 
-      {/* 🥷 修正5：開発用ボタンを画面の一番下に配置（隠しコマンド風） */}
+      {/* DEV_TOOLS ボタン（既存のまま） */}
       <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
         <button 
           onClick={() => setShowBuilder(true)}
