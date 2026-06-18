@@ -49,18 +49,12 @@ from nature_data import WATCH_DEFS
 WATCH_DECK = list(WATCH_DEFS.keys()) # ここに追加
 
 # ★===== トークンストア価格マスタ =====★
-# カテゴリごとの基本価格を定義する（個別アイコンの上書きも可能）
 STORE_PRICES = {
     "building": {
-        # 拠点アイコンは一律40トークン
         "_default": 40,
-        # 個別に価格を変えたい場合は絵文字をキーにして設定可能
-        # "🏔": 50,
     },
     "bot": {
-        # BOTアイコンは一律35トークン
         "_default": 35,
-        # "🤖": 50,
     },
     "profile": {
         "flags":      {"_default": 10},
@@ -73,4 +67,20 @@ STORE_PRICES = {
         "objects":    {"_default": 15},
         "symbols":    {"_default": 25},
     }
+}
+
+# ★===== 季節イベントスケジュール =====★
+SEASON_SCHEDULE = {
+    1: ["newyear", "winter"],
+    2: ["setsubun", "valentine", "winter", "redenvelope"],
+    3: ["hinamatsuri", "spring"],
+    4: ["spring"],
+    5: ["goldenweek", "spring"],
+    6: ["rainy", "summer"],
+    7: ["tanabata", "summer", "fireworks"],
+    8: ["summer", "windchime", "obon"],
+    9: ["moon", "autumn"],
+    10: ["autumn", "halloween"],
+    11: ["autumn"],
+    12: ["xmas", "winter", "countdown"],
 }

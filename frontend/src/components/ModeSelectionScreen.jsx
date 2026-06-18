@@ -4,6 +4,25 @@ export default function ModeSelectionScreen({ user, onSelectMode, onLogout }) {
   const isGuest = user?.login_id?.startsWith('guest_');
   const [showReferral, setShowReferral] = useState(false);  // ★ 招待コード表示状態
 
+  // ★ 季節イベント参加ハンドラ
+  const handleSeasonParticipate = async () => {
+    try {
+      const res = await fetch('/api/season/participate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`[ 季節イベント参加完了 ]\n\n${data.message}\n参加したイベント: ${data.seasons?.join(', ') || ''}\n${data.new_limited_icons?.length ? '新しい限定アイコンが解放されました！' : ''}`);
+      } else {
+        alert(`[ ERROR ]\n${data.detail || '季節イベントへの参加に失敗しました。'}`);
+      }
+    } catch (err) {
+      alert('[ ERROR ]\nサーバーとの通信に失敗しました。');
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem' }}>
       
@@ -177,6 +196,17 @@ export default function ModeSelectionScreen({ user, onSelectMode, onLogout }) {
         >
           📖 ルール解説
           <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>ゲームの遊び方やコツを学ぶ</div>
+        </button>
+
+        {/* ⑧ 季節イベント */}
+        <button 
+          onClick={handleSeasonParticipate}
+          style={{ padding: '1.5rem', backgroundColor: '#0f3460', color: 'white', border: '2px solid #e91e63', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.3s', boxShadow: '0 4px 6px rgba(233,30,99,0.2)' }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#1a4b8c'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#0f3460'}
+        >
+          🌸 季節イベント
+          <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>今月の季節イベントに参加して限定アイコンを獲得</div>
         </button>
 
       </div>
