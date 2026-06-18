@@ -5,7 +5,7 @@ import math
 import time
 from constants import CARD_DEFS, TECH_DECK, WEAPON_DECK, WATCH_DECK, MAX_BUILDINGS, COSTS, HEX_SIZE, CENTER_X, CENTER_Y, BUILDING_YIELDS
 from game_logic import pay_cost, calculate_rank_deltas
-from nature_data import WATCH_DEFS, get_watch_card_info
+from nature_loader import WATCH_DEFS, get_watch_card_info
 from countdown import calculate_deadline, is_time_up
 import database
 

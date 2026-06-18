@@ -83,7 +83,7 @@ class StateProxy:
 state = StateProxy()
 
 # 生物データ
-from nature_data import WATCH_DEFS, get_watch_card_info
+from nature_loader import WATCH_DEFS, get_watch_card_info
 
 # カウントダウンモジュール
 from countdown import calculate_deadline, is_time_up

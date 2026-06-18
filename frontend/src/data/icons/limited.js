@@ -6,6 +6,7 @@
  * requirement は表示用の達成条件です。
  */
 
+
 export const LIMITED_ICONS = [
   // ============================================================
   // 🔩 ランク帯 (10)
@@ -14,7 +15,7 @@ export const LIMITED_ICONS = [
   { key: "rank_bronze",        emoji: "🥉", name: "Bronze Gear",         category: "ランク", desc: "ランクポイント 1000〜1999",           requirement: "ランクポイントが1000〜1999になる" },
   { key: "rank_silver",        emoji: "🥈", name: "Silver Circuit",      category: "ランク", desc: "ランクポイント 2000〜2999",           requirement: "ランクポイントが2000〜2999になる" },
   { key: "rank_gold",          emoji: "🥇", name: "Gold Matrix",         category: "ランク", desc: "ランクポイント 3000〜3999",           requirement: "ランクポイントが3000〜3999になる" },
-  { key: "rank_platinum",      emoji: "💿", name: "Platinum Grid",       category: "ランク", desc: "ランクポイント 4000〜4999",           requirement: "ランクポイントが4000〜4999になる" },
+  { key: "rank_platinum",      emoji: "💠", name: "Platinum Grid",       category: "ランク", desc: "ランクポイント 4000〜4999",           requirement: "ランクポイントが4000〜4999になる" },
   { key: "rank_emerald",       emoji: "❇", name: "Emerald Node",        category: "ランク", desc: "ランクポイント 5000〜5999",           requirement: "ランクポイントが5000〜5999になる" },
   { key: "rank_diamond",       emoji: "💎", name: "Diamond Core",        category: "ランク", desc: "ランクポイント 6000〜6999",           requirement: "ランクポイントが6000〜6999になる" },
   { key: "rank_master",        emoji: "🧠", name: "Master Algorithm",    category: "ランク", desc: "ランクポイント 7000〜7999",           requirement: "ランクポイントが7000〜7999になる" },
@@ -29,8 +30,8 @@ export const LIMITED_ICONS = [
   { key: "login_14",    emoji: "🗓️", name: "Fortnight",     category: "ログイン", desc: "累計14日ログイン",   requirement: "累計14日ログインする" },
   { key: "login_30",    emoji: "🏠", name: "Monthly",       category: "ログイン", desc: "累計30日ログイン",   requirement: "累計30日ログインする" },
   { key: "login_90",    emoji: "🏰", name: "Loyalist",      category: "ログイン", desc: "累計90日ログイン",   requirement: "累計90日ログインする" },
-  { key: "login_180",   emoji: "🌟", name: "Veteran",       category: "ログイン", desc: "累計180日ログイン",  requirement: "累計180日ログインする" },
-  { key: "login_365",   emoji: "👑", name: "Yearly King",   category: "ログイン", desc: "累計365日ログイン",  requirement: "累計365日ログインする" },
+  { key: "login_180",   emoji: "⚜", name: "Veteran",       category: "ログイン", desc: "累計180日ログイン",  requirement: "累計180日ログインする" },
+  { key: "login_365",   emoji: "💍", name: "Yearly King",   category: "ログイン", desc: "累計365日ログイン",  requirement: "累計365日ログインする" },
 
   // ============================================================
   // 🛖 拠点建設回数 (5)
@@ -70,13 +71,18 @@ export const LIMITED_ICONS = [
   { key: "combat_hero", emoji: "🎖️", name: "Combat Hero", category: "戦闘", desc: "戦闘でMVP評価を受ける", requirement: "1試合で3回以上戦闘勝利する" },
 
   // ============================================================
-  // 🐾 生物図鑑開放割合 (5)
+  // 🐾 生物図鑑開放割合 (10段階：10%〜100%)
   // ============================================================
-  { key: "nature_10",  emoji: "🐛", name: "Observer 10%",  category: "生物図鑑", desc: "生物図鑑を10%開放",  requirement: "生物図鑑の10%を発見する" },
-  { key: "nature_25",  emoji: "🐾", name: "Observer 25%",  category: "生物図鑑", desc: "生物図鑑を25%開放",  requirement: "生物図鑑の25%を発見する" },
-  { key: "nature_50",  emoji: "🦜", name: "Observer 50%",  category: "生物図鑑", desc: "生物図鑑を50%開放",  requirement: "生物図鑑の50%を発見する" },
-  { key: "nature_75",  emoji: "🦅", name: "Observer 75%",  category: "生物図鑑", desc: "生物図鑑を75%開放",  requirement: "生物図鑑の75%を発見する" },
-  { key: "nature_100", emoji: "🐉", name: "Observer 100%", category: "生物図鑑", desc: "生物図鑑を完全開放", requirement: "生物図鑑を100%発見する" },
+  { key: "nature_10",  emoji: "🔍", name: "Observer's Lens L",  category: "生物図鑑", desc: "生物図鑑を10%開放",  requirement: "生物図鑑の10%を発見する" },
+  { key: "nature_20",  emoji: "🔎", name: "Observer's Lens R",  category: "生物図鑑", desc: "生物図鑑を20%開放",  requirement: "生物図鑑の20%を発見する" },
+  { key: "nature_30",  emoji: "🔭", name: "Stargazer",          category: "生物図鑑", desc: "生物図鑑を30%開放",  requirement: "生物図鑑の30%を発見する" },
+  { key: "nature_40",  emoji: "📡", name: "Deep Signal",        category: "生物図鑑", desc: "生物図鑑を40%開放",  requirement: "生物図鑑の40%を発見する" },
+  { key: "nature_50",  emoji: "🪐", name: "Ringed World",       category: "生物図鑑", desc: "生物図鑑を50%開放",  requirement: "生物図鑑の50%を発見する" },
+  { key: "nature_60",  emoji: "🔱", name: "Poseidon's Mark",    category: "生物図鑑", desc: "生物図鑑を60%開放",  requirement: "生物図鑑の60%を発見する" },
+  { key: "nature_70",  emoji: "⭐", name: "First Star",         category: "生物図鑑", desc: "生物図鑑を70%開放",  requirement: "生物図鑑の70%を発見する" },
+  { key: "nature_80",  emoji: "🌟", name: "Brilliant Star",     category: "生物図鑑", desc: "生物図鑑を80%開放",  requirement: "生物図鑑の80%を発見する" },
+  { key: "nature_90",  emoji: "🌠", name: "Wishmaker",          category: "生物図鑑", desc: "生物図鑑を90%開放",  requirement: "生物図鑑の90%を発見する" },
+  { key: "nature_100", emoji: "🌌", name: "Galaxy Guardian",    category: "生物図鑑", desc: "生物図鑑を100%開放", requirement: "生物図鑑の100%を発見する" },
 
   // ============================================================
   // 🎖️ 全アイコン所持割合 (5)
@@ -148,7 +154,6 @@ export const LIMITED_ICONS = [
   // ============================================================
   { key: "supporter_triangle_red_up",     emoji: "🔺", name: "Red Triangle Up",    category: "出資者", desc: "サポーター（レッドトライアングル）に認定", requirement: "サポーター（レッドトライアングル）として認定される" },
   { key: "supporter_triangle_red_down",   emoji: "🔻", name: "Red Triangle Down",  category: "出資者", desc: "サポーター（レッド逆トライアングル）に認定", requirement: "サポーター（レッド逆トライアングル）として認定される" },
-  { key: "supporter_diamond_dot",         emoji: "💠", name: "Diamond with Dot",   category: "出資者", desc: "サポーター（ドットダイヤ）に認定", requirement: "サポーター（ドットダイヤ）として認定される" },
   { key: "supporter_radio_button",        emoji: "🔘", name: "Radio Button",       category: "出資者", desc: "サポーター（ラジオボタン）に認定", requirement: "サポーター（ラジオボタン）として認定される" },
   { key: "supporter_button_white_square", emoji: "🔳", name: "White Square Button", category: "出資者", desc: "サポーター（ホワイトスクエアボタン）に認定", requirement: "サポーター（ホワイトスクエアボタン）として認定される" },
   { key: "supporter_button_black_square", emoji: "🔲", name: "Black Square Button", category: "出資者", desc: "サポーター（ブラックスクエアボタン）に認定", requirement: "サポーター（ブラックスクエアボタン）として認定される" },
@@ -174,12 +179,9 @@ export const LIMITED_ICONS = [
   // ============================================================
   // 📦 objects.js からの移行組 (コレクション 31)
   // ============================================================
-  { key: "collection_ring", emoji: "💍", name: "Ring", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_computer_disk", emoji: "💽", name: "Computer Disk", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_floppy_disk", emoji: "💾", name: "Floppy Disk", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_dvd", emoji: "📀", name: "DVD", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_magnifying_left", emoji: "🔍", name: "Magnifying Glass Left", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_magnifying_right", emoji: "🔎", name: "Magnifying Glass Right", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_tearoff_calendar", emoji: "📆", name: "Tear-off Calendar", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_spiral_notepad", emoji: "🗒", name: "Spiral Notepad", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_hammer", emoji: "🔨", name: "Hammer", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
@@ -197,8 +199,6 @@ export const LIMITED_ICONS = [
   { key: "collection_gear", emoji: "⚙", name: "Gear", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_clamp", emoji: "🗜", name: "Clamp", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_key", emoji: "🔑", name: "Key", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_telescope", emoji: "🔭", name: "Telescope", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_satellite_antenna", emoji: "📡", name: "Satellite Antenna", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_coin", emoji: "🪙", name: "Coin", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_money_bag", emoji: "💰", name: "Money Bag", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_yen_banknote", emoji: "💴", name: "Yen Banknote", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
@@ -209,18 +209,6 @@ export const LIMITED_ICONS = [
   { key: "collection_credit_card", emoji: "💳", name: "Credit Card", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_receipt", emoji: "🧾", name: "Receipt", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
   { key: "collection_chart_increasing_yen", emoji: "💹", name: "Chart Increasing with Yen", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_fleur_de_lis", emoji: "⚜", name: "Fleur-de-lis", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_trident_emblem", emoji: "🔱", name: "Trident Emblem", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-
-  // ============================================================
-  // ✈ travels.js からの移行組 (コレクション 5)
-  // ============================================================
-
-  { key: "collection_ringed_planet", emoji: "🪐", name: "Ringed Planet", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_star", emoji: "⭐", name: "Star", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_glowing_star", emoji: "🌟", name: "Glowing Star", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_shooting_star", emoji: "🌠", name: "Shooting Star", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
-  { key: "collection_milky_way", emoji: "🌌", name: "Milky Way", category: "コレクション", desc: "特別なコレクションアイテム", requirement: "特定の条件で解放" },
 
   // ============================================================
   // 🌸 季節イベント (19)
@@ -244,20 +232,6 @@ export const LIMITED_ICONS = [
   { key: "season_xmas",       emoji: "🎄", name: "Christmas Eve Hack",    category: "季節", desc: "クリスマスイベント参加",   requirement: "該当シーズンイベントに参加する" },
   { key: "season_countdown",  emoji: "🎆", name: "New Year Countdown",    category: "季節", desc: "大晦日イベント参加",       requirement: "該当シーズンイベントに参加する" },
   { key: "season_redenvelope",emoji: "🧧", name: "Red Envelope",          category: "季節", desc: "旧正月イベント参加",       requirement: "該当シーズンイベントに参加する" },
-
-  // ============================================================
-  // 🧬 珍種 / 特別な生物 (10)
-  // ============================================================
-  { key: "rare_peacock_mantis", emoji: "🦐", name: "Mantis Shrimp",     category: "珍種", desc: "特別な発見: テッポウエビ",    requirement: "特定の条件で発見する" },
-  { key: "rare_axolotl",        emoji: "🦎", name: "Axolotl",           category: "珍種", desc: "特別な発見: アホロートル",    requirement: "特定の条件で発見する" },
-  { key: "rare_quetzal",        emoji: "🐦", name: "Resplendent Quetzal",category: "珍種", desc: "特別な発見: ケツァール",      requirement: "特定の条件で発見する" },
-  { key: "rare_okapi",          emoji: "🦒", name: "Okapi",             category: "珍種", desc: "特別な発見: オカピ",          requirement: "特定の条件で発見する" },
-  { key: "rare_platypus",       emoji: "🦆", name: "Platypus",          category: "珍種", desc: "特別な発見: カモノハシ",      requirement: "特定の条件で発見する" },
-  { key: "rare_pangolin",       emoji: "🦥", name: "Pangolin",          category: "珍種", desc: "特別な発見: センザンコウ",    requirement: "特定の条件で発見する" },
-  { key: "rare_ayeaye",         emoji: "🐒", name: "Aye-Aye",           category: "珍種", desc: "特別な発見: アイアイ",        requirement: "特定の条件で発見する" },
-  { key: "rare_vaquita",        emoji: "🐬", name: "Vaquita",           category: "珍種", desc: "特別な発見: コガシラネズミイルカ", requirement: "特定の条件で発見する" },
-  { key: "rare_tardigrade",     emoji: "🐛", name: "Water Bear",        category: "珍種", desc: "特別な発見: クマムシ",        requirement: "特定の条件で発見する" },
-  { key: "rare_dragonfly",      emoji: "🦋", name: "Emperor Dragonfly", category: "珍種", desc: "特別な発見: オニヤンマ",      requirement: "特定の条件で発見する" },
 
   // ============================================================
   // 🎖️ 人気実績 / スペシャル (20)

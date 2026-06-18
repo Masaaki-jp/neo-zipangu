@@ -45,7 +45,7 @@ TECH_DECK = ["PATENT", "ZERO_DAY", "VPN", "DATA_HACK"]
 WEAPON_DECK = ["EMP", "DRONE_STRIKE", "WEAPON_DEV", "DDOS"]
 
 #🐘生物データの呼び出し
-from nature_data import WATCH_DEFS
+from nature_loader import WATCH_DEFS
 WATCH_DECK = list(WATCH_DEFS.keys()) # ここに追加
 
 # ★===== トークンストア価格マスタ =====★
