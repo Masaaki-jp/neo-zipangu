@@ -6,7 +6,7 @@ from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP, ArrayUnion
 import random
 import string
-from datetime import datetime, timezone  # ★ 追加
+from datetime import datetime, timezone
 
 # Firestore クライアントを初期化（既に main.py で初期化済みなら再初期化されない）
 if not firebase_admin._apps:
@@ -28,7 +28,7 @@ def init_db():
 #  ヘルパー
 # ------------------------------------------------------------
 def get_total_nature_count():
-    from nature_data import WATCH_DEFS
+    from nature_loader import WATCH_DEFS
     return len(WATCH_DEFS)
 
 def get_total_icons_count():
@@ -408,11 +408,16 @@ def check_and_grant_limited_icons(user_id: str):
         ("combat_25",  lambda u: u.get("combat_wins", 0) >= 25),
         ("combat_50",  lambda u: u.get("combat_wins", 0) >= 50),
         ("combat_100", lambda u: u.get("combat_wins", 0) >= 100),
-        # ---- 生物図鑑 ----
+        # ---- 生物図鑑（10段階: 10%〜100%）----
         ("nature_10",  lambda u: discovered / total_nature >= 0.10 if total_nature else False),
-        ("nature_25",  lambda u: discovered / total_nature >= 0.25 if total_nature else False),
+        ("nature_20",  lambda u: discovered / total_nature >= 0.20 if total_nature else False),
+        ("nature_30",  lambda u: discovered / total_nature >= 0.30 if total_nature else False),
+        ("nature_40",  lambda u: discovered / total_nature >= 0.40 if total_nature else False),
         ("nature_50",  lambda u: discovered / total_nature >= 0.50 if total_nature else False),
-        ("nature_75",  lambda u: discovered / total_nature >= 0.75 if total_nature else False),
+        ("nature_60",  lambda u: discovered / total_nature >= 0.60 if total_nature else False),
+        ("nature_70",  lambda u: discovered / total_nature >= 0.70 if total_nature else False),
+        ("nature_80",  lambda u: discovered / total_nature >= 0.80 if total_nature else False),
+        ("nature_90",  lambda u: discovered / total_nature >= 0.90 if total_nature else False),
         ("nature_100", lambda u: discovered >= total_nature if total_nature else False),
         # ---- アイコン所持 ----
         ("icon_10",  lambda u: (owned_b + owned_bot + owned_p) / total_icons >= 0.10 if total_icons else False),

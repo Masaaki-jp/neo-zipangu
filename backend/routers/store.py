@@ -8,7 +8,7 @@ from firebase_admin import firestore
 from constants import STORE_PRICES
 
 # ★ WATCH_DEFS をインポート（生物アイコンの購入を拒否するため）
-from nature_data import WATCH_DEFS
+from nature_loader import WATCH_DEFS
 
 # ★ 管理者専用アイコン（一般購入不可）の定義
 ADMIN_ONLY_ICONS = {
