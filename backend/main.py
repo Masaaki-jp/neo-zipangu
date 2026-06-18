@@ -109,6 +109,7 @@ from routers.ranked import router as ranked_router, start_matchmaking_background
 from routers.store import router as store_router  # ★ 追加：トークンストア
 from routers.support import router as support_router  # ★ 追加：応援機能
 from routers.season import router as season_router  # ★ 追加：季節イベント
+from routers.redeem import router as redeem_router  # ★ 追加：引き換えコード
 
 app.include_router(auth_router)
 app.include_router(game_router)
@@ -118,6 +119,7 @@ app.include_router(ranked_router)
 app.include_router(store_router)  # ★ 追加
 app.include_router(support_router)  # ★ 追加
 app.include_router(season_router)  # ★ 追加
+app.include_router(redeem_router)  # ★ 追加
 
 # マッチメイキングのバックグラウンドスレッドを起動
 start_matchmaking_background()

@@ -209,6 +209,17 @@ export default function ModeSelectionScreen({ user, onSelectMode, onLogout }) {
           <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>今月の季節イベントに参加して限定アイコンを獲得</div>
         </button>
 
+        {/* ⑨ コードを使う */}
+        <button 
+          onClick={() => onSelectMode('REDEEM')}
+          style={{ padding: '1.5rem', backgroundColor: '#0f3460', color: 'white', border: '2px solid #bfff00', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.3s', boxShadow: '0 4px 6px rgba(191,255,0,0.2)' }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#1a4b8c'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#0f3460'}
+        >
+          🎫 コードを使う
+          <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>限定アイコンがもらえるコードを入力</div>
+        </button>
+
       </div>
     </div>
   );

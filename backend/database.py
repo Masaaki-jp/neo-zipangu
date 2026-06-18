@@ -6,6 +6,7 @@ from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP, ArrayUnion
 import random
 import string
+from datetime import datetime, timezone  # ★ 追加
 
 # Firestore クライアントを初期化（既に main.py で初期化済みなら再初期化されない）
 if not firebase_admin._apps:
@@ -143,11 +144,6 @@ def process_referral(referrer_code: str):
 #  季節イベント参加
 # ------------------------------------------------------------
 def participate_in_season(user_id: str, season_key: str):
-    """
-    ユーザーの season_participated 配列に季節キーを追加し、
-    限定アイコンをチェックする。
-    戻り値: 新たに解放されたアイコンの key リスト
-    """
     user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
     if not user_doc.exists:
@@ -156,13 +152,12 @@ def participate_in_season(user_id: str, season_key: str):
     user_data = user_doc.to_dict()
     participated = user_data.get("season_participated", [])
     if season_key in participated:
-        return []  # 既に参加済み
+        return []
 
     user_ref.update({
         "season_participated": ArrayUnion([season_key])
     })
 
-    # 限定アイコン解放チェック
     return check_and_grant_limited_icons(user_id)
 
 # ------------------------------------------------------------
@@ -289,6 +284,63 @@ def get_support_status(user_id: str) -> dict:
     return {
         "daily_remaining": remaining,
         "support_points": user_data.get("support_points", 0)
+    }
+
+# ------------------------------------------------------------
+#  引き換えコード
+# ------------------------------------------------------------
+def redeem_code(code: str, user_id: str) -> dict:
+    """
+    引き換えコードを検証し、ユーザーに限定アイコンを付与する。
+    戻り値: {"status": "success", "new_icons": [...]} または {"status": "error", "reason": "..."}
+    """
+    if not code:
+        return {"status": "error", "reason": "CODE_REQUIRED"}
+
+    code_ref = db.collection("redeem_codes").document(code)
+    code_doc = code_ref.get()
+
+    if not code_doc.exists:
+        return {"status": "error", "reason": "INVALID_CODE"}
+
+    code_data = code_doc.to_dict()
+
+    # 有効期限チェック
+    expires_at = code_data.get("expires_at")
+    if expires_at:
+        try:
+            expire_time = datetime.fromisoformat(expires_at)
+            if datetime.now(timezone.utc) > expire_time:
+                return {"status": "error", "reason": "CODE_EXPIRED"}
+        except ValueError:
+            return {"status": "error", "reason": "INVALID_EXPIRY"}
+
+    # 利用回数制限チェック
+    used_by = code_data.get("used_by", [])
+    max_uses = code_data.get("max_uses", 1)
+    if len(used_by) >= max_uses:
+        return {"status": "error", "reason": "CODE_EXHAUSTED"}
+
+    # ユーザーの重複利用チェック
+    if user_id in used_by:
+        return {"status": "error", "reason": "ALREADY_USED"}
+
+    # アイコン付与
+    icon_keys = code_data.get("limited_icon_keys", [])
+    if icon_keys:
+        user_ref = db.collection("users").document(user_id)
+        user_ref.update({
+            "limited_icons": ArrayUnion(icon_keys)
+        })
+
+    # used_by にユーザーIDを追加
+    code_ref.update({
+        "used_by": ArrayUnion([user_id])
+    })
+
+    return {
+        "status": "success",
+        "new_icons": icon_keys
     }
 
 # ------------------------------------------------------------
