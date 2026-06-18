@@ -108,6 +108,7 @@ from routers.rooms import router as rooms_router
 from routers.ranked import router as ranked_router, start_matchmaking_background
 from routers.store import router as store_router  # ★ 追加：トークンストア
 from routers.support import router as support_router  # ★ 追加：応援機能
+from routers.season import router as season_router  # ★ 追加：季節イベント
 
 app.include_router(auth_router)
 app.include_router(game_router)
@@ -116,6 +117,7 @@ app.include_router(rooms_router)
 app.include_router(ranked_router)
 app.include_router(store_router)  # ★ 追加
 app.include_router(support_router)  # ★ 追加
+app.include_router(season_router)  # ★ 追加
 
 # マッチメイキングのバックグラウンドスレッドを起動
 start_matchmaking_background()
@@ -233,6 +235,7 @@ def get_my_profile(current_user: dict = Depends(get_current_user)):
         "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
         "limited_icons": user.get("limited_icons", []),  # ★ 追加
+        "season_participated": user.get("season_participated", []),  # ★ 追加
     }
 
 @app.get("/health")

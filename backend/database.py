@@ -31,8 +31,6 @@ def get_total_nature_count():
     return len(WATCH_DEFS)
 
 def get_total_icons_count():
-    # フロントエンドの全購入可能アイコン数の近似値
-    # 将来的にバックエンドでも正確なマスタを持つか、設定ファイル化する
     return 200
 
 # ------------------------------------------------------------
@@ -44,7 +42,6 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         return {"error": "LOGIN_ID_ALREADY_EXISTS"}
 
     user_id = str(uuid.uuid4())
-    # ★ 自分の招待コードを生成
     my_referral_code = generate_referral_code()
 
     user_data = {
@@ -62,25 +59,21 @@ def create_user(login_id: str, password_hash: str, display_name: str):
         "equipped_profile_icon": None,
         "equipped_building_icon": None,
         "equipped_bot_icon": None,
-        # 統計カウンター
         "total_hubs_built": 0,
         "total_roads_built": 0,
         "total_cards_drawn": 0,
         "combat_wins": 0,
         "login_days": 0,
-        "last_login_date": None,    # ★ 最後のログイン日（"YYYY-MM-DD"）
+        "last_login_date": None,
         "season_participated": [],
         "is_supporter": False,
         "supporter_tier": None,
-        # ★ 応援関連
-        "support_points": 0,          # 累計応援ポイント
-        "daily_support_count": 0,     # 本日の応援回数
-        "last_support_date": None,    # 最後に応援した日（"YYYY-MM-DD"）
-        # ★ 紹介関連
-        "referral_code": my_referral_code,  # 自分の紹介コード
-        "referral_count": 0,          # 紹介した人数
-        # ★ 直近一緒にプレイしたユーザー
-        "recent_teammates": [],       # UUIDのリスト（最大5件）
+        "support_points": 0,
+        "daily_support_count": 0,
+        "last_support_date": None,
+        "referral_code": my_referral_code,
+        "referral_count": 0,
+        "recent_teammates": [],
         "created_at": SERVER_TIMESTAMP
     }
     db.collection("users").document(user_id).set(user_data)
@@ -113,11 +106,9 @@ def update_user_after_match(user_id: str, rank_diff: int, token_reward: int):
 #  紹介システム
 # ------------------------------------------------------------
 def generate_referral_code():
-    """8桁のランダムな英数字を招待コードとして生成する"""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
 def get_user_by_referral_code(code: str):
-    """招待コードでユーザーを検索する"""
     docs = db.collection("users").where("referral_code", "==", code).limit(1).stream()
     for doc in docs:
         user = doc.to_dict()
@@ -126,14 +117,9 @@ def get_user_by_referral_code(code: str):
     return None
 
 def process_referral(referrer_code: str):
-    """
-    紹介コードで紹介者を特定し、紹介カウントを+1、紹介者に+10トークン付与。
-    戻り値: 成功なら {"status": "success", "referrer_display_name": "..."}、失敗なら {"status": "error", "reason": "..."}
-    """
     if not referrer_code:
         return {"status": "error", "reason": "NO_CODE"}
 
-    # 紹介コードでユーザーを検索
     referrer = get_user_by_referral_code(referrer_code)
     if not referrer:
         return {"status": "error", "reason": "INVALID_CODE"}
@@ -141,13 +127,11 @@ def process_referral(referrer_code: str):
     referrer_id = referrer["user_id"]
     referrer_ref = db.collection("users").document(referrer_id)
 
-    # 紹介カウント+1、紹介者に+10トークン
     referrer_ref.update({
         "referral_count": firestore.Increment(1),
         "free_tokens": firestore.Increment(10)
     })
 
-    # 紹介者の限定アイコンをチェック
     check_and_grant_limited_icons(referrer_id)
 
     return {
@@ -156,16 +140,39 @@ def process_referral(referrer_code: str):
     }
 
 # ------------------------------------------------------------
+#  季節イベント参加
+# ------------------------------------------------------------
+def participate_in_season(user_id: str, season_key: str):
+    """
+    ユーザーの season_participated 配列に季節キーを追加し、
+    限定アイコンをチェックする。
+    戻り値: 新たに解放されたアイコンの key リスト
+    """
+    user_ref = db.collection("users").document(user_id)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        return []
+
+    user_data = user_doc.to_dict()
+    participated = user_data.get("season_participated", [])
+    if season_key in participated:
+        return []  # 既に参加済み
+
+    user_ref.update({
+        "season_participated": ArrayUnion([season_key])
+    })
+
+    # 限定アイコン解放チェック
+    return check_and_grant_limited_icons(user_id)
+
+# ------------------------------------------------------------
 #  発見生物・アイコン連動
 # ------------------------------------------------------------
 def add_discovered_species(user_id: str, species_emoji: str):
-    """
-    生物を発見し、同時にプロフィールアイコンとしても解放する
-    """
     user_ref = db.collection("users").document(user_id)
     user_ref.update({
         "discovered_species": ArrayUnion([species_emoji]),
-        "owned_profile_icons": ArrayUnion([species_emoji])  # ★ Watch連動で即解放
+        "owned_profile_icons": ArrayUnion([species_emoji])
     })
 
 # ------------------------------------------------------------
@@ -175,11 +182,7 @@ def increment_user_stat(user_id: str, stat: str, increment: int = 1):
     user_ref = db.collection("users").document(user_id)
     user_ref.update({stat: firestore.Increment(increment)})
 
-# ★ ログイン日数カウント
 def increment_login_days(user_id: str):
-    """
-    今日が最終ログイン日と異なれば login_days を +1 し、last_login_date を今日に更新する。
-    """
     from datetime import date
     today_str = date.today().isoformat()
 
@@ -201,18 +204,13 @@ def increment_login_days(user_id: str):
 #  直近一緒にプレイしたユーザー
 # ------------------------------------------------------------
 def add_recent_teammate(user_id: str, teammate_id: str):
-    """
-    直近で一緒にプレイしたプレイヤーを記録する（最大5件、重複除去、先頭に追加）
-    """
     user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
     if not user_doc.exists:
         return
     user_data = user_doc.to_dict()
     recent = user_data.get("recent_teammates", [])
-    # 重複を除去し、先頭に追加
     recent = [teammate_id] + [t for t in recent if t != teammate_id]
-    # 最大5件に制限
     recent = recent[:5]
     user_ref.update({"recent_teammates": recent})
 
@@ -220,22 +218,15 @@ def add_recent_teammate(user_id: str, teammate_id: str):
 #  応援機能
 # ------------------------------------------------------------
 def support_player(supporter_id: str, target_id: str) -> dict:
-    """
-    応援を実行する。
-    1日3回までの制限、双方に +1 トークン、応援された側に +1 ポイント。
-    戻り値: {"status": "success"} または {"status": "error", "reason": "..."}
-    """
     from datetime import date
     today_str = date.today().isoformat()
 
-    # 自分自身は応援できない
     if supporter_id == target_id:
         return {"status": "error", "reason": "CANNOT_SUPPORT_SELF"}
 
     supporter_ref = db.collection("users").document(supporter_id)
     target_ref = db.collection("users").document(target_id)
 
-    # トランザクションで一貫性を保つ
     transaction = db.transaction()
 
     @firestore.transactional
@@ -252,14 +243,12 @@ def support_player(supporter_id: str, target_id: str) -> dict:
         last_date = supporter_data.get("last_support_date")
         daily_count = supporter_data.get("daily_support_count", 0)
 
-        # 日付が変わっていればカウントをリセット
         if last_date != today_str:
             daily_count = 0
 
         if daily_count >= 3:
             return {"status": "error", "reason": "DAILY_LIMIT_REACHED"}
 
-        # トークン付与（双方に +1）
         transaction.update(supporter_ref, {
             "free_tokens": firestore.Increment(1),
             "daily_support_count": daily_count + 1,
@@ -274,7 +263,6 @@ def support_player(supporter_id: str, target_id: str) -> dict:
     try:
         result = run_support(transaction)
         if result["status"] == "success":
-            # 応援した側・された側双方の限定アイコンをチェック
             check_and_grant_limited_icons(supporter_id)
             check_and_grant_limited_icons(target_id)
         return result
@@ -283,9 +271,6 @@ def support_player(supporter_id: str, target_id: str) -> dict:
         return {"status": "error", "reason": "TRANSACTION_FAILED"}
 
 def get_support_status(user_id: str) -> dict:
-    """
-    今日の残り応援回数と累計応援ポイントを返す
-    """
     from datetime import date
     today_str = date.today().isoformat()
 
@@ -310,11 +295,6 @@ def get_support_status(user_id: str) -> dict:
 #  限定アイコン付与
 # ------------------------------------------------------------
 def check_and_grant_limited_icons(user_id: str):
-    """
-    ユーザーの現在の状態を元に、新たに解放可能な限定アイコンがあれば
-    Firestore の limited_icons 配列に追加する。
-    戻り値: 新たに解放されたアイコンの key リスト
-    """
     user_doc = db.collection("users").document(user_id).get()
     if not user_doc.exists:
         return []
@@ -330,6 +310,7 @@ def check_and_grant_limited_icons(user_id: str):
     owned_p = len(user_data.get("owned_profile_icons", []))
     support_points = user_data.get("support_points", 0)
     referral_count = user_data.get("referral_count", 0)
+    season_participated = user_data.get("season_participated", [])
 
     limited_defs = [
         # ---- ランク ----
@@ -421,6 +402,26 @@ def check_and_grant_limited_icons(user_id: str):
         ("refer_lollipop",      lambda u: referral_count >= 15),
         ("refer_custard",       lambda u: referral_count >= 20),
         ("refer_honey_pot",     lambda u: referral_count >= 30),
+        # ---- 季節イベント ----
+        ("season_newyear",    lambda u: "newyear" in season_participated),
+        ("season_setsubun",   lambda u: "setsubun" in season_participated),
+        ("season_valentine",  lambda u: "valentine" in season_participated),
+        ("season_hinamatsuri",lambda u: "hinamatsuri" in season_participated),
+        ("season_spring",     lambda u: "spring" in season_participated),
+        ("season_goldenweek", lambda u: "goldenweek" in season_participated),
+        ("season_rainy",      lambda u: "rainy" in season_participated),
+        ("season_tanabata",   lambda u: "tanabata" in season_participated),
+        ("season_summer",     lambda u: "summer" in season_participated),
+        ("season_fireworks",  lambda u: "fireworks" in season_participated),
+        ("season_windchime",  lambda u: "windchime" in season_participated),
+        ("season_obon",       lambda u: "obon" in season_participated),
+        ("season_moon",       lambda u: "moon" in season_participated),
+        ("season_autumn",     lambda u: "autumn" in season_participated),
+        ("season_halloween",  lambda u: "halloween" in season_participated),
+        ("season_winter",     lambda u: "winter" in season_participated),
+        ("season_xmas",       lambda u: "xmas" in season_participated),
+        ("season_countdown",  lambda u: "countdown" in season_participated),
+        ("season_redenvelope",lambda u: "redenvelope" in season_participated),
     ]
 
     new_icons = []
