@@ -1,4 +1,4 @@
-# routers/ranked.py （シーズン自動切替 + ランク用マップ対応版）
+# routers/ranked.py （シーズン自動切替 + ランク用マップ対応版 + ゲスト参加拒否）
 """
 ランク対戦マッチメイキング用APIエンドポイント
 """
@@ -95,6 +95,12 @@ def join_ranked_queue(current_user: dict = Depends(get_current_user)):
     if not user_doc.exists:
         raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
     user_data = user_doc.to_dict()
+
+    # ★ ゲストアカウントはランク参加不可
+    login_id = user_data.get("login_id", "")
+    if login_id.startswith("guest_"):
+        raise HTTPException(status_code=403, detail="GUEST_CANNOT_JOIN_RANKED")
+
     rank_points = user_data.get("rank_points", 500)
     display_name = user_data.get("display_name", "unknown")
     rank_tier = _rank_tier_from_points(rank_points)
