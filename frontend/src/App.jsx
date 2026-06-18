@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（MapSelector に onBack 追加済み）
+// frontend/src/App.jsx（login_id 保持修正版）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -611,11 +611,11 @@ function App() {
 
   if (selectedMode === 'STORE') {
     const handleStoreUserUpdate = (updatedFields) => {
-      if (updatedFields.user_id) {
-        setLoggedInUser(updatedFields);
-      } else {
-        setLoggedInUser(prev => ({ ...prev, ...updatedFields }));
-      }
+      setLoggedInUser(prev => ({
+        ...prev,
+        ...updatedFields,
+        login_id: prev.login_id || updatedFields.login_id, // login_id を維持
+      }));
     };
     return (
       <StoreScreen
@@ -629,11 +629,11 @@ function App() {
 
   if (selectedMode === 'SUPPORT') {
     const handleSupportUserUpdate = (updatedFields) => {
-      if (updatedFields.user_id) {
-        setLoggedInUser(updatedFields);
-      } else {
-        setLoggedInUser(prev => ({ ...prev, ...updatedFields }));
-      }
+      setLoggedInUser(prev => ({
+        ...prev,
+        ...updatedFields,
+        login_id: prev.login_id || updatedFields.login_id,
+      }));
     };
     return (
       <SupportScreen
@@ -654,11 +654,11 @@ function App() {
 
   if (selectedMode === 'REDEEM') {
     const handleRedeemUserUpdate = (updatedFields) => {
-      if (updatedFields.user_id) {
-        setLoggedInUser(updatedFields);
-      } else {
-        setLoggedInUser(prev => ({ ...prev, ...updatedFields }));
-      }
+      setLoggedInUser(prev => ({
+        ...prev,
+        ...updatedFields,
+        login_id: prev.login_id || updatedFields.login_id,
+      }));
     };
     return (
       <RedeemScreen

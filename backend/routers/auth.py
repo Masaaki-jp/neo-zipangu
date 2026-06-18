@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from schemas import RegisterRequest, LoginRequest
-from database import create_user, get_user_by_login_id, check_and_grant_limited_icons, increment_login_days, process_referral  # ★ process_referral を追加
+from database import create_user, get_user_by_login_id, check_and_grant_limited_icons, increment_login_days, process_referral
 from core.security import pwd_context, verify_password, create_access_token
 import random
 import string
@@ -52,6 +52,7 @@ def login_user(req: LoginRequest):
     response = JSONResponse({
         "status": "success",
         "user_id": user["user_id"],
+        "login_id": user.get("login_id", ""),        # ★ 追加：ゲスト判定用
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
@@ -63,8 +64,8 @@ def login_user(req: LoginRequest):
         "equipped_bot_icon": user.get("equipped_bot_icon"),
         "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
-        "limited_icons": user.get("limited_icons", []),  # ★ 追加
-        "referral_code": user.get("referral_code"),      # ★ 自分の招待コードを返す
+        "limited_icons": user.get("limited_icons", []),
+        "referral_code": user.get("referral_code"),
     })
     response.set_cookie(
         key="access_token",
@@ -94,7 +95,7 @@ def guest_login():
     # ★ ログイン日数をカウント（ゲストアカウントでもカウントする）
     increment_login_days(user["user_id"])
 
-    # ★ 限定アイコンのチェック・付与（ゲスト作成直後なのでほぼ空だが、将来拡張のため）
+    # ★ 限定アイコンのチェック・付与
     new_limited = check_and_grant_limited_icons(user["user_id"])
     if new_limited:
         user = get_user_by_login_id(login_id)
@@ -102,7 +103,7 @@ def guest_login():
     response = JSONResponse({
         "status": "success",
         "user_id": user["user_id"],
-        "login_id": login_id,
+        "login_id": login_id,                       # ★ ゲスト判定用（既存）
         "password": raw_password,
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
@@ -115,8 +116,8 @@ def guest_login():
         "equipped_bot_icon": user.get("equipped_bot_icon"),
         "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
-        "limited_icons": user.get("limited_icons", []),  # ★ 追加
-        "referral_code": user.get("referral_code"),      # ★ 自分の招待コードを返す
+        "limited_icons": user.get("limited_icons", []),
+        "referral_code": user.get("referral_code"),
     })
     response.set_cookie(
         key="access_token",

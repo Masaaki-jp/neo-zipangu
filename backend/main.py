@@ -225,6 +225,7 @@ def get_my_profile(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="User not found")
     return {
         "user_id": user["user_id"],
+        "login_id": user.get("login_id", ""),  # ★ 追加：ゲスト判定用
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
@@ -236,8 +237,8 @@ def get_my_profile(current_user: dict = Depends(get_current_user)):
         "owned_profile_icons": user.get("owned_profile_icons", []),
         "equipped_profile_icon": user.get("equipped_profile_icon"),
         "discovered_species": user.get("discovered_species", []),
-        "limited_icons": user.get("limited_icons", []),  # ★ 追加
-        "season_participated": user.get("season_participated", []),  # ★ 追加
+        "limited_icons": user.get("limited_icons", []),
+        "season_participated": user.get("season_participated", []),
     }
 
 @app.get("/health")
