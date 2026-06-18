@@ -391,6 +391,19 @@ LIMITED_ICON_EMOJIS = {
     "season_moon": "🎑", "season_autumn": "🍁", "season_halloween": "🎃",
     "season_winter": "🌨️", "season_xmas": "🎄", "season_countdown": "🎆",
     "season_redenvelope": "🧧",
+    # メディアサポーター
+    "media_note_notebook_decorative": "📔", "media_note_closed_book": "📕", "media_note_open_book": "📖",
+    "media_note_green_book": "📗", "media_note_blue_book": "📘", "media_note_orange_book": "📙",
+    "media_note_books": "📚", "media_note_notebook": "📓", "media_note_ledger": "📒",
+    "media_note_page_curl": "📃", "media_note_scroll": "📜", "media_note_page_up": "📄",
+    "media_note_memo": "📝",
+    "media_youtube_movie_camera": "🎥", "media_youtube_film_frames": "🎞", "media_youtube_film_projector": "📽",
+    "media_youtube_clapper_board": "🎬", "media_youtube_cinema": "🎦",
+    "media_github_laptop": "💻", "media_github_desktop": "🖥", "media_github_printer": "🖨",
+    "media_github_keyboard": "⌨", "media_github_mouse": "🖱", "media_github_trackball": "🖲",
+    "media_reddit_ghost": "👻", "media_reddit_alien": "👽", "media_reddit_alien_monster": "👾",
+    "media_x_speaker_low": "🔈", "media_x_speaker_medium": "🔉", "media_x_speaker_high": "🔊",
+    "media_x_loudspeaker": "📢", "media_x_megaphone": "📣", "media_x_postal_horn": "📯",
 }
 
 # ------------------------------------------------------------
