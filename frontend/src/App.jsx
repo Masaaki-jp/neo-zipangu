@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（拠点・BOTアイコン分離対応版・全文 + プロフィールアイコン対応 + 生物図鑑対応 + ログアウト対応 + FAQ対応 + ログイン画面FAQリンク + 応援機能対応）
+// frontend/src/App.jsx（MapSelector に onBack 追加済み）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -14,8 +14,8 @@ import StoreScreen from './components/StoreScreen';
 import SupportScreen from './components/SupportScreen';
 import WatchBook from './components/WatchBook';
 import HelpScreen from './components/HelpScreen';
-import GuideScreen from './components/GuideScreen'; // ★ 追加
-import RedeemScreen from './components/RedeemScreen'; // ★ 追加
+import GuideScreen from './components/GuideScreen';
+import RedeemScreen from './components/RedeemScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -57,7 +57,6 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [playerTypes, setPlayerTypes] = useState({});
 
-  // 🥷 HexMap に渡すための追加 state
   const [boardData, setBoardData] = useState([]);
   const [roads, setRoads] = useState({});
   const [bots, setBots] = useState({});
@@ -65,15 +64,12 @@ function App() {
   const [mapId, setMapId] = useState("STAGE_01_BEGINNER");
   const [coastalVertices, setCoastalVertices] = useState([]);
 
-  // ★ 順番決めカウントダウン用
   const [initRollDeadline, setInitRollDeadline] = useState(null);
   const [initRollTimeLeft, setInitRollTimeLeft] = useState(10);
 
-  // ★ カジュアルマップ選択用
   const [casualMapSelection, setCasualMapSelection] = useState(false);
   const [selectedCasualMapId, setSelectedCasualMapId] = useState(null);
 
-  // ★ ランク変動表示用（バックエンドから受け取る）
   const [rankDeltas, setRankDeltas] = useState({});
 
   const currentPlayer = gameStatus.current_player || "Player1";
@@ -114,7 +110,6 @@ function App() {
     return fetchWithCred(url);
   };
 
-  // ★ ロビーに戻る（カジュアル解散時など）
   const handleGoToLobby = async () => {
     try {
       if (playingRoomId && loggedInUser) {
@@ -160,7 +155,6 @@ function App() {
       console.log('[DEBUG] board response game_status:', JSON.stringify(data.game_status));
       setCoastalVertices(data.coastal_vertices || []);
 
-      // ★ ランク変動情報を常に最新に保つ
       if (data.rank_deltas) {
         setRankDeltas(data.rank_deltas);
       }
@@ -238,7 +232,6 @@ function App() {
     autoLogin();
   }, []);
 
-  // ===== ゲーム開始時のデータ読み込み =====
   useEffect(() => {
     if (playingRoomId) { setLoading(true); fetchData(); }
   }, [playingRoomId]);
@@ -285,7 +278,6 @@ function App() {
     }
   }, [gameStatus.state, initRollDeadline]);
 
-  // ===== 状態更新 =====
   const handleStateUpdate = (newInventory, newRates, newBuildings, newScore, newCards, newGameStatus) => {
     if (newInventory && newInventory[currentPlayer]) setInventory({ ...newInventory[currentPlayer] });
     if (newRates && newRates[currentPlayer]) setTradeRates({ ...newRates[currentPlayer] });
@@ -303,7 +295,6 @@ function App() {
     }
   };
 
-  // ===== イニシアチブロール =====
   const handleInitRoll = async (p) => {
     try {
       const data = await apiPost('/api/init_roll', { player: p });
@@ -315,7 +306,6 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-  // ===== ターン終了 =====
   const handleEndTurn = async (isForcedTimeout = false) => {
     if (!isMyTurn && !isForcedTimeout) { alert("[ ERROR ] 現在は敵対企業のターンです。"); return; }
     if (!isForcedTimeout && isMyTurn && gameStatus.state === "playing" && !hasRolledDice) {
@@ -332,7 +322,6 @@ function App() {
     } catch (err) { console.error("ターン終了処理中にエラー:", err); }
   };
 
-  // ===== COMターン自動実行 =====
   useEffect(() => {
     const isCPU = playerTypes[gameStatus.current_player] !== 'human';
     if ((gameStatus.state === "playing" || gameStatus.state === "setup") && isCPU) {
@@ -360,7 +349,6 @@ function App() {
     }
   }, [gameStatus.current_player, gameStatus.state, gameStatus.setup_turn, playerTypes]);
 
-  // ===== タイマー =====
   useEffect(() => {
     const timerId = setInterval(() => {
       if (!gameStatus.turn_end_time) { setTimeLeft(60); return; }
@@ -377,7 +365,6 @@ function App() {
 
   useEffect(() => { setDice(null); }, [gameStatus.current_player]);
 
-  // ===== マップ選択（ソロのみ） =====
   const handleSelectMap = async (mapId) => {
     try {
       const data = await apiPost('/api/reset', { map_id: mapId });
@@ -411,7 +398,6 @@ function App() {
     }
   };
 
-  // ===== 順番決めのCOM自動ロール =====
   useEffect(() => {
     if (gameStatus.state === "init_roll") {
       const nextCPU = PLAYERS.find(p => playerTypes[p] !== 'human' && !initRolls[p]);
@@ -435,7 +421,6 @@ function App() {
     }
   }, [gameStatus.state, playingRoomId]);
 
-  // ===== サイコロ =====
   const handleRollDice = async () => {
     if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     if (isRolling || hasRolledDice) return;
@@ -456,7 +441,6 @@ function App() {
     } catch (error) { console.error(error); setIsRolling(false); }
   };
 
-  // ===== ハッキング =====
   const handleHackResources = async () => {
     if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     try {
@@ -465,7 +449,6 @@ function App() {
     } catch (error) { console.error(error); }
   };
 
-  // ===== トレード =====
   const handleTrade = async () => {
     if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     if (offerRes === receiveRes) { alert("[ ERROR ] 同じ資源は取引できません。"); return; }
@@ -476,7 +459,6 @@ function App() {
     } catch (error) { console.error(error); }
   };
 
-  // ===== カードドロー =====
   const handleDrawCard = async (deckType) => {
     if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     if (!inventory) return;
@@ -494,7 +476,6 @@ function App() {
     } catch (error) { console.error(error); }
   };
 
-  // ===== カード使用 =====
   const handleUseCard = async (card) => {
     if (!isMyTurn) { alert("[ ERROR ] あなたのターンではありません。"); return; }
     if (card.type === "PATENT") { alert("[ INFO ] 特許カードは持っているだけで企業価値(+10万シェア)に貢献します。"); return; }
@@ -522,7 +503,6 @@ function App() {
     alert(`【${card.name} 準備完了】\n対象となるマップ上の場所をクリックしてください。`);
   };
 
-  // ===== リセット・タイトル戻り =====
   const handleResetSystem = async () => {
     if (playingRoomId && loggedInUser) {
       try {
@@ -565,7 +545,6 @@ function App() {
     } catch (err) { console.error("緊急脱出に失敗:", err); }
   };
 
-  // ★ ログアウト処理
   const handleLogout = async () => {
     try {
       await fetch('/api/logout', { method: 'POST', credentials: 'include' });
@@ -591,7 +570,6 @@ function App() {
     localStorage.removeItem('nz_password');
   };
 
-  // ===== 建物カウント =====
   const bCounts = () => {
     const counts = { LOCAL_HUB: 0, DATA_CENTER: 0, GATEWAY: 0, MEGA_HQ: 0 };
     Object.values(buildings).forEach(b => { if (b.player === currentPlayer && counts[b.type] !== undefined) counts[b.type]++; });
@@ -604,12 +582,10 @@ function App() {
     return stage ? stage.name : id;
   };
 
-  //=== 画面遷移 ===
   if (isCheckingLogin) {
     return <div style={{ height: '100vh', backgroundColor: '#1a1a2e', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>システムに接続中...</div>;
   }
 
-  // ★ FAQ / ヘルプ画面（ログイン前でも表示可能）
   if (selectedMode === 'HELP') {
     return <HelpScreen onBack={() => setSelectedMode(null)} />;
   }
@@ -633,7 +609,6 @@ function App() {
     );
   }
 
-  // ★ ストア画面
   if (selectedMode === 'STORE') {
     const handleStoreUserUpdate = (updatedFields) => {
       if (updatedFields.user_id) {
@@ -652,7 +627,6 @@ function App() {
     );
   }
 
-  // ★ 応援画面（独立ページ）
   if (selectedMode === 'SUPPORT') {
     const handleSupportUserUpdate = (updatedFields) => {
       if (updatedFields.user_id) {
@@ -670,17 +644,14 @@ function App() {
     );
   }
 
-  // ★ 生物図鑑画面
   if (selectedMode === 'WATCHBOOK') {
     return <WatchBook user={loggedInUser} onBack={() => setSelectedMode(null)} />;
   }
 
-  // ★ ルール解説画面
   if (selectedMode === 'GUIDE') {
     return <GuideScreen onBack={() => setSelectedMode(null)} />;
   }
 
-  // ★ 引き換えコード画面
   if (selectedMode === 'REDEEM') {
     const handleRedeemUserUpdate = (updatedFields) => {
       if (updatedFields.user_id) {
@@ -698,7 +669,6 @@ function App() {
     );
   }
 
-  // ★ ランクマッチ待機画面（accessToken は不要）
   if (selectedMode === 'RANKED' && !playingRoomId) {
     return (
       <RankedMatchmakingScreen
@@ -708,17 +678,17 @@ function App() {
     );
   }
 
-  // カジュアルマップ選択画面
+  // カジュアルマップ選択画面（★ onBack 追加）
   if (selectedMode === 'CASUAL' && casualMapSelection && !waitingRoomId && !playingRoomId) {
     return (
       <MapSelector
         onSelectMap={(mapId) => handleCasualMapSelected(mapId)}
         pColor="#00ffcc"
+        onBack={() => setCasualMapSelection(false)}
       />
     );
   }
 
-  // カジュアル待合室
   if (selectedMode === 'CASUAL' && !playingRoomId && waitingRoomId) {
     const stageName = getStageName(selectedCasualMapId || "STAGE_01_BEGINNER");
     return (
@@ -740,7 +710,6 @@ function App() {
     );
   }
 
-  // カジュアルロビー
   if (selectedMode === 'CASUAL' && !waitingRoomId && !playingRoomId && !casualMapSelection) {
     return (
       <LobbyScreen
@@ -769,8 +738,9 @@ function App() {
     <ErrorBoundary>
       <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: pColor, fontFamily: '"Courier New", Courier, monospace', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         
+        {/* ★ ソロプレイ時マップ選択：onBack 追加 */}
         {gameStatus.state === "map_selection" && selectedMode !== 'CASUAL' && selectedMode !== 'RANKED' && (
-          <MapSelector onSelectMap={handleSelectMap} pColor={pColor} />
+          <MapSelector onSelectMap={handleSelectMap} pColor={pColor} onBack={() => setSelectedMode(null)} />
         )}
 
         {gameStatus.state === "init_roll" && (
