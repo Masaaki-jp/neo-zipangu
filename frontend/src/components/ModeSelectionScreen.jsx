@@ -1,8 +1,9 @@
+// frontend/src/components/ModeSelectionScreen.jsx
 import React, { useState } from 'react';
 
 export default function ModeSelectionScreen({ user, onSelectMode, onLogout }) {
   const isGuest = user?.login_id?.startsWith('guest_');
-  const [showReferral, setShowReferral] = useState(false);  // ★ 招待コード表示状態
+  const [showReferral, setShowReferral] = useState(false);
 
   // ★ 季節イベント参加ハンドラ
   const handleSeasonParticipate = async () => {
@@ -218,6 +219,17 @@ export default function ModeSelectionScreen({ user, onSelectMode, onLogout }) {
         >
           🎫 コードを使う
           <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>限定アイコンがもらえるコードを入力</div>
+        </button>
+
+        {/* ⑩ 運営支援 ★ 追加 */}
+        <button 
+          onClick={() => onSelectMode('SPONSOR')}
+          style={{ padding: '1.5rem', backgroundColor: '#0f3460', color: 'white', border: '2px solid #ffcc00', borderRadius: '8px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.3s', boxShadow: '0 4px 6px rgba(255,204,0,0.2)' }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#1a4b8c'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#0f3460'}
+        >
+          💝 運営支援
+          <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '0.5rem', fontWeight: 'normal' }}>完全無料を続けるためのご支援のお願い</div>
         </button>
 
       </div>
