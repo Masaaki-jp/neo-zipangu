@@ -1,4 +1,4 @@
-// frontend/src/App.jsx（login_id 保持修正版）
+// frontend/src/App.jsx（login_id 保持修正版 + SponsorScreen 統合）
 import React, { useState, useEffect, useRef } from 'react';
 import HexMap from './components/HexMap';
 import PlayerStatus from './components/PlayerStatus';
@@ -16,6 +16,7 @@ import WatchBook from './components/WatchBook';
 import HelpScreen from './components/HelpScreen';
 import GuideScreen from './components/GuideScreen';
 import RedeemScreen from './components/RedeemScreen';
+import SponsorScreen from './components/SponsorScreen'; // ★ 追加
 import ErrorBoundary from './components/ErrorBoundary';
 import { STAGE_DATA } from './maps/stageData';
 
@@ -609,12 +610,22 @@ function App() {
     );
   }
 
+  // ★ 運営支援画面
+  if (selectedMode === 'SPONSOR') {
+    return (
+      <SponsorScreen
+        onBack={() => setSelectedMode(null)}
+        onGoToRedeem={() => setSelectedMode('REDEEM')}
+      />
+    );
+  }
+
   if (selectedMode === 'STORE') {
     const handleStoreUserUpdate = (updatedFields) => {
       setLoggedInUser(prev => ({
         ...prev,
         ...updatedFields,
-        login_id: prev.login_id || updatedFields.login_id, // login_id を維持
+        login_id: prev.login_id || updatedFields.login_id,
       }));
     };
     return (
