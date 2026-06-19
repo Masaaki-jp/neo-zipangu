@@ -176,10 +176,11 @@ def _build_road(session, req: RoadRequest):
 def _get_inventory(session):
     return {"inventory": session.inventory}
 
-def _hack_resources(session, req: InitRollRequest):
-    for res in session.inventory[req.player]:
-        session.inventory[req.player][res] += 100.0
-    return main.build_standard_response(session, {"status": "hacked"})
+# ★ 以下のチート機能は本番環境では無効化
+# def _hack_resources(session, req: InitRollRequest):
+#     for res in session.inventory[req.player]:
+#         session.inventory[req.player][res] += 100.0
+#     return main.build_standard_response(session, {"status": "hacked"})
 
 def _roll_dice(session):
     main.enforce_time_limit(session)
@@ -280,10 +281,11 @@ def get_inventory(room_id: str = Query("SOLO_CPU_ROOM")):
     session = main.room_manager.get_or_create_room(room_id)
     return _get_inventory(session)
 
-@router.post("/api/hack_resources")
-def hack_resources(req: InitRollRequest, room_id: str = Query("SOLO_CPU_ROOM")):
-    session = main.room_manager.get_or_create_room(room_id)
-    return _hack_resources(session, req)
+# ★ 本番環境ではチート機能をコメントアウト
+# @router.post("/api/hack_resources")
+# def hack_resources(req: InitRollRequest, room_id: str = Query("SOLO_CPU_ROOM")):
+#     session = main.room_manager.get_or_create_room(room_id)
+#     return _hack_resources(session, req)
 
 @router.get("/api/dice")
 def roll_dice(room_id: str = Query("SOLO_CPU_ROOM")):

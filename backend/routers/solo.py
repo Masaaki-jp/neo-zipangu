@@ -16,7 +16,8 @@ from routers.game import (
     _get_or_generate_board, _init_roll, _end_turn, _com_execute,
     _draw_card, _use_card, _trade_resources, _get_trade_rates,
     _build_hub, _move_hacker, _deploy_bot, _move_bot, _build_road,
-    _get_inventory, _hack_resources, _roll_dice, _reset_game
+    _get_inventory, _roll_dice, _reset_game
+    # ★ _hack_resources は本番環境では無効化のため削除
 )
 
 router = APIRouter()
@@ -112,10 +113,11 @@ def solo_get_inventory():
     return _get_inventory(session)
 
 
-@router.post("/api/solo/hack_resources")
-def solo_hack_resources(req: InitRollRequest):
-    session = _get_solo_session()
-    return _hack_resources(session, req)
+# ★ 本番環境ではチート機能をコメントアウト
+# @router.post("/api/solo/hack_resources")
+# def solo_hack_resources(req: InitRollRequest):
+#     session = _get_solo_session()
+#     return _hack_resources(session, req)
 
 
 @router.get("/api/solo/dice")
