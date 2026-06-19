@@ -1,14 +1,61 @@
 // frontend/src/components/GuideScreen.jsx
 import React, { useState } from 'react';
 
-// 折りたたみセクション
+// スタイル定義
+const styles = {
+  container: {
+    minHeight: '100vh',
+    backgroundColor: '#1a1a2e',
+    color: 'white',
+    padding: '2rem',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  wrapper: {
+    width: '100%',
+    maxWidth: '800px',
+  },
+  headerRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '2rem',
+  },
+  backButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#333',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+  },
+  title: {
+    margin: 0,
+    color: '#00ffcc',
+  },
+  spacer: {
+    width: '70px',
+  },
+  footer: {
+    marginTop: '2rem',
+    textAlign: 'center',
+    color: '#888',
+    fontSize: '0.8rem',
+  },
+};
+
+// 折りたたみセクション（アクセシブル）
 function Section({ title, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={{ marginBottom: '1rem', backgroundColor: '#16213e', borderRadius: '6px', overflow: 'hidden' }}>
-      <div
+      <button
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
         style={{
+          width: '100%',
           padding: '0.8rem 1rem',
           fontWeight: 'bold',
           cursor: 'pointer',
@@ -16,12 +63,17 @@ function Section({ title, children, defaultOpen = false }) {
           justifyContent: 'space-between',
           alignItems: 'center',
           color: '#00ffcc',
-          borderBottom: open ? '1px solid #333' : 'none'
+          background: 'none',
+          border: 'none',
+          borderBottom: open ? '1px solid #333' : 'none',
+          fontSize: '1rem',
+          textAlign: 'left',
+          fontFamily: 'inherit',
         }}
       >
-        {title}
-        <span style={{ fontSize: '1.2rem' }}>{open ? '▼' : '▶'}</span>
-      </div>
+        <span>{title}</span>
+        <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>{open ? '▼' : '▶'}</span>
+      </button>
       {open && (
         <div style={{ padding: '1rem', color: '#ccc', fontSize: '0.9rem', lineHeight: '1.7' }}>
           {children}
@@ -33,12 +85,12 @@ function Section({ title, children, defaultOpen = false }) {
 
 export default function GuideScreen({ onBack }) {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#1a1a2e', color: 'white', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ width: '100%', maxWidth: '800px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <button onClick={onBack} style={{ padding: '0.5rem 1rem', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>◀ 戻る</button>
-          <h1 style={{ margin: 0, color: '#00ffcc' }}>📖 ルール解説</h1>
-          <div style={{ width: '70px' }} />
+    <div style={styles.container}>
+      <div style={styles.wrapper}>
+        <div style={styles.headerRow}>
+          <button onClick={onBack} style={styles.backButton}>◀ 戻る</button>
+          <h1 style={styles.title}>📖 ルール解説</h1>
+          <div style={styles.spacer} />
         </div>
 
         <Section title="🎯 ゲームの目的" defaultOpen>
@@ -50,7 +102,7 @@ export default function GuideScreen({ onBack }) {
         <Section title="🎲 サイコロと資源">
           <p>毎ターンサイコロを2つ振り、出た目の合計と同じ数字のマスから資源が産出されます。</p>
           <p>資源の種類：<span style={{ color: '#ffcc00' }}>POWER</span>, <span style={{ color: '#00ffcc' }}>DATA</span>, <span style={{ color: '#aaa' }}>SILICON</span>, <span style={{ color: '#ff0055' }}>HARD</span>, <span style={{ color: '#00ff44' }}>POLYMER</span>, <span style={{ color: '#bfff00' }}>NUCLEAR</span>, <span style={{ color: '#2E8B57' }}>NATURE</span></p>
-          <p>数字の確率：6と8が最も出やすく、2と12が最も出にくいです。中央の数字を押さえるのが基本戦略です。</p>
+          <p>数字の確率：7が最も出やすく、2と12が最も出にくいです。中央の数字を押さえるのが基本戦略です。</p>
         </Section>
 
         <Section title="🏗️ 建物">
@@ -99,7 +151,7 @@ export default function GuideScreen({ onBack }) {
           <p>トークンストアの「限定」タブで獲得状況を確認できます。</p>
         </Section>
 
-        <div style={{ marginTop: '2rem', textAlign: 'center', color: '#888', fontSize: '0.8rem' }}>
+        <div style={styles.footer}>
           さらに詳しい情報は <span style={{ color: '#00ffcc' }}>FAQ / ヘルプ</span> をご覧ください。
         </div>
       </div>
