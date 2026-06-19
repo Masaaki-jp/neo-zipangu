@@ -1,3 +1,4 @@
+// frontend/src/components/MapBuilder.jsx
 import React, { useState } from 'react';
 
 export default function MapBuilder({ onBack }) {
@@ -30,22 +31,6 @@ export default function MapBuilder({ onBack }) {
       }
       return newHexes;
     });
-  };
-
- // 🥷 マップリセット処理
-  const handleReset = () => {
-    // 誤爆を防ぐため、ブラウザ標準の確認ダイアログを挟む
-    const isConfirmed = window.confirm("⚠️ 警告 ⚠️\n現在のマップデータをすべて消去（リセット）しますか？\nこの操作は取り消せません。");
-    
-    if (isConfirmed) {
-      // 1. マップデータを管理しているStateを空にする
-      // ※ `setBoardData` や `setHexes` など、実際のState更新関数名に書き換えてください。
-      setBoardData([]); 
-      
-      // 2. （必要であれば）付随するStateも初期化する
-      // setEventLog(null);
-      // setSelectedTool(null);
-    }
   };
 
   // 🥷 マスの数を集計
@@ -118,7 +103,11 @@ CUSTOM_OCEANS = [${ocean.join(', ')}]
           <span style={{ color: '#00ffcc', marginLeft: '10px' }}>TOTAL: <span style={{ fontSize: '1.2rem', color: '#fff' }}>{totalHexes}</span></span>
         </div>
 
-        <button onClick={() => window.confirm("⚠️ マップを全消去しますか？") && setHexes({})} style={{ backgroundColor: 'transparent', color: '#ff0055', border: '1px solid #ff0055', padding: '8px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '3px', marginLeft: '15px' }}>　　　　　
+        {/* ★ 修正済みのリセットボタン（setHexes を直接使用） */}
+        <button 
+          onClick={() => window.confirm("⚠️ マップを全消去しますか？") && setHexes({})} 
+          style={{ backgroundColor: 'transparent', color: '#ff0055', border: '1px solid #ff0055', padding: '8px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '3px', marginLeft: '15px' }}
+        >
           ✖ RESET
         </button>
 

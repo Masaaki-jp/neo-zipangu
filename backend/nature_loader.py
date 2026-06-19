@@ -4,7 +4,7 @@ import json
 import os
 import re
 
-NATURE_DIR = os.path.join(os.path.dirname(__file__), "../frontend/src/data/nature")
+NATURE_DIR = os.path.join(os.path.dirname(__file__), "nature_data")
 
 def _load_js_module(filename):
     path = os.path.join(NATURE_DIR, filename)
