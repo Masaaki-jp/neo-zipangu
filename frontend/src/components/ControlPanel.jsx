@@ -11,7 +11,7 @@ const diceFaceStyle = {
   margin: '0 5px',
   lineHeight: '1',
   position: 'relative',
-  top: '-4px', // 🥷 高さ調整
+  top: '-4px',
 };
 
 // 🥷 ダイスの目の値に応じて色分けして表示するコンポーネント
@@ -19,12 +19,12 @@ const DiceDisplay = ({ value }) => {
   const isOne = value === 1;
   const style = {
     ...diceFaceStyle,
-    color: isOne ? '#ff0055' : '#ffffff', // 🥷 1なら赤、それ以外は白
+    color: isOne ? '#ff0055' : '#ffffff',
   };
   return <span style={style}>{diceFaces[value]}</span>;
 };
 
-// 🥷 1. EXECUTEボタンのスピンアニメーション（🎲🎲）を定義するコンポーネント
+// 🥷 EXECUTEボタンのスピンアニメーション
 const DiceSpinStyle = () => (
   <style>{`
     @keyframes dice-spin {
@@ -33,9 +33,9 @@ const DiceSpinStyle = () => (
     }
     .dice-spinnin-icon {
       display: inline-block;
-      animation: dice-spin 0.2s linear infinite; /* 🥷 超高速回転（0.2秒）でスピンを表現 */
+      animation: dice-spin 0.2s linear infinite;
       margin: 0 3px;
-      font-size: 1.5rem; /* 🥷 ボタンのフォントサイズに合わせる */
+      font-size: 1.5rem;
     }
   `}</style>
 );
@@ -62,15 +62,13 @@ const ControlPanel = ({
   handleTrade,
   isRolling,
   handleRollDice,
-  handleHackResources,
+  // handleHackResources は完全に削除
   dice,
   eventLog,
   turnLogs 
 }) => {
-  // 詳細ログを表示するかどうかのスイッチ
   const [showDetailLogs, setShowDetailLogs] = useState(false);
 
-  // ログ内の「サイコロ: x + y = z」を検知して絵文字に変換する関数
   const formatLogText = (text) => {
     if (typeof text !== 'string') return text;
     return text.replace(/サイコロ:\s*([1-6])\s*\+\s*([1-6])\s*=\s*(\d+)/g, (match, d1, d2, total) => {
@@ -80,9 +78,9 @@ const ControlPanel = ({
 
   return (
     <>
-      <DiceSpinStyle /> {/* 🥷 2. スタイルの挿入 */}
+      <DiceSpinStyle />
       
-      {/* シーズンイベント（相場変動）の通知パネル */}
+      {/* シーズンイベントパネル */}
       {gameStatus.season_event && (
         <div style={{
           marginBottom: '15px',
@@ -170,43 +168,28 @@ const ControlPanel = ({
               animation: (isRolling || hasRolledDice || actionMode === 'HACKER' || actionMode === 'USE_CARD' || gameStatus.state === "setup") ? 'none' : 'blink 1.5s infinite' 
             }}
           >
-            {/* 🥷 3. ボタンのテキスト切り替えロジックを修正 */}
-            {
-              hasRolledDice ? '[ DICE ROLLED ]' : 
+            {hasRolledDice ? '[ DICE ROLLED ]' : 
               isRolling ? (
-                // 🥷 isRollingの時、テキストの代わりにアニメーション付きの絵文字要素を表示
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  [ {/* 🥷 片方のディレイを微妙にずらす（0.05s）ことでランダム感を出す */}
-                    <span className="dice-spinnin-icon">🎲</span> 
-                    <span className="dice-spinnin-icon" style={{ animationDelay: '0.05s' }}>🎲</span> 
-                  ]
+                  [ <span className="dice-spinnin-icon">🎲</span> <span className="dice-spinnin-icon" style={{ animationDelay: '0.05s' }}>🎲</span> ]
                 </span>
               ) : 
               '[ EXECUTE: ROLL DICE ]'
             }
           </button>
-          <button onClick={handleHackResources} disabled={actionMode === 'HACKER' || actionMode === 'USE_CARD'} style={{ backgroundColor: '#ff005522', color: actionMode === 'HACKER' || actionMode === 'USE_CARD' ? '#555' : '#ff0055', border: `1px dotted ${actionMode === 'HACKER' || actionMode === 'USE_CARD' ? '#555' : '#ff0055'}`, padding: '10px 15px', fontSize: '0.9rem', fontWeight: 'bold', fontFamily: 'inherit', cursor: actionMode === 'HACKER' || actionMode === 'USE_CARD' ? 'not-allowed' : 'pointer', borderRadius: '4px' }}>
-            [ DEPLOY: HACK RESOURCES ]
-          </button>
+          {/* ★ "HACK RESOURCES" ボタンは完全に削除 */}
         </div>
 
         {/* ダイス結果＆システムログ */}
         <div style={{ marginTop: '15px', textAlign: 'center', minHeight: '60px', width: '100%', maxWidth: '700px' }}>
           {dice && (
             <>
-              {/* 🥷 修正点：ユーザーの要望を反映 */}
-              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}> {/* 🥷 行全体を白に指定 */}
+              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
                 <span style={{ marginRight: '10px' }}>RESULT:</span>
-                
-                {/* 🥷 ダイス表示をDiceDisplayコンポーネントに変更 */}
                 <DiceDisplay value={dice.dice1} />
-                
                 <span style={{ margin: '0 10px' }}>+</span>
-                
                 <DiceDisplay value={dice.dice2} />
-                
                 <span style={{ margin: '0 10px' }}>=</span>
-                
                 <span style={{ color: '#ffffff', fontSize: '2rem', textShadow: '0 0 10px #ffffff' }}>
                   {dice.total}
                 </span>
@@ -214,7 +197,6 @@ const ControlPanel = ({
               {eventLog ? (
                 <div style={{ marginTop: '10px', fontSize: '1rem', color: '#ff0055', fontWeight: 'bold', textShadow: '0 0 5px #ff0055', animation: 'blink 1.5s infinite' }}>{formatLogText(eventLog)}</div>
               ) : (
-                /* 🥷 資源が湧いた時はマップが光るのでテキストは非表示。何も湧かなかった時（誰もいない数字が出た時）だけ表示する */
                 dice.yields.length === 0 && (
                   <div style={{ marginTop: '10px', fontSize: '0.9rem', color: '#aaaaaa' }}>
                     &gt; SYSTEM LOG: <span style={{ color: '#ff0055' }}>NO SECTORS ACTIVATED.</span>
@@ -229,7 +211,7 @@ const ControlPanel = ({
             </div>
           )}
 
-          {/* 他プレイヤーの直近ログ（詳細トグル付き） */}
+          {/* 他プレイヤーの直近ログ */}
           {turnLogs && turnLogs.length > 0 && (
             <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dotted #333', color: '#aaaaaa', fontSize: '0.9rem' }}>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
@@ -244,7 +226,7 @@ const ControlPanel = ({
                   style={{ backgroundColor: showDetailLogs ? '#333' : '#00ffcc22', color: showDetailLogs ? '#fff' : '#00ffcc', border: `1px solid ${showDetailLogs ? '#555' : '#00ffcc'}`, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', borderRadius: '3px', transition: '0.2s' }}
                 >
                   {showDetailLogs ? '> CLOSE DETAILS' : '> DETAIL LOGS'}
-               </button>
+                </button>
               </div>
 
               {showDetailLogs && (
@@ -256,7 +238,6 @@ const ControlPanel = ({
                       </div>
                       {log.details && log.details.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: '20px', color: '#ccc', fontSize: '0.85rem', lineHeight: '1.4' }}>
-                          {/* 🥷 修正点3：ログ履歴のテキストをformatLogTextに通す */}
                           {log.details.map((detail, idx) => (
                             <li key={idx}>{formatLogText(detail)}</li>
                           ))}
