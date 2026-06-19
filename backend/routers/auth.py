@@ -78,7 +78,7 @@ def login_user(req: LoginRequest):
         value=token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=True,   # ★ 本番HTTPS環境では True が必須
         max_age=60 * 60 * 24 * 7
     )
     return response
@@ -109,11 +109,12 @@ def guest_login():
     # ★ 既存の限定アイコンの絵文字を owned_profile_icons に補完
     sync_limited_emojis(user["user_id"])
 
+    # ★★★ 修正：生パスワードをレスポンスに含めない ★★★
     response = JSONResponse({
         "status": "success",
         "user_id": user["user_id"],
         "login_id": login_id,
-        "password": raw_password,
+        # "password": raw_password,  ← 完全削除
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
@@ -133,7 +134,7 @@ def guest_login():
         value=token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=True,   # ★ 本番HTTPS環境では True が必須
         max_age=60 * 60 * 24 * 7
     )
     return response
@@ -148,7 +149,7 @@ def logout_user():
         value="",
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=True,
         max_age=0  # 即時削除
     )
     return response
