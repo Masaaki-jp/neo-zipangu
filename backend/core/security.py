@@ -2,10 +2,12 @@
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+import os
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-SECRET_KEY = "CHANGE_ME_TO_RANDOM_64CHAR_STRING"
+# ★ 環境変数から読み込み、未設定の場合は開発用のデフォルト値を使う
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production-64chars")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 

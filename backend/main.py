@@ -7,11 +7,11 @@ import math
 import string
 import uuid
 import hashlib
+import os
 
 # Firebase Admin
 import firebase_admin
 from firebase_admin import credentials, firestore
-import os
 
 if not firebase_admin._apps:
     cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -88,11 +88,19 @@ from nature_loader import WATCH_DEFS, get_watch_card_info
 # カウントダウンモジュール
 from countdown import calculate_deadline, is_time_up
 
+# ★★★ CORS 設定：本番ドメインを環境変数から読み込み ★★★
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",   # Vite dev server
+    "http://localhost:3000",   # 予備
+    FRONTEND_ORIGIN,           # 本番フロントエンドURL（環境変数で上書き）
+]
+
 # FastAPI アプリケーション
 app = FastAPI(title="Neo Zipang Core API", version="1.12.0-beta")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,   # ★ "*" を廃止し、明示的なリストに変更
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -106,20 +114,20 @@ from routers.game import router as game_router
 from routers.solo import router as solo_router
 from routers.rooms import router as rooms_router
 from routers.ranked import router as ranked_router, start_matchmaking_background
-from routers.store import router as store_router  # ★ 追加：トークンストア
-from routers.support import router as support_router  # ★ 追加：応援機能
-from routers.season import router as season_router  # ★ 追加：季節イベント
-from routers.redeem import router as redeem_router  # ★ 追加：引き換えコード
+from routers.store import router as store_router
+from routers.support import router as support_router
+from routers.season import router as season_router
+from routers.redeem import router as redeem_router
 
 app.include_router(auth_router)
 app.include_router(game_router)
 app.include_router(solo_router)
 app.include_router(rooms_router)
 app.include_router(ranked_router)
-app.include_router(store_router)  # ★ 追加
-app.include_router(support_router)  # ★ 追加
-app.include_router(season_router)  # ★ 追加
-app.include_router(redeem_router)  # ★ 追加
+app.include_router(store_router)
+app.include_router(support_router)
+app.include_router(season_router)
+app.include_router(redeem_router)
 
 # マッチメイキングのバックグラウンドスレッドを起動
 start_matchmaking_background()
@@ -225,7 +233,7 @@ def get_my_profile(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="User not found")
     return {
         "user_id": user["user_id"],
-        "login_id": user.get("login_id", ""),  # ★ 追加：ゲスト判定用
+        "login_id": user.get("login_id", ""),
         "display_name": user["display_name"],
         "rank_points": user["rank_points"],
         "free_tokens": user["free_tokens"],
