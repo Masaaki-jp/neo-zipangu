@@ -22,7 +22,7 @@ db = firestore.client()
 def init_db():
     """接続確認"""
     _ = db.collection("users").limit(1).get()
-    print("[Firestore] Database connected.")
+    print(f"[Firestore] Database connected. Project ID: {db.project}")
 
 # ------------------------------------------------------------
 #  ヘルパー
@@ -294,39 +294,57 @@ def redeem_code(code: str, user_id: str) -> dict:
     引き換えコードを検証し、ユーザーに限定アイコンを付与する。
     戻り値: {"status": "success", "new_icons": [...]} または {"status": "error", "reason": "..."}
     """
+    print(f"[REDEEM DEBUG] code='{code}', user_id='{user_id}'")
+
     if not code:
+        print("[REDEEM DEBUG] Code is empty")
         return {"status": "error", "reason": "CODE_REQUIRED"}
 
     code_ref = db.collection("redeem_codes").document(code)
     code_doc = code_ref.get()
+    print(f"[REDEEM DEBUG] Document exists: {code_doc.exists}")
 
     if not code_doc.exists:
+        print(f"[REDEEM DEBUG] Document not found for code '{code}'")
+        # 一覧表示（デバッグ用）
+        all_docs = db.collection("redeem_codes").limit(20).stream()
+        existing_ids = [doc.id for doc in all_docs]
+        print(f"[REDEEM DEBUG] Existing document IDs (max 20): {existing_ids}")
         return {"status": "error", "reason": "INVALID_CODE"}
 
     code_data = code_doc.to_dict()
+    print(f"[REDEEM DEBUG] code_data: {code_data}")
 
     # 有効期限チェック
     expires_at = code_data.get("expires_at")
     if expires_at:
         try:
             expire_time = datetime.fromisoformat(expires_at)
-            if datetime.now(timezone.utc) > expire_time:
+            now = datetime.now(timezone.utc)
+            print(f"[REDEEM DEBUG] expires_at={expire_time}, now={now}")
+            if now > expire_time:
+                print("[REDEEM DEBUG] Code expired")
                 return {"status": "error", "reason": "CODE_EXPIRED"}
-        except ValueError:
+        except ValueError as e:
+            print(f"[REDEEM DEBUG] Invalid expiry format: {e}")
             return {"status": "error", "reason": "INVALID_EXPIRY"}
 
     # 利用回数制限チェック
     used_by = code_data.get("used_by", [])
     max_uses = code_data.get("max_uses", 1)
+    print(f"[REDEEM DEBUG] used_by count={len(used_by)}, max_uses={max_uses}")
     if len(used_by) >= max_uses:
+        print("[REDEEM DEBUG] Code exhausted")
         return {"status": "error", "reason": "CODE_EXHAUSTED"}
 
     # ユーザーの重複利用チェック
     if user_id in used_by:
+        print("[REDEEM DEBUG] User already used this code")
         return {"status": "error", "reason": "ALREADY_USED"}
 
     # アイコン付与
     icon_keys = code_data.get("limited_icon_keys", [])
+    print(f"[REDEEM DEBUG] Granting icons: {icon_keys}")
     if icon_keys:
         user_ref = db.collection("users").document(user_id)
         user_ref.update({
@@ -338,6 +356,7 @@ def redeem_code(code: str, user_id: str) -> dict:
         "used_by": ArrayUnion([user_id])
     })
 
+    print("[REDEEM DEBUG] Success")
     return {
         "status": "success",
         "new_icons": icon_keys

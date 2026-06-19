@@ -1,4 +1,6 @@
 node_modules/
 __pycache__/
-.envbackend/venv/
+.env
+backend/venv/
 venv/
+hack-ninja-key.json

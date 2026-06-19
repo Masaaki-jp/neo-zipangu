@@ -4,42 +4,67 @@ import json
 import os
 import re
 
-# フロントエンドのデータディレクトリへのパス
 NATURE_DIR = os.path.join(os.path.dirname(__file__), "../frontend/src/data/nature")
 
 def _load_js_module(filename):
-    """指定されたJSファイルからオブジェクトを読み込み、Pythonの辞書として返す"""
     path = os.path.join(NATURE_DIR, filename)
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # export const XXX = { ... }; のオブジェクト部分を抽出
-    match = re.search(r'export\s+const\s+\w+\s*=\s*(\{.*?\})\s*;', content, re.DOTALL)
-    if not match:
+    # オブジェクトリテラルを抽出（先頭の { から対応する } まで）
+    start = content.find('{')
+    if start == -1:
         print(f"[nature_loader] Warning: Could not find object in {filename}")
         return {}
+    brace_count = 0
+    end = start
+    for i in range(start, len(content)):
+        if content[i] == '{':
+            brace_count += 1
+        elif content[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                end = i
+                break
+    if brace_count != 0:
+        print(f"[nature_loader] Warning: Could not find matching closing brace in {filename}")
+        return {}
+    obj_str = content[start:end+1]
 
-    obj_str = match.group(1)
+    # コメントを削除（// から行末まで）
+    lines = obj_str.split('\n')
+    cleaned_lines = []
+    for line in lines:
+        # 文字列リテラル内の // は区別しない（簡易的だがデータに // はない前提）
+        comment_pos = line.find('//')
+        if comment_pos != -1:
+            line = line[:comment_pos]
+        cleaned_lines.append(line)
+    obj_str = '\n'.join(cleaned_lines)
 
-    # JavaScriptのオブジェクトをJSONに近づける
-    # 1. キーのクォートを統一
-    obj_str = re.sub(r'(\w+):', r'"\1":', obj_str)
-    # 2. シングルクォートをダブルクォートに変換
+    # 末尾のカンマを除去（オブジェクト・配列両対応）
+    obj_str = re.sub(r',\s*(\}|\])', r'\1', obj_str)
+
+    # キーがクォートされていない場合の簡易対応（実際は全キーが既にクォート済み）
+    # もし残っていれば、ここでクォートする（今回は不要なのでコメントアウト）
+    # obj_str = re.sub(r'([{,]\s*)(\w+)\s*:', r'\1"\2":', obj_str)
+
+    # シングルクォートをダブルクォートに変換（文字列内の ' は本来エスケープされていない）
+    # 注意：もし値にシングルクォートが含まれていると破綻するが、今のデータには存在しない
     obj_str = obj_str.replace("'", '"')
-    # 3. 末尾のカンマを削除
-    obj_str = re.sub(r',\s*}', '}', obj_str)
-    obj_str = re.sub(r',\s*]', ']', obj_str)
-    # 4. コメントを削除
-    obj_str = re.sub(r'//.*', '', obj_str)
 
     try:
         return json.loads(obj_str)
     except json.JSONDecodeError as e:
         print(f"[nature_loader] Warning: Failed to parse {filename}: {e}")
+        # デバッグ用に、問題の場所を表示
+        lines = obj_str.split('\n')
+        error_line = e.lineno
+        if error_line and error_line <= len(lines):
+            print(f"  Error near line {error_line}: {lines[error_line-1]}")
         return {}
 
 def load_watch_defs():
-    """すべてのカテゴリファイルを読み込み、統合されたWATCH_DEFSを返す"""
     categories = [
         "mammals", "birds", "reptiles", "amphibians",
         "fish", "marine_life", "insects", "plants", "fungi", "legendary"
@@ -52,18 +77,12 @@ def load_watch_defs():
             data.update(loaded)
         else:
             print(f"[nature_loader] Warning: No data loaded from {filename}")
-
     print(f"[nature_loader] Loaded {len(data)} species from frontend data.")
     return data
 
-# モジュールロード時に自動的にデータを読み込む
 WATCH_DEFS = load_watch_defs()
 
 def get_watch_card_info(emoji):
-    """
-    絵文字に対応する生物データを取得し、
-    Watchカードとして表示する情報を辞書で返す。
-    """
     data = WATCH_DEFS.get(emoji, {
         "name": "不明な生物",
         "score": 1,
