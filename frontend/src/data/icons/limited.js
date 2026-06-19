@@ -93,70 +93,19 @@ export const LIMITED_ICONS = [
   { key: "icon_75",  emoji: "💠", name: "Collector 75%",  category: "アイコン所持", desc: "全アイコンを75%所持",  requirement: "利用可能な全アイコンの75%を所持する" },
   { key: "icon_100", emoji: "🌈", name: "Collector 100%", category: "アイコン所持", desc: "全アイコンを完全所持", requirement: "利用可能な全アイコンを100%所持する" },
 
-  // ============================================================
-  // 💖 出資者 / サポーター (ハート 12)
-  // ============================================================
-  { key: "supporter_red",         emoji: "❤️", name: "Ruby Supporter",        category: "出資者", desc: "サポーター（レッド）に認定",    requirement: "サポーター（レッド）として認定される" },
-  { key: "supporter_pink",        emoji: "🩷", name: "Pink Diamond Supporter", category: "出資者", desc: "サポーター（ピンク）に認定",   requirement: "サポーター（ピンク）として認定される" },
-  { key: "supporter_orange",      emoji: "🧡", name: "Amber Supporter",        category: "出資者", desc: "サポーター（オレンジ）に認定",  requirement: "サポーター（オレンジ）として認定される" },
-  { key: "supporter_yellow",      emoji: "💛", name: "Topaz Supporter",        category: "出資者", desc: "サポーター（イエロー）に認定",  requirement: "サポーター（イエロー）として認定される" },
-  { key: "supporter_green",       emoji: "💚", name: "Emerald Supporter",      category: "出資者", desc: "サポーター（グリーン）に認定",  requirement: "サポーター（グリーン）として認定される" },
-  { key: "supporter_blue",        emoji: "💙", name: "Sapphire Supporter",     category: "出資者", desc: "サポーター（ブルー）に認定",   requirement: "サポーター（ブルー）として認定される" },
-  { key: "supporter_lightblue",   emoji: "🩵", name: "Aquamarine Supporter",   category: "出資者", desc: "サポーター（ライトブルー）に認定", requirement: "サポーター（ライトブルー）として認定される" },
-  { key: "supporter_purple",      emoji: "💜", name: "Amethyst Supporter",     category: "出資者", desc: "サポーター（パープル）に認定",  requirement: "サポーター（パープル）として認定される" },
-  { key: "supporter_brown",       emoji: "🤎", name: "Smoky Quartz Supporter", category: "出資者", desc: "サポーター（ブラウン）に認定",  requirement: "サポーター（ブラウン）として認定される" },
-  { key: "supporter_black",       emoji: "🖤", name: "Obsidian Supporter",     category: "出資者", desc: "サポーター（ブラック）に認定",  requirement: "サポーター（ブラック）として認定される" },
-  { key: "supporter_grey",        emoji: "🩶", name: "Moonstone Supporter",    category: "出資者", desc: "サポーター（グレー）に認定",   requirement: "サポーター（グレー）として認定される" },
-  { key: "supporter_white",       emoji: "🤍", name: "Diamond Supporter",     category: "出資者", desc: "サポーター（ホワイト）に認定",  requirement: "サポーター（ホワイト）として認定される" },
 
   // ============================================================
-  // 🔴🟠🟡🟢🔵🟣🟤⚫⚪ 出資者・サポーター (図形: 円形 9)
+  // 🔴🟠🟡🟢🔵🟣🟤⚫⚪：応援ポイントで自動開放 (図形: 円形 9)
   // ============================================================
-  { key: "supporter_circle_red",    emoji: "🔴", name: "Ruby Circle",    category: "出資者", desc: "サポーター（レッドサークル）に認定", requirement: "サポーター（レッドサークル）として認定される" },
-  { key: "supporter_circle_orange", emoji: "🟠", name: "Amber Circle",   category: "出資者", desc: "サポーター（オレンジサークル）に認定", requirement: "サポーター（オレンジサークル）として認定される" },
-  { key: "supporter_circle_yellow", emoji: "🟡", name: "Topaz Circle",   category: "出資者", desc: "サポーター（イエローサークル）に認定", requirement: "サポーター（イエローサークル）として認定される" },
-  { key: "supporter_circle_green",  emoji: "🟢", name: "Emerald Circle", category: "出資者", desc: "サポーター（グリーンサークル）に認定", requirement: "サポーター（グリーンサークル）として認定される" },
-  { key: "supporter_circle_blue",   emoji: "🔵", name: "Sapphire Circle",category: "出資者", desc: "サポーター（ブルーサークル）に認定", requirement: "サポーター（ブルーサークル）として認定される" },
-  { key: "supporter_circle_purple", emoji: "🟣", name: "Amethyst Circle",category: "出資者", desc: "サポーター（パープルサークル）に認定", requirement: "サポーター（パープルサークル）として認定される" },
-  { key: "supporter_circle_brown",  emoji: "🟤", name: "Bronze Circle",  category: "出資者", desc: "サポーター（ブロンズサークル）に認定", requirement: "サポーター（ブロンズサークル）として認定される" },
-  { key: "supporter_circle_black",  emoji: "⚫", name: "Obsidian Circle",category: "出資者", desc: "サポーター（ブラックサークル）に認定", requirement: "サポーター（ブラックサークル）として認定される" },
-  { key: "supporter_circle_white",  emoji: "⚪", name: "White Circle",   category: "出資者", desc: "サポーター（ホワイトサークル）に認定", requirement: "サポーター（ホワイトサークル）として認定される" },
-
-  // ============================================================
-  // 🟥🟧🟨🟩🟦🟪🟫⬛⬜◼◻◾◽▪▫ 出資者・サポーター (図形: 四角形 14)
-  // ============================================================
-  { key: "supporter_square_red",        emoji: "🟥", name: "Ruby Square",        category: "出資者", desc: "サポーター（レッドスクエア）に認定", requirement: "サポーター（レッドスクエア）として認定される" },
-  { key: "supporter_square_orange",     emoji: "🟧", name: "Amber Square",       category: "出資者", desc: "サポーター（オレンジスクエア）に認定", requirement: "サポーター（オレンジスクエア）として認定される" },
-  { key: "supporter_square_yellow",     emoji: "🟨", name: "Topaz Square",       category: "出資者", desc: "サポーター（イエロースクエア）に認定", requirement: "サポーター（イエロースクエア）として認定される" },
-  { key: "supporter_square_green",      emoji: "🟩", name: "Emerald Square",     category: "出資者", desc: "サポーター（グリーンスクエア）に認定", requirement: "サポーター（グリーンスクエア）として認定される" },
-  { key: "supporter_square_blue",       emoji: "🟦", name: "Sapphire Square",    category: "出資者", desc: "サポーター（ブルースクエア）に認定", requirement: "サポーター（ブルースクエア）として認定される" },
-  { key: "supporter_square_purple",     emoji: "🟪", name: "Amethyst Square",    category: "出資者", desc: "サポーター（パープルスクエア）に認定", requirement: "サポーター（パープルスクエア）として認定される" },
-  { key: "supporter_square_brown",      emoji: "🟫", name: "Bronze Square",      category: "出資者", desc: "サポーター（ブロンズスクエア）に認定", requirement: "サポーター（ブロンズスクエア）として認定される" },
-  { key: "supporter_square_black_large",emoji: "⬛", name: "Obsidian Square",    category: "出資者", desc: "サポーター（ブラックスクエア）に認定", requirement: "サポーター（ブラックスクエア）として認定される" },
-  { key: "supporter_square_white_large",emoji: "⬜", name: "White Square",       category: "出資者", desc: "サポーター（ホワイトスクエア）に認定", requirement: "サポーター（ホワイトスクエア）として認定される" },
-  { key: "supporter_square_black_medium",emoji: "◼", name: "Onyx Medium Square", category: "出資者", desc: "サポーター（ミディアムブラックスクエア）に認定", requirement: "サポーター（ミディアムブラックスクエア）として認定される" },
-  { key: "supporter_square_white_medium",emoji: "◻", name: "Marble Medium Square",category: "出資者", desc: "サポーター（ミディアムホワイトスクエア）に認定", requirement: "サポーター（ミディアムホワイトスクエア）として認定される" },
-  { key: "supporter_square_black_small", emoji: "▪", name: "Obsidian Small Square",category: "出資者", desc: "サポーター（スモールブラックスクエア）に認定", requirement: "サポーター（スモールブラックスクエア）として認定される" },
-  { key: "supporter_square_white_small", emoji: "▫", name: "White Small Square", category: "出資者", desc: "サポーター（スモールホワイトスクエア）に認定", requirement: "サポーター（スモールホワイトスクエア）として認定される" },
-  { key: "supporter_square_black_med_small", emoji: "◾", name: "Obsidian Medium-Small Square", category: "出資者", desc: "サポーター（ミディアムスモールブラックスクエア）に認定", requirement: "サポーター（ミディアムスモールブラックスクエア）として認定される" },
-  { key: "supporter_square_white_med_small", emoji: "◽", name: "White Medium-Small Square", category: "出資者", desc: "サポーター（ミディアムスモールホワイトスクエア）に認定", requirement: "サポーター（ミディアムスモールホワイトスクエア）として認定される" },
-
-  // ============================================================
-  // 🔶🔷🔸🔹 出資者・サポーター (図形: ダイヤモンド 4)
-  // ============================================================
-  { key: "supporter_diamond_orange_large", emoji: "🔶", name: "Large Orange Diamond", category: "出資者", desc: "サポーター（ラージオレンジダイヤ）に認定", requirement: "サポーター（ラージオレンジダイヤ）として認定される" },
-  { key: "supporter_diamond_blue_large",  emoji: "🔷", name: "Large Blue Diamond",  category: "出資者", desc: "サポーター（ラージブルーダイヤ）に認定", requirement: "サポーター（ラージブルーダイヤ）として認定される" },
-  { key: "supporter_diamond_orange_small", emoji: "🔸", name: "Small Orange Diamond", category: "出資者", desc: "サポーター（スモールオレンジダイヤ）に認定", requirement: "サポーター（スモールオレンジダイヤ）として認定される" },
-  { key: "supporter_diamond_blue_small",  emoji: "🔹", name: "Small Blue Diamond",  category: "出資者", desc: "サポーター（スモールブルーダイヤ）に認定", requirement: "サポーター（スモールブルーダイヤ）として認定される" },
-
-  // ============================================================
-  // 🔺🔻💠🔘🔳🔲 出資者・サポーター (図形: その他 6)
-  // ============================================================
-  { key: "supporter_triangle_red_up",     emoji: "🔺", name: "Red Triangle Up",    category: "出資者", desc: "サポーター（レッドトライアングル）に認定", requirement: "サポーター（レッドトライアングル）として認定される" },
-  { key: "supporter_triangle_red_down",   emoji: "🔻", name: "Red Triangle Down",  category: "出資者", desc: "サポーター（レッド逆トライアングル）に認定", requirement: "サポーター（レッド逆トライアングル）として認定される" },
-  { key: "supporter_radio_button",        emoji: "🔘", name: "Radio Button",       category: "出資者", desc: "サポーター（ラジオボタン）に認定", requirement: "サポーター（ラジオボタン）として認定される" },
-  { key: "supporter_button_white_square", emoji: "🔳", name: "White Square Button", category: "出資者", desc: "サポーター（ホワイトスクエアボタン）に認定", requirement: "サポーター（ホワイトスクエアボタン）として認定される" },
-  { key: "supporter_button_black_square", emoji: "🔲", name: "Black Square Button", category: "出資者", desc: "サポーター（ブラックスクエアボタン）に認定", requirement: "サポーター（ブラックスクエアボタン）として認定される" },
+  { key: "supporter_circle_red",    emoji: "🔴", name: "Ruby Circle",    category: "応援", desc: "応援者（レッドサークル）に認定", requirement: "応援者（レッドサークル）として認定される" },
+  { key: "supporter_circle_orange", emoji: "🟠", name: "Amber Circle",   category: "応援", desc: "応援者（オレンジサークル）に認定", requirement: "応援者（オレンジサークル）として認定される" },
+  { key: "supporter_circle_yellow", emoji: "🟡", name: "Topaz Circle",   category: "応援", desc: "応援者（イエローサークル）に認定", requirement: "応援者（イエローサークル）として認定される" },
+  { key: "supporter_circle_green",  emoji: "🟢", name: "Emerald Circle", category: "応援", desc: "応援者（グリーンサークル）に認定", requirement: "応援者（グリーンサークル）として認定される" },
+  { key: "supporter_circle_blue",   emoji: "🔵", name: "Sapphire Circle",category: "応援", desc: "応援者（ブルーサークル）に認定", requirement: "応援者（ブルーサークル）として認定される" },
+  { key: "supporter_circle_purple", emoji: "🟣", name: "Amethyst Circle",category: "応援", desc: "応援者（パープルサークル）に認定", requirement: "応援者（パープルサークル）として認定される" },
+  { key: "supporter_circle_brown",  emoji: "🟤", name: "Bronze Circle",  category: "応援", desc: "応援者（ブロンズサークル）に認定", requirement: "応援者（ブロンズサークル）として認定される" },
+  { key: "supporter_circle_black",  emoji: "⚫", name: "Obsidian Circle",category: "応援", desc: "応援者（ブラックサークル）に認定", requirement: "応援者（ブラックサークル）として認定される" },
+  { key: "supporter_circle_white",  emoji: "⚪", name: "White Circle",   category: "応援", desc: "応援者（ホワイトサークル）に認定", requirement: "応援者（ホワイトサークル）として認定される" },
 
   // ============================================================
   // 🍩 紹介システム / フレンド招待 (14)
@@ -258,23 +207,6 @@ export const LIMITED_ICONS = [
   { key: "popular_ribbon",        emoji: "🎀", name: "Ribbon",            category: "実績", desc: "プロフィールアイコンを5個装備", requirement: "プロフィールアイコンを5個以上所持する" },
 
   // ============================================================
-  // 📝 Note サポーター (13)
-  // ============================================================
-  { key: "media_note_notebook_decorative", emoji: "📔", name: "Notebook (Decorative)", category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_closed_book",        emoji: "📕", name: "Closed Book",             category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_open_book",          emoji: "📖", name: "Open Book",               category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_green_book",         emoji: "📗", name: "Green Book",              category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_blue_book",          emoji: "📘", name: "Blue Book",               category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_orange_book",        emoji: "📙", name: "Orange Book",             category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_books",              emoji: "📚", name: "Books",                   category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_notebook",           emoji: "📓", name: "Notebook",                category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_ledger",             emoji: "📒", name: "Ledger",                  category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_page_curl",          emoji: "📃", name: "Page with Curl",          category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_scroll",             emoji: "📜", name: "Scroll",                  category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_page_up",            emoji: "📄", name: "Page Facing Up",          category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-  { key: "media_note_memo",               emoji: "📝", name: "Memo",                    category: "メディア", desc: "Noteサポーター特典", requirement: "Note限定コードで解放" },
-
-  // ============================================================
   // ▶️ YouTube サポーター (5)
   // ============================================================
   { key: "media_youtube_movie_camera",    emoji: "🎥", name: "Movie Camera",    category: "メディア", desc: "YouTubeサポーター特典", requirement: "YouTube限定コードで解放" },
@@ -309,4 +241,92 @@ export const LIMITED_ICONS = [
   { key: "media_x_loudspeaker",           emoji: "📢", name: "Loudspeaker",          category: "メディア", desc: "Xサポーター特典", requirement: "X限定コードで解放" },
   { key: "media_x_megaphone",             emoji: "📣", name: "Megaphone",            category: "メディア", desc: "Xサポーター特典", requirement: "X限定コードで解放" },
   { key: "media_x_postal_horn",           emoji: "📯", name: "Postal Horn",          category: "メディア", desc: "Xサポーター特典", requirement: "X限定コードで解放" },
+
+  // ============================================================
+  // 🟥🟧🟨🟩🟦🟪🟫⬛⬜ ：スキ (四角形 9)
+  // ============================================================
+  { key: "supporter_square_red",        emoji: "🟥", name: "Ruby Square",        category: "スキ", desc: "noteのスキ特典（レッドスクエア）", requirement: "note限定コードで解放" },
+  { key: "supporter_square_orange",     emoji: "🟧", name: "Amber Square",       category: "スキ", desc: "noteのスキ特典（オレンジスクエア）", requirement: "note限定コードで解放" },
+  { key: "supporter_square_yellow",     emoji: "🟨", name: "Topaz Square",       category: "スキ", desc: "noteのスキ特典（イエロースクエア）", requirement: "note限定コードで解放" },
+  { key: "supporter_square_green",      emoji: "🟩", name: "Emerald Square",     category: "スキ", desc: "noteのスキ特典（グリーンスクエア）", requirement: "note限定コードで解放" },
+  { key: "supporter_square_blue",       emoji: "🟦", name: "Sapphire Square",    category: "スキ", desc: "noteのスキ特典（ブルースクエア）", requirement: "note限定コードで解放" },
+  { key: "supporter_square_purple",     emoji: "🟪", name: "Amethyst Square",    category: "スキ", desc: "noteのスキ特典（パープルスクエア）", requirement: "note限定コードで解放" },
+  { key: "supporter_square_brown",      emoji: "🟫", name: "Bronze Square",      category: "スキ", desc: "noteのスキ特典（ブロンズスクエア）", requirement: "note限定コードで解放" },
+  { key: "supporter_square_black_large",emoji: "⬛", name: "Obsidian Square",    category: "スキ", desc: "noteのスキ特典（ブラックスクエア）", requirement: "note限定コードで解放" },
+  { key: "supporter_square_white_large",emoji: "⬜", name: "White Square",       category: "スキ", desc: "noteのスキ特典（ホワイトスクエア）", requirement: "note限定コードで解放" },
+
+　// ============================================================
+  // 🔖🏷✏✒🖋🖊🖌🖍📌📍 ：noteフォロー (10)
+  // ============================================================
+  { key: "media_note_follow_bookmark",        emoji: "🔖", name: "Bookmark",        category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+  { key: "media_note_follow_label",           emoji: "🏷", name: "Label",           category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+  { key: "media_note_follow_pencil",          emoji: "✏", name: "Pencil",          category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+  { key: "media_note_follow_black_nib",       emoji: "✒", name: "Black Nib",       category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+  { key: "media_note_follow_fountain_pen",    emoji: "🖋", name: "Fountain Pen",    category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+  { key: "media_note_follow_pen",             emoji: "🖊", name: "Pen",             category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+  { key: "media_note_follow_paintbrush",      emoji: "🖌", name: "Paintbrush",      category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+  { key: "media_note_follow_crayon",          emoji: "🖍", name: "Crayon",          category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+  { key: "media_note_follow_pushpin",         emoji: "📌", name: "Pushpin",         category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+  { key: "media_note_follow_round_pushpin",   emoji: "📍", name: "Round Pushpin",   category: "noteフォロー", desc: "noteのフォロワー特典", requirement: "note限定コードで解放" },
+
+  // ============================================================
+  // 📰🗞✉📧📨📩📫📪📬📭 ：シェアのお礼 (10)
+  // ============================================================
+  { key: "media_note_share_newspaper",         emoji: "📰", name: "Newspaper",                category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+  { key: "media_note_share_rolled_newspaper",  emoji: "🗞", name: "Rolled-up Newspaper",      category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+  { key: "media_note_share_envelope",          emoji: "✉", name: "Envelope",                 category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+  { key: "media_note_share_email",             emoji: "📧", name: "E-mail",                   category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+  { key: "media_note_share_incoming_envelope", emoji: "📨", name: "Incoming Envelope",        category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+  { key: "media_note_share_envelope_arrow",    emoji: "📩", name: "Envelope with Arrow",      category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+  { key: "media_note_share_mailbox_closed",    emoji: "📫", name: "Closed Mailbox (Raised)",  category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+  { key: "media_note_share_mailbox_lowered",   emoji: "📪", name: "Closed Mailbox (Lowered)", category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+  { key: "media_note_share_mailbox_open",      emoji: "📬", name: "Open Mailbox (Raised)",    category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+  { key: "media_note_share_mailbox_open_low",  emoji: "📭", name: "Open Mailbox (Lowered)",   category: "シェア", desc: "noteのシェア特典", requirement: "note限定コードで解放" },
+
+  // ============================================================
+  // 📔📕📖📗📘 ：記事購入時のお礼 (5)
+  // ============================================================
+  { key: "media_note_notebook_decorative", emoji: "📔", name: "Notebook (Decorative)", category: "記事購入", desc: "noteの記事購入特典", requirement: "note限定コードで解放" },
+  { key: "media_note_closed_book",        emoji: "📕", name: "Closed Book",             category: "記事購入", desc: "noteの記事購入特典", requirement: "note限定コードで解放" },
+  { key: "media_note_open_book",          emoji: "📖", name: "Open Book",               category: "記事購入", desc: "noteの記事購入特典", requirement: "note限定コードで解放" },
+  { key: "media_note_green_book",         emoji: "📗", name: "Green Book",              category: "記事購入", desc: "noteの記事購入特典", requirement: "note限定コードで解放" },
+  { key: "media_note_blue_book",          emoji: "📘", name: "Blue Book",               category: "記事購入", desc: "noteの記事購入特典", requirement: "note限定コードで解放" },
+
+  // ============================================================
+  // 📙📚📓 ：マガジン購入・購読のお礼 (3)
+  // ============================================================
+  { key: "media_note_orange_book", emoji: "📙", name: "Orange Book",  category: "マガジン", desc: "noteのマガジン購入特典", requirement: "note限定コードで解放" },
+  { key: "media_note_books",       emoji: "📚", name: "Books",        category: "マガジン", desc: "noteのマガジン購入特典", requirement: "note限定コードで解放" },
+  { key: "media_note_notebook",    emoji: "📓", name: "Notebook",     category: "マガジン", desc: "noteのマガジン購入特典", requirement: "note限定コードで解放" },
+
+  // ============================================================
+  // 📒📃📜📄📝 ：チップのお礼 (5)
+  // ============================================================
+  { key: "media_note_ledger",    emoji: "📒", name: "Ledger",          category: "チップ", desc: "noteのチップ特典", requirement: "note限定コードで解放" },
+  { key: "media_note_page_curl", emoji: "📃", name: "Page with Curl",  category: "チップ", desc: "noteのチップ特典", requirement: "note限定コードで解放" },
+  { key: "media_note_scroll",    emoji: "📜", name: "Scroll",          category: "チップ", desc: "noteのチップ特典", requirement: "note限定コードで解放" },
+  { key: "media_note_page_up",   emoji: "📄", name: "Page Facing Up",  category: "チップ", desc: "noteのチップ特典", requirement: "note限定コードで解放" },
+  { key: "media_note_memo",      emoji: "📝", name: "Memo",            category: "チップ", desc: "noteのチップ特典", requirement: "note限定コードで解放" },
+
+  // ============================================================
+  // 💖 ：出資者 (ハート 12)　手動設定
+  // ============================================================
+  { key: "supporter_red",         emoji: "❤️", name: "Ruby Supporter",        category: "出資者", desc: "出資者（レッド）に認定",    requirement: "出資者（レッド）として認定される" },
+  { key: "supporter_pink",        emoji: "🩷", name: "Pink Diamond Supporter", category: "出資者", desc: "出資者（ピンク）に認定",   requirement: "出資者（ピンク）として認定される" },
+  { key: "supporter_orange",      emoji: "🧡", name: "Amber Supporter",        category: "出資者", desc: "出資者（オレンジ）に認定",  requirement: "出資者（オレンジ）として認定される" },
+  { key: "supporter_yellow",      emoji: "💛", name: "Topaz Supporter",        category: "出資者", desc: "出資者（イエロー）に認定",  requirement: "出資者（イエロー）として認定される" },
+  { key: "supporter_green",       emoji: "💚", name: "Emerald Supporter",      category: "出資者", desc: "出資者（グリーン）に認定",  requirement: "出資者（グリーン）として認定される" },
+  { key: "supporter_blue",        emoji: "💙", name: "Sapphire Supporter",     category: "出資者", desc: "出資者（ブルー）に認定",   requirement: "出資者（ブルー）として認定される" },
+  { key: "supporter_lightblue",   emoji: "🩵", name: "Aquamarine Supporter",   category: "出資者", desc: "出資者（ライトブルー）に認定", requirement: "出資者（ライトブルー）として認定される" },
+  { key: "supporter_purple",      emoji: "💜", name: "Amethyst Supporter",     category: "出資者", desc: "出資者（パープル）に認定",  requirement: "出資者（パープル）として認定される" },
+  { key: "supporter_brown",       emoji: "🤎", name: "Smoky Quartz Supporter", category: "出資者", desc: "出資者（ブラウン）に認定",  requirement: "出資者（ブラウン）として認定される" },
+  { key: "supporter_black",       emoji: "🖤", name: "Obsidian Supporter",     category: "出資者", desc: "出資者（ブラック）に認定",  requirement: "出資者（ブラック）として認定される" },
+  { key: "supporter_grey",        emoji: "🩶", name: "Moonstone Supporter",    category: "出資者", desc: "出資者（グレー）に認定",   requirement: "出資者（グレー）として認定される" },
+  { key: "supporter_white",       emoji: "🤍", name: "Diamond Supporter",     category: "出資者", desc: "出資者（ホワイト）に認定",  requirement: "出資者（ホワイト）として認定される" },
+
+  // ============================================================
+  // 🔶🔷 ：出資者（手動設定） (ダイヤモンド 2)
+  // ============================================================
+  { key: "supporter_diamond_orange_large", emoji: "🔶", name: "Large Orange Diamond", category: "出資者", desc: "出資者（オレンジダイヤ）に認定", requirement: "出資者（オレンジダイヤ）として認定される" },
+  { key: "supporter_diamond_blue_large",  emoji: "🔷", name: "Large Blue Diamond",  category: "出資者", desc: "出資者（ブルーダイヤ）に認定", requirement: "出資者（ブルーダイヤ）として認定される" },
 ];
