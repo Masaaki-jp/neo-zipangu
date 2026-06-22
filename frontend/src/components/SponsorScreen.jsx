@@ -6,35 +6,35 @@ const SPONSOR_PLATFORMS = [
     name: 'GitHub Sponsors',
     icon: '🐙',
     description: '開発者向けのサポートプラットフォーム。継続的な支援が可能です。',
-    url: 'https://github.com/sponsors/your-org',
+    url: 'https://github.com/sponsors/Masaaki-jp',
     color: '#2dba4e',
   },
   {
     name: 'YouTube',
     icon: '🎬',
     description: 'チャンネルメンバーシップで支援。限定コンテンツもあります。',
-    url: 'https://youtube.com/@your-channel',
+    url: 'https://youtube.com/@hack-ninja',
     color: '#ff0000',
   },
   {
     name: 'note',
     icon: '📝',
     description: '記事の購入やサポート機能で支援できます。',
-    url: 'https://note.com/your-id',
+    url: 'https://note.com/masa_cloud',
     color: '#41c9b4',
   },
   {
     name: 'Reddit',
     icon: '👽',
     description: 'コミュニティを通じてプロジェクトを応援。',
-    url: 'https://reddit.com/r/neo-zipangu',
+    url: 'https://reddit.com/r/neo-zipangu', // ※必要に応じて変更してください
     color: '#ff4500',
   },
   {
     name: 'X (旧Twitter)',
     icon: '𝕏',
     description: 'フォロー＆リポストで拡散にご協力ください。',
-    url: 'https://x.com/your-account',
+    url: 'https://x.com/your-account', // ※ご自身のアカウントに変更してください
     color: '#1da1f2',
   },
 ];
@@ -204,7 +204,7 @@ export default function SponsorScreen({ onBack, onGoToRedeem }) {
           </h2>
           <ul style={{ color: '#ccc', lineHeight: '2', fontSize: '0.95rem', paddingLeft: '1.5rem' }}>
             <li>☁️ クラウドサーバー代（Cloud Run / Firebase）</li>
-            <li>🌐 ドメイン維持費（aninja.com）</li>
+            <li>🌐 ドメイン維持費（a-ninja.com）</li>
             <li>🔧 開発ツール・API利用料</li>
             <li>📢 広報・コミュニティ運営費</li>
           </ul>

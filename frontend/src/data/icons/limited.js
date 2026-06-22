@@ -216,7 +216,7 @@ export const LIMITED_ICONS = [
   { key: "media_youtube_cinema",          emoji: "🎦", name: "Cinema",          category: "メディア", desc: "YouTubeサポーター特典", requirement: "YouTube限定コードで解放" },
 
   // ============================================================
-  // 💻 GitHub サポーター (6)
+  // 💻 GitHub サポーター (6)：Onetime Tier
   // ============================================================
   { key: "media_github_laptop",           emoji: "💻", name: "Laptop",            category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
   { key: "media_github_desktop",          emoji: "🖥", name: "Desktop Computer",  category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
@@ -224,6 +224,22 @@ export const LIMITED_ICONS = [
   { key: "media_github_keyboard",         emoji: "⌨", name: "Keyboard",          category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
   { key: "media_github_mouse",            emoji: "🖱", name: "Computer Mouse",    category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
   { key: "media_github_trackball",        emoji: "🖲", name: "Trackball",         category: "メディア", desc: "GitHubサポーター特典", requirement: "GitHub限定コードで解放" },
+
+  // ============================================================
+  // 🌈 GitHub サポーター (12)：Monthly Tier
+  // ============================================================
+  { key: "supporter_red",         emoji: "❤️", name: "Ruby Supporter",        category: "出資者", desc: "出資者（レッド）に認定",    requirement: "出資者（レッド）として認定される" },
+  { key: "supporter_pink",        emoji: "🩷", name: "Pink Diamond Supporter", category: "出資者", desc: "出資者（ピンク）に認定",   requirement: "出資者（ピンク）として認定される" },
+  { key: "supporter_orange",      emoji: "🧡", name: "Amber Supporter",        category: "出資者", desc: "出資者（オレンジ）に認定",  requirement: "出資者（オレンジ）として認定される" },
+  { key: "supporter_yellow",      emoji: "💛", name: "Topaz Supporter",        category: "出資者", desc: "出資者（イエロー）に認定",  requirement: "出資者（イエロー）として認定される" },
+  { key: "supporter_green",       emoji: "💚", name: "Emerald Supporter",      category: "出資者", desc: "出資者（グリーン）に認定",  requirement: "出資者（グリーン）として認定される" },
+  { key: "supporter_blue",        emoji: "💙", name: "Sapphire Supporter",     category: "出資者", desc: "出資者（ブルー）に認定",   requirement: "出資者（ブルー）として認定される" },
+  { key: "supporter_lightblue",   emoji: "🩵", name: "Aquamarine Supporter",   category: "出資者", desc: "出資者（ライトブルー）に認定", requirement: "出資者（ライトブルー）として認定される" },
+  { key: "supporter_purple",      emoji: "💜", name: "Amethyst Supporter",     category: "出資者", desc: "出資者（パープル）に認定",  requirement: "出資者（パープル）として認定される" },
+  { key: "supporter_brown",       emoji: "🤎", name: "Smoky Quartz Supporter", category: "出資者", desc: "出資者（ブラウン）に認定",  requirement: "出資者（ブラウン）として認定される" },
+  { key: "supporter_black",       emoji: "🖤", name: "Obsidian Supporter",     category: "出資者", desc: "出資者（ブラック）に認定",  requirement: "出資者（ブラック）として認定される" },
+  { key: "supporter_grey",        emoji: "🩶", name: "Moonstone Supporter",    category: "出資者", desc: "出資者（グレー）に認定",   requirement: "出資者（グレー）として認定される" },
+  { key: "supporter_white",       emoji: "🤍", name: "Diamond Supporter",     category: "出資者", desc: "出資者（ホワイト）に認定",  requirement: "出資者（ホワイト）として認定される" },
 
   // ============================================================
   // 👻 Reddit サポーター (3)
@@ -307,22 +323,6 @@ export const LIMITED_ICONS = [
   { key: "media_note_scroll",    emoji: "📜", name: "Scroll",          category: "チップ", desc: "noteのチップ特典", requirement: "note限定コードで解放" },
   { key: "media_note_page_up",   emoji: "📄", name: "Page Facing Up",  category: "チップ", desc: "noteのチップ特典", requirement: "note限定コードで解放" },
   { key: "media_note_memo",      emoji: "📝", name: "Memo",            category: "チップ", desc: "noteのチップ特典", requirement: "note限定コードで解放" },
-
-  // ============================================================
-  // 💖 ：出資者 (ハート 12)　手動設定
-  // ============================================================
-  { key: "supporter_red",         emoji: "❤️", name: "Ruby Supporter",        category: "出資者", desc: "出資者（レッド）に認定",    requirement: "出資者（レッド）として認定される" },
-  { key: "supporter_pink",        emoji: "🩷", name: "Pink Diamond Supporter", category: "出資者", desc: "出資者（ピンク）に認定",   requirement: "出資者（ピンク）として認定される" },
-  { key: "supporter_orange",      emoji: "🧡", name: "Amber Supporter",        category: "出資者", desc: "出資者（オレンジ）に認定",  requirement: "出資者（オレンジ）として認定される" },
-  { key: "supporter_yellow",      emoji: "💛", name: "Topaz Supporter",        category: "出資者", desc: "出資者（イエロー）に認定",  requirement: "出資者（イエロー）として認定される" },
-  { key: "supporter_green",       emoji: "💚", name: "Emerald Supporter",      category: "出資者", desc: "出資者（グリーン）に認定",  requirement: "出資者（グリーン）として認定される" },
-  { key: "supporter_blue",        emoji: "💙", name: "Sapphire Supporter",     category: "出資者", desc: "出資者（ブルー）に認定",   requirement: "出資者（ブルー）として認定される" },
-  { key: "supporter_lightblue",   emoji: "🩵", name: "Aquamarine Supporter",   category: "出資者", desc: "出資者（ライトブルー）に認定", requirement: "出資者（ライトブルー）として認定される" },
-  { key: "supporter_purple",      emoji: "💜", name: "Amethyst Supporter",     category: "出資者", desc: "出資者（パープル）に認定",  requirement: "出資者（パープル）として認定される" },
-  { key: "supporter_brown",       emoji: "🤎", name: "Smoky Quartz Supporter", category: "出資者", desc: "出資者（ブラウン）に認定",  requirement: "出資者（ブラウン）として認定される" },
-  { key: "supporter_black",       emoji: "🖤", name: "Obsidian Supporter",     category: "出資者", desc: "出資者（ブラック）に認定",  requirement: "出資者（ブラック）として認定される" },
-  { key: "supporter_grey",        emoji: "🩶", name: "Moonstone Supporter",    category: "出資者", desc: "出資者（グレー）に認定",   requirement: "出資者（グレー）として認定される" },
-  { key: "supporter_white",       emoji: "🤍", name: "Diamond Supporter",     category: "出資者", desc: "出資者（ホワイト）に認定",  requirement: "出資者（ホワイト）として認定される" },
 
   // ============================================================
   // 🔶🔷 ：出資者（手動設定） (ダイヤモンド 2)
