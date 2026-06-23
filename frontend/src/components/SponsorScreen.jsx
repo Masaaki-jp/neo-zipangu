@@ -34,7 +34,7 @@ const SPONSOR_PLATFORMS = [
     name: 'X (旧Twitter)',
     icon: '𝕏',
     description: 'フォロー＆リポストで拡散にご協力ください。',
-    url: 'https://x.com/your-account', // ※ご自身のアカウントに変更してください
+    url: 'https://x.com/neo_zipangu', // ※ご自身のアカウントに変更してください
     color: '#1da1f2',
   },
 ];
