@@ -27,7 +27,7 @@ const SPONSOR_PLATFORMS = [
     name: 'Reddit',
     icon: '👽',
     description: 'コミュニティを通じてプロジェクトを応援。',
-    url: 'https://reddit.com/r/neo-zipangu', // ※必要に応じて変更してください
+    url: 'https://www.reddit.com/user/neo_zipangu/', // ※必要に応じて変更してください
     color: '#ff4500',
   },
   {
