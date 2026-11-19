@@ -4,3 +4,6 @@ __pycache__/
 backend/venv/
 venv/
 hack-ninja-key.json
+
+*.db
+__pycache__/
